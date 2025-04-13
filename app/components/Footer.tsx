@@ -1,22 +1,18 @@
 import { config } from "@/lib/config";
+import Link from "next/link";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="mt-16 border-t border-gray-100 py-6 text-center text-sm text-gray-500">
-      <div className="mx-auto max-w-5xl px-4">
+    <footer className="border-t border-gray-50 py-4 text-center text-xs text-gray-400">
+      <div className="mx-auto max-w-3xl px-4 flex justify-between items-center">
         <p>
-          © {currentYear} {config.siteName} | Powered by{" "}
-          <a
-            href="https://github.com/your-username/openuptimes"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-gray-700 hover:underline"
-          >
-            OpenUptimes
-          </a>
+          © {currentYear} {config.siteName}
         </p>
+        <Link href="/admin" className="text-gray-400 hover:text-gray-600 transition-colors">
+          Admin
+        </Link>
       </div>
     </footer>
   );

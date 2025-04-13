@@ -11,22 +11,19 @@ export default function Home() {
   const { services, loading, error, lastUpdated, refresh } = useStatus(showHistory, 60);
   
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-gray-50 to-white">
-      <div className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen flex-col bg-white">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8">
         {loading && services.length === 0 ? (
           <div className="flex h-64 items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600"></div>
-              <p className="text-gray-500">Loading status information...</p>
-            </div>
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500"></div>
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-            <h2 className="mb-2 text-xl font-semibold text-red-700">Error Loading Status</h2>
-            <p className="text-red-600">{error}</p>
+          <div className="rounded-lg border border-red-100 bg-white p-4 text-center">
+            <h2 className="mb-2 text-lg font-medium text-red-600">Error Loading Status</h2>
+            <p className="text-sm text-red-500">{error}</p>
             <button
               onClick={refresh}
-              className="mt-4 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+              className="mt-3 rounded-md bg-red-50 px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-100"
             >
               Try Again
             </button>
@@ -35,12 +32,13 @@ export default function Home() {
           <>
             <StatusHeader services={services} lastUpdated={lastUpdated} />
             
-            <div className="mb-8 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Service Status</h2>
-              <div className="flex items-center gap-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900">Services</h2>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={refresh}
-                  className="flex items-center gap-1 rounded-md px-3 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                  className="rounded-md p-1 text-gray-500 hover:bg-gray-50"
+                  aria-label="Refresh"
                 >
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
@@ -56,14 +54,13 @@ export default function Home() {
                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                     <path d="M3 3v5h5" />
                   </svg>
-                  Refresh
                 </button>
                 <button
                   onClick={() => setShowHistory(!showHistory)}
-                  className={`rounded-md px-3 py-1 text-sm font-medium ${
+                  className={`rounded-md px-2 py-1 text-xs ${
                     showHistory 
-                      ? "bg-blue-100 text-blue-700" 
-                      : "text-gray-600 hover:bg-gray-100"
+                      ? "bg-blue-50 text-blue-600" 
+                      : "text-gray-500 hover:bg-gray-50"
                   }`}
                 >
                   {showHistory ? "Hide History" : "Show History"}
@@ -71,9 +68,9 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
               {services.map((service) => (
-                <StatusCard key={service.name} service={service} />
+                <StatusCard key={service.name} service={service} showHistory={showHistory} />
               ))}
             </div>
           </>

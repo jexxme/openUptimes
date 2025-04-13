@@ -159,6 +159,27 @@ Displays historical uptime data for each service:
 4. The UI automatically updates to reflect the latest status information
 5. Historical data can be viewed to track performance over time
 
+## Admin Interface
+
+OpenUptimes includes a simple admin interface that allows you to customize your status page without editing code:
+
+1. **Accessing Admin:** 
+   - Click the "Admin" link in the footer of your status page
+   - Authenticate using your Vercel OIDC token (found in your Vercel project settings or `.env.local`)
+
+2. **Admin Features:**
+   - Customize site name, description, and refresh interval
+   - Change status colors for up, down, and unknown states
+   - Add, edit, or remove services without code changes
+   - All changes are stored in Redis for persistence
+
+3. **Authentication:**
+   - Authentication uses Vercel's OIDC token system
+   - Simply set the `VERCEL_OIDC_TOKEN` in your environment variables
+   - No additional auth setup required
+
+For troubleshooting admin access, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ## Deployment
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https%3A%2F%2Fgithub.com%2Fyour-username%2Fopenuptimes)

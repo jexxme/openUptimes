@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { services } from '@/lib/config';
+import { getRedisConfig } from '@/lib/config';
 import { setServiceStatus, appendServiceHistory, closeRedisConnection, ServiceStatus } from '@/lib/redis';
 
 /**
@@ -81,6 +81,7 @@ async function checkService(service: { name: string; url: string; expectedStatus
  * Check all services defined in config
  */
 async function checkAllServices() {
+  const { services } = await getRedisConfig();
   console.log('Checking all services:', services);
   return Promise.all(services.map(service => checkService(service)));
 }

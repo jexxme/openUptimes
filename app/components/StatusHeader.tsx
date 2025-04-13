@@ -18,50 +18,48 @@ export function StatusHeader({ services, lastUpdated }: StatusHeaderProps) {
                        anyDown ? 'System disruption detected' : 
                        'Status unknown';
   
-  // Color based on overall status
-  const statusColor = allUp ? 'text-green-600' : 
-                    anyDown ? 'text-red-600' : 
-                    'text-gray-600';
-  
   // Calculate service stats
   const totalServices = services.length;
   const upServices = services.filter(service => service.currentStatus?.status === 'up').length;
   const downServices = services.filter(service => service.currentStatus?.status === 'down').length;
-  const unknownServices = totalServices - upServices - downServices;
   
   return (
-    <div className="mb-8 text-center">
-      <h1 className="mb-2 text-3xl font-bold">{config.siteName}</h1>
-      <p className="mb-6 opacity-70">{config.description}</p>
-      
-      <div className="mb-6">
-        <h2 className={`text-xl font-semibold ${statusColor}`}>
-          {overallStatus}
-        </h2>
-        <p className="mt-2 text-sm text-gray-500">
-          Last updated: {lastUpdated}
-        </p>
+    <div className="mb-6">
+      <div className="flex flex-col items-center justify-center">
+        <h1 className="text-2xl font-bold">{config.siteName}</h1>
+        <p className="text-sm text-gray-500 mt-1">{config.description}</p>
       </div>
       
-      <div className="mx-auto flex max-w-md justify-center gap-4">
-        <div className="flex-1 rounded-lg bg-green-50 p-3 text-center shadow-sm">
-          <span className="block text-2xl font-bold text-green-600">{upServices}</span>
-          <span className="text-xs text-green-700">Operational</span>
+      <div className="mt-4 flex items-center justify-center">
+        <div className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+          allUp ? 'bg-green-100 text-green-700' : 
+          anyDown ? 'bg-red-100 text-red-700' : 
+          'bg-gray-100 text-gray-600'
+        }`}>
+          {overallStatus}
+        </div>
+      </div>
+      
+      <div className="mt-4 flex justify-center gap-2 text-sm">
+        <div className="flex items-center gap-1">
+          <div className="h-2 w-2 rounded-full bg-green-500"></div>
+          <span>{upServices} operational</span>
         </div>
         
         {downServices > 0 && (
-          <div className="flex-1 rounded-lg bg-red-50 p-3 text-center shadow-sm">
-            <span className="block text-2xl font-bold text-red-600">{downServices}</span>
-            <span className="text-xs text-red-700">Disrupted</span>
-          </div>
+          <>
+            <span className="text-gray-300">·</span>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-red-500"></div>
+              <span>{downServices} disrupted</span>
+            </div>
+          </>
         )}
         
-        {unknownServices > 0 && (
-          <div className="flex-1 rounded-lg bg-gray-50 p-3 text-center shadow-sm">
-            <span className="block text-2xl font-bold text-gray-600">{unknownServices}</span>
-            <span className="text-xs text-gray-700">Unknown</span>
-          </div>
-        )}
+        <span className="text-gray-300">·</span>
+        <span className="text-xs text-gray-500">
+          Updated {lastUpdated}
+        </span>
       </div>
     </div>
   );
