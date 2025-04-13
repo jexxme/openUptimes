@@ -19,13 +19,6 @@ A self-hosted, zero-dependency status page to monitor and display the uptime of 
 - **Monitoring**: Vercel Functions + Client-side Polling
 - **Deployment**: Vercel Deploy Button
 
-## Requirements
-
-- **Node.js**: LTS version recommended (v18.x or v20.x)
-- **npm**: v8.x or later
-
-> **Note**: Using Node.js v23+ may cause permission issues on macOS. See troubleshooting section below.
-
 ## Quick Start
 
 1. Fork and clone this repository
@@ -54,27 +47,6 @@ KV_REST_API_READ_ONLY_TOKEN=your_kv_read_only_token
 ## Deployment
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https%3A%2F%2Fgithub.com%2Fyour-username%2Fopenuptimes)
-
-## Troubleshooting
-
-### Permission Error on macOS
-
-If you encounter a permission error like `EPERM: operation not permitted, uv_cwd` when running `npm run dev` on macOS, try one of these solutions:
-
-1. **Fix directory permissions**:
-   ```bash
-   chmod -R 755 .
-   ```
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-This issue is common with Node.js v23+ on macOS. Using an LTS version is recommended for development.
 
 ## Contributing
 

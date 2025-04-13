@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { services } from '@/lib/config';
-import { getServiceStatus, getServiceHistory } from '@/lib/redis';
+import { getServiceStatus, getServiceHistory, closeRedisConnection } from '@/lib/redis';
 
 /**
  * API route handler for /api/status
@@ -38,11 +38,17 @@ export async function GET(request: Request) {
       })
     );
     
+    // Close Redis connection to avoid exhausting connections in serverless environment
+    await closeRedisConnection();
+    
     return NextResponse.json(results);
-  } catch (error) {
-    console.error('Error fetching status:', error);
+  } catch (err) {
+    // Close Redis connection even on error
+    await closeRedisConnection();
+    
+    console.error('Error fetching status:', err);
     return NextResponse.json(
-      { error: 'Failed to fetch service status' },
+      { error: 'Failed to fetch service status', message: (err as Error).message },
       { status: 500 }
     );
   }

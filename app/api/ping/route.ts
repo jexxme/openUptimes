@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { services } from '@/lib/config';
-import { setServiceStatus, appendServiceHistory } from '@/lib/redis';
+import { setServiceStatus, appendServiceHistory, closeRedisConnection, ServiceStatus } from '@/lib/redis';
 
 /**
  * Check the status of a single service
@@ -23,7 +23,7 @@ async function checkService(service: { name: string; url: string; expectedStatus
     const expectedStatus = service.expectedStatus || 200;
     const isUp = response.status === expectedStatus;
     
-    const statusData = {
+    const statusData: ServiceStatus = {
       status: isUp ? 'up' : 'down',
       timestamp: endTime,
       responseTime,
@@ -44,7 +44,7 @@ async function checkService(service: { name: string; url: string; expectedStatus
     const endTime = Date.now();
     const responseTime = endTime - startTime;
     
-    const statusData = {
+    const statusData: ServiceStatus = {
       status: 'down',
       timestamp: endTime,
       responseTime,
@@ -77,10 +77,15 @@ async function checkAllServices() {
 export async function GET() {
   try {
     const results = await checkAllServices();
+    // Close Redis connection to avoid exhausting connections in serverless environment
+    await closeRedisConnection();
     return NextResponse.json(results);
-  } catch (error) {
+  } catch (err) {
+    // Close Redis connection even on error
+    await closeRedisConnection();
+    // Use the error parameter in the response
     return NextResponse.json(
-      { error: 'Failed to check services' },
+      { error: 'Failed to check services', message: (err as Error).message },
       { status: 500 }
     );
   }
