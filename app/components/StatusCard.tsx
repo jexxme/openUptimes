@@ -1,4 +1,3 @@
-import { ServiceConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { ServiceStatus } from "@/lib/redis";
 import { ServiceHistory } from "./ServiceHistory";

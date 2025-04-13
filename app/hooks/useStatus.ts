@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { config } from '@/lib/config';
 
 type ServiceStatus = 'up' | 'down' | 'unknown';
@@ -22,7 +22,8 @@ export function useStatus(includeHistory = false, historyLimit = 60) {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
 
-  const fetchStatus = async () => {
+  // Wrap fetchStatus in useCallback to prevent infinite useEffect loop
+  const fetchStatus = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -51,7 +52,7 @@ export function useStatus(includeHistory = false, historyLimit = 60) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [includeHistory, historyLimit]);
 
   // Initial fetch
   useEffect(() => {
@@ -62,7 +63,7 @@ export function useStatus(includeHistory = false, historyLimit = 60) {
     
     // Clean up interval on unmount
     return () => clearInterval(interval);
-  }, [includeHistory, historyLimit]);
+  }, [fetchStatus]); // Add fetchStatus to the dependency array
 
   return {
     services,
