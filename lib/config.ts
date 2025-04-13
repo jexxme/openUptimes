@@ -13,15 +13,20 @@ export type ServiceConfig = {
  */
 export const services: ServiceConfig[] = [
   { 
-    name: "Website", 
-    url: "https://example.com",
-    description: "Main website" 
+    name: "Google", 
+    url: "https://www.google.com",
+    description: "Google Search Engine" 
   },
   { 
-    name: "API", 
-    url: "https://api.example.com",
-    description: "API endpoints",
+    name: "GitHub", 
+    url: "https://github.com",
+    description: "GitHub Development Platform",
     expectedStatus: 200
+  },
+  {
+    name: "Non-existent site",
+    url: "https://this-site-does-not-exist-123456789.com",
+    description: "Example of a down service"
   }
 ];
 

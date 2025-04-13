@@ -13,23 +13,32 @@ export type ServiceStatus = {
 let redisClient: RedisClientType | null = null;
 
 // Initialize Redis client
-const getRedisClient = async (): Promise<RedisClientType> => {
+export const getRedisClient = async (): Promise<RedisClientType> => {
   if (!redisClient) {
     if (!process.env.REDIS_URL) {
+      console.error('REDIS_URL environment variable is not set');
       throw new Error('REDIS_URL environment variable is not set');
     }
     
-    redisClient = createClient({
-      url: process.env.REDIS_URL,
-    });
+    console.log('Initializing Redis client with URL:', process.env.REDIS_URL);
     
-    // Handle connection errors
-    redisClient.on('error', (err) => {
-      console.error('Redis connection error:', err);
-      redisClient = null;
-    });
-    
-    await redisClient.connect();
+    try {
+      redisClient = createClient({
+        url: process.env.REDIS_URL,
+      });
+      
+      // Handle connection errors
+      redisClient.on('error', (err) => {
+        console.error('Redis connection error:', err);
+        redisClient = null;
+      });
+      
+      await redisClient.connect();
+      console.log('Redis client connected successfully');
+    } catch (error) {
+      console.error('Failed to initialize Redis client:', error);
+      throw error;
+    }
   }
   
   return redisClient;
@@ -38,8 +47,14 @@ const getRedisClient = async (): Promise<RedisClientType> => {
 // Close Redis connection - important for serverless environments
 export async function closeRedisConnection(): Promise<void> {
   if (redisClient) {
-    await redisClient.quit();
-    redisClient = null;
+    try {
+      await redisClient.quit();
+      console.log('Redis connection closed');
+    } catch (error) {
+      console.error('Error closing Redis connection:', error);
+    } finally {
+      redisClient = null;
+    }
   }
 }
 
