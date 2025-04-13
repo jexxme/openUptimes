@@ -1,8 +1,18 @@
 "use client";
 
+import { Suspense } from "react";
 import { AdminAuth } from "../components/AdminAuth";
 import { AdminConfigForm } from "../components/AdminConfigForm";
 import Link from "next/link";
+
+// Create a separate component to be wrapped in Suspense
+function AdminContent() {
+  return (
+    <AdminAuth>
+      <AdminConfigForm />
+    </AdminAuth>
+  );
+}
 
 export default function AdminPage() {
   return (
@@ -18,9 +28,13 @@ export default function AdminPage() {
           </Link>
         </div>
         
-        <AdminAuth>
-          <AdminConfigForm />
-        </AdminAuth>
+        <Suspense fallback={
+          <div className="flex min-h-[200px] items-center justify-center">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500"></div>
+          </div>
+        }>
+          <AdminContent />
+        </Suspense>
       </div>
     </div>
   );
