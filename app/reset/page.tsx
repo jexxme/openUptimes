@@ -7,6 +7,7 @@ export default function ResetPage() {
   const router = useRouter();
   const [resetting, setResetting] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
+  const [resetStats, setResetStats] = useState<{keysDeleted?: number} | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleReset() {
@@ -23,7 +24,15 @@ export default function ResetPage() {
         throw new Error(errorData.error || 'Reset failed');
       }
       
+      const result = await response.json();
+      setResetStats(result);
       setResetComplete(true);
+      
+      // Clear any client-side state or cookies
+      document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      localStorage.clear();
+      sessionStorage.clear();
+      
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -33,6 +42,11 @@ export default function ResetPage() {
     } finally {
       setResetting(false);
     }
+  }
+
+  function handleGoToSetup() {
+    // Force a full page reload to ensure all state is cleared
+    window.location.href = '/?t=' + new Date().getTime();
   }
 
   return (
@@ -74,12 +88,15 @@ export default function ResetPage() {
               <h2 className="text-lg font-medium text-gray-900">Reset Complete!</h2>
               
               <p className="text-sm text-gray-500">
-                Your application has been reset. You can now go through the setup process again.
+                Your application has been reset successfully.
+                {resetStats?.keysDeleted !== undefined && 
+                  ` ${resetStats.keysDeleted} data items were removed.`
+                }
               </p>
               
               <div className="mt-4">
                 <button
-                  onClick={() => router.push('/')}
+                  onClick={handleGoToSetup}
                   className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
                 >
                   Go to Setup
@@ -96,10 +113,11 @@ export default function ResetPage() {
                 <li>Go through the setup wizard again</li>
                 <li>Create a new admin password</li>
                 <li>Reconfigure site settings</li>
+                <li>Set up monitored services</li>
               </ul>
               
               <div className="mt-6 rounded-md bg-red-50 p-3 text-sm text-red-600">
-                <strong>Warning:</strong> This action cannot be undone. All your login credentials will be reset.
+                <strong>Warning:</strong> This action cannot be undone. All your configuration, login credentials, service status history, and settings will be permanently deleted.
               </div>
               
               <div className="mt-4 flex justify-end space-x-3">

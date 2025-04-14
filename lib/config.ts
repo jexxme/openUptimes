@@ -13,7 +13,7 @@ export type ServiceConfig = {
  */
 export const services: ServiceConfig[] = [
   {
-    name: 'Googledsdsdsyxyxy',
+    name: 'Google',
     url: 'https://www.google.com',
     description: 'Google Search Engine'
   },
@@ -24,9 +24,9 @@ export const services: ServiceConfig[] = [
     expectedStatus: 200
   },
   {
-    name: 'Non-existent site',
-    url: 'https://this-site-does-not-exist-123456789.com',
-    description: 'Example of a down service'
+    name: 'Example',
+    url: 'https://exampleaaa.com',
+    description: 'Example Website'
   }
 ];
 
@@ -34,7 +34,7 @@ export const services: ServiceConfig[] = [
  * General configuration
  */
 export const config = {
-  siteName: 'MyOpenUptimesEEE',
+  siteName: 'OpenUptimes',
   description: 'Service Status Monitor',
   refreshInterval: 60000,
   historyLength: 1440,

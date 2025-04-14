@@ -15,8 +15,11 @@ export async function POST(request: NextRequest) {
     response.cookies.set({
       name: 'authToken',
       value: '',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       expires: new Date(0),
       path: '/',
+      sameSite: 'lax',
     });
     
     return response;

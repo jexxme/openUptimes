@@ -78,18 +78,30 @@ export default function AdminPage() {
   async function handleLogout() {
     setIsLoggingOut(true);
     try {
-      await fetch('/api/auth/logout', {
+      // Make the logout API call
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
+        credentials: 'include', // Important for including cookies
       });
       
-      // Add a sufficient delay to ensure cookie is cleared and session is invalidated
+      if (!response.ok) {
+        throw new Error('Logout request failed');
+      }
+      
+      // Clear any client-side state/storage if needed
+      // ...
+      
+      // Use a longer timeout to ensure cookies are properly cleared
       setTimeout(() => {
-        // Redirect to login page with a return URL
-        window.location.href = '/login?from=/admin';
-      }, 500);
+        // Force a full page reload to the login page
+        window.location.href = '/login?from=/admin&t=' + new Date().getTime();
+      }, 800);
     } catch (error) {
       console.error('Logout failed:', error);
       setIsLoggingOut(false);
+      
+      // Fallback redirect if the API call fails
+      window.location.href = '/login';
     }
   }
 
