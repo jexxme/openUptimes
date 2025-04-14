@@ -2,70 +2,118 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ServiceConfig } from '@/lib/config';
-import { getRedisClient } from '@/lib/redis';
+import { setServiceStatus, appendServiceHistory, ServiceStatus, closeRedisConnection } from '@/lib/redis';
 
 const CONFIG_PATH = path.join(process.cwd(), 'lib', 'config.ts');
-const SERVICES_KEY = 'config:services';
 
 /**
- * Read the current services configuration from Redis or file
+ * Read the current services configuration from config.ts
  */
 async function readServicesConfig(): Promise<ServiceConfig[]> {
   try {
-    // First try to get from Redis
-    const client = await getRedisClient();
-    const servicesJson = await client.get(SERVICES_KEY);
+    const content = await fs.readFile(CONFIG_PATH, 'utf8');
     
-    if (servicesJson) {
-      return JSON.parse(servicesJson);
+    // Extract services array using regex
+    const match = content.match(/export const services: ServiceConfig\[] = \[([\s\S]*?)\];/);
+    if (!match) {
+      throw new Error('Could not parse services configuration');
     }
     
-    // Fallback to file system for initial data (will only work in dev)
-    try {
-      // Try reading from data/services.json first
-      const dataPath = path.join(process.cwd(), 'data', 'services.json');
-      const jsonContent = await fs.readFile(dataPath, 'utf8');
-      const services = JSON.parse(jsonContent);
-      
-      // Store in Redis for future use
-      await client.set(SERVICES_KEY, JSON.stringify(services));
-      return services;
-    } catch (fsError) {
-      // If that fails, try reading from config.ts
-      const content = await fs.readFile(CONFIG_PATH, 'utf8');
-      
-      // Extract services array using regex
-      const match = content.match(/export const services: ServiceConfig\[] = \[([\s\S]*?)\];/);
-      if (!match) {
-        throw new Error('Could not parse services configuration');
-      }
-      
-      // Convert the string representation to actual array
-      const servicesString = `[${match[1]}]`;
-      const services = eval(`(${servicesString})`);
-      
-      // Store in Redis for future use
-      await client.set(SERVICES_KEY, JSON.stringify(services));
-      return services;
-    }
+    // Convert the string representation to actual array
+    // This is a simple approach - in production, you might want a more robust solution
+    const servicesString = `[${match[1]}]`;
+    const services = eval(`(${servicesString})`);
+    
+    return services;
   } catch (error) {
     console.error('Error reading services config:', error);
-    
-    // Return default empty array if everything fails
-    return [];
+    throw error;
   }
 }
 
 /**
- * Write updated services configuration to Redis
+ * Write updated services configuration to config.ts
  */
 async function writeServicesConfig(services: ServiceConfig[]): Promise<void> {
   try {
-    const client = await getRedisClient();
-    await client.set(SERVICES_KEY, JSON.stringify(services));
+    const content = await fs.readFile(CONFIG_PATH, 'utf8');
+    
+    // Format services array as string
+    const servicesString = JSON.stringify(services, null, 2)
+      .replace(/"([^"]+)":/g, '$1:') // Convert "key": to key:
+      .replace(/"/g, "'"); // Use single quotes
+    
+    // Replace the services array in the file
+    const updatedContent = content.replace(
+      /export const services: ServiceConfig\[] = \[([\s\S]*?)\];/,
+      `export const services: ServiceConfig[] = ${servicesString};`
+    );
+    
+    await fs.writeFile(CONFIG_PATH, updatedContent, 'utf8');
   } catch (error) {
     console.error('Error writing services config:', error);
     throw error;
+  }
+}
+
+/**
+ * Check a single service status immediately
+ */
+async function checkService(service: ServiceConfig) {
+  console.log(`Immediate check for service: ${service.name} at URL: ${service.url}`);
+  const startTime = Date.now();
+  
+  try {
+    const response = await fetch(service.url, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        'User-Agent': 'OpenUptimes Status Monitor'
+      },
+    });
+    
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+    
+    const expectedStatus = service.expectedStatus || 200;
+    const isUp = response.status === expectedStatus;
+    
+    console.log(`Service ${service.name} status: ${isUp ? 'UP' : 'DOWN'}, Code: ${response.status}, Time: ${responseTime}ms`);
+    
+    const statusData: ServiceStatus = {
+      status: isUp ? 'up' : 'down',
+      timestamp: endTime,
+      responseTime,
+      statusCode: response.status,
+    };
+    
+    // Store current status
+    await setServiceStatus(service.name, statusData);
+    
+    // Append to history
+    await appendServiceHistory(service.name, statusData);
+    
+    return statusData;
+  } catch (error) {
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+    
+    console.error(`Error checking service ${service.name}:`, error);
+    
+    const statusData: ServiceStatus = {
+      status: 'down',
+      timestamp: endTime,
+      responseTime,
+      error: (error as Error).message,
+    };
+    
+    // Store current status
+    await setServiceStatus(service.name, statusData);
+    
+    // Append to history
+    await appendServiceHistory(service.name, statusData);
+    
+    return statusData;
   }
 }
 
@@ -77,7 +125,6 @@ export async function GET() {
     const services = await readServicesConfig();
     return NextResponse.json(services);
   } catch (error) {
-    console.error('GET /api/services error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch services' },
       { status: 500 }
@@ -114,9 +161,21 @@ export async function POST(request: NextRequest) {
     services.push(newService);
     await writeServicesConfig(services);
     
+    // Check the new service status immediately
+    await checkService(newService);
+    
+    // Close Redis connection
+    await closeRedisConnection();
+    
     return NextResponse.json(newService, { status: 201 });
   } catch (error) {
-    console.error('POST /api/services error:', error);
+    // Close Redis connection on error
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to add service' },
       { status: 500 }
@@ -130,9 +189,9 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const name = searchParams.get('name');
+    const originalName = searchParams.get('name');
     
-    if (!name) {
+    if (!originalName) {
       return NextResponse.json(
         { error: 'Service name is required' },
         { status: 400 }
@@ -152,7 +211,7 @@ export async function PUT(request: NextRequest) {
     const services = await readServicesConfig();
     
     // Find the service to update
-    const serviceIndex = services.findIndex(service => service.name === name);
+    const serviceIndex = services.findIndex(service => service.name === originalName);
     if (serviceIndex === -1) {
       return NextResponse.json(
         { error: 'Service not found' },
@@ -161,12 +220,28 @@ export async function PUT(request: NextRequest) {
     }
     
     // Update the service
+    const oldService = services[serviceIndex];
     services[serviceIndex] = updatedService;
     await writeServicesConfig(services);
     
+    // If the name has changed or if the URL has changed, check the service status immediately
+    const nameChanged = originalName !== updatedService.name;
+    if (nameChanged || updatedService.url !== oldService.url) {
+      await checkService(updatedService);
+    }
+    
+    // Close Redis connection
+    await closeRedisConnection();
+    
     return NextResponse.json(updatedService);
   } catch (error) {
-    console.error('PUT /api/services error:', error);
+    // Close Redis connection on error
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to update service' },
       { status: 500 }
@@ -206,7 +281,6 @@ export async function DELETE(request: NextRequest) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('DELETE /api/services error:', error);
     return NextResponse.json(
       { error: 'Failed to delete service' },
       { status: 500 }
