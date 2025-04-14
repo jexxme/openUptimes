@@ -2,57 +2,67 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ServiceConfig } from '@/lib/config';
+import { getRedisClient } from '@/lib/redis';
 
-// Use JSON file for configuration storage in production
-const CONFIG_DIR = path.join(process.cwd(), 'data');
-const CONFIG_PATH = path.join(CONFIG_DIR, 'services.json');
+const CONFIG_PATH = path.join(process.cwd(), 'lib', 'config.ts');
+const SERVICES_KEY = 'config:services';
 
 /**
- * Read the current services configuration
+ * Read the current services configuration from Redis or file
  */
 async function readServicesConfig(): Promise<ServiceConfig[]> {
   try {
-    // Create the config directory if it doesn't exist
-    try {
-      await fs.mkdir(CONFIG_DIR, { recursive: true });
-    } catch (err) {
-      // Ignore if directory already exists
+    // First try to get from Redis
+    const client = await getRedisClient();
+    const servicesJson = await client.get(SERVICES_KEY);
+    
+    if (servicesJson) {
+      return JSON.parse(servicesJson);
     }
     
-    // Try to read the config file
+    // Fallback to file system for initial data (will only work in dev)
     try {
+      // Try reading from data/services.json first
+      const dataPath = path.join(process.cwd(), 'data', 'services.json');
+      const jsonContent = await fs.readFile(dataPath, 'utf8');
+      const services = JSON.parse(jsonContent);
+      
+      // Store in Redis for future use
+      await client.set(SERVICES_KEY, JSON.stringify(services));
+      return services;
+    } catch (fsError) {
+      // If that fails, try reading from config.ts
       const content = await fs.readFile(CONFIG_PATH, 'utf8');
-      return JSON.parse(content);
-    } catch (err) {
-      // If file doesn't exist, return default from lib/config.ts
-      // For development, we can still import the config
-      const { services } = await import('@/lib/config');
       
-      // Write the default config to the JSON file
-      await fs.writeFile(CONFIG_PATH, JSON.stringify(services, null, 2), 'utf8');
+      // Extract services array using regex
+      const match = content.match(/export const services: ServiceConfig\[] = \[([\s\S]*?)\];/);
+      if (!match) {
+        throw new Error('Could not parse services configuration');
+      }
       
+      // Convert the string representation to actual array
+      const servicesString = `[${match[1]}]`;
+      const services = eval(`(${servicesString})`);
+      
+      // Store in Redis for future use
+      await client.set(SERVICES_KEY, JSON.stringify(services));
       return services;
     }
   } catch (error) {
     console.error('Error reading services config:', error);
-    throw error;
+    
+    // Return default empty array if everything fails
+    return [];
   }
 }
 
 /**
- * Write updated services configuration
+ * Write updated services configuration to Redis
  */
 async function writeServicesConfig(services: ServiceConfig[]): Promise<void> {
   try {
-    // Create the config directory if it doesn't exist
-    try {
-      await fs.mkdir(CONFIG_DIR, { recursive: true });
-    } catch (err) {
-      // Ignore if directory already exists
-    }
-    
-    // Write services to the JSON file
-    await fs.writeFile(CONFIG_PATH, JSON.stringify(services, null, 2), 'utf8');
+    const client = await getRedisClient();
+    await client.set(SERVICES_KEY, JSON.stringify(services));
   } catch (error) {
     console.error('Error writing services config:', error);
     throw error;
@@ -67,6 +77,7 @@ export async function GET() {
     const services = await readServicesConfig();
     return NextResponse.json(services);
   } catch (error) {
+    console.error('GET /api/services error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch services' },
       { status: 500 }
@@ -105,6 +116,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(newService, { status: 201 });
   } catch (error) {
+    console.error('POST /api/services error:', error);
     return NextResponse.json(
       { error: 'Failed to add service' },
       { status: 500 }
@@ -154,6 +166,7 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json(updatedService);
   } catch (error) {
+    console.error('PUT /api/services error:', error);
     return NextResponse.json(
       { error: 'Failed to update service' },
       { status: 500 }
@@ -193,6 +206,7 @@ export async function DELETE(request: NextRequest) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE /api/services error:', error);
     return NextResponse.json(
       { error: 'Failed to delete service' },
       { status: 500 }

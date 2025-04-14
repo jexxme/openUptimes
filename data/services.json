@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Google",
+    "url": "https://www.google.com",
+    "description": "Google Search Engine"
+  },
+  {
+    "name": "GitHub",
+    "url": "https://github.com",
+    "description": "GitHub Development Platform",
+    "expectedStatus": 200
+  },
+  {
+    "name": "Example",
+    "url": "https://example.com",
+    "description": "Example Website"
+  }
+]
