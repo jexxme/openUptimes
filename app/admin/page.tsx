@@ -82,10 +82,11 @@ export default function AdminPage() {
         method: 'POST',
       });
       
-      // Add a small delay to ensure cookie is cleared
+      // Add a sufficient delay to ensure cookie is cleared and session is invalidated
       setTimeout(() => {
-        window.location.href = '/';
-      }, 300);
+        // Redirect to login page with a return URL
+        window.location.href = '/login?from=/admin';
+      }, 500);
     } catch (error) {
       console.error('Logout failed:', error);
       setIsLoggingOut(false);
