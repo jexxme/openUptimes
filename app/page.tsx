@@ -1,18 +1,60 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useStatus } from "./hooks/useStatus";
 import { useSetupStatus } from "./hooks/useSetupStatus";
 import { StatusHeader } from "./components/StatusHeader";
 import { StatusCard } from "./components/StatusCard";
 import { Footer } from "./components/Footer";
 
+// For type checking only
+interface ServiceConfig {
+  name: string;
+  url: string;
+  description?: string;
+  visible?: boolean;
+}
+
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
+  const forceShow = searchParams.get('forceShow') === 'true';
+  
   const [showHistory, setShowHistory] = useState(false);
+  const [siteConfig, setSiteConfig] = useState<any>({
+    statusPage: {
+      enabled: true,
+      title: 'Service Status',
+      description: 'Current status of our services'
+    }
+  });
+  
   const { services, loading: statusLoading, error: statusError, lastUpdated, refresh } = useStatus(showHistory, 60);
   const { setupComplete, loading: setupLoading, error: setupError } = useSetupStatus();
+  
+  // Filter visible services
+  const visibleServices = services.filter(service => 
+    service.config?.visible !== false // Show service if visible is undefined or true
+  );
+  
+  // Fetch site settings
+  useEffect(() => {
+    async function fetchSiteConfig() {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setSiteConfig(data);
+        }
+      } catch (error) {
+        console.error('Error fetching site config:', error);
+      }
+    }
+    
+    fetchSiteConfig();
+  }, []);
   
   // Redirect to setup wizard if not complete
   useEffect(() => {
@@ -47,10 +89,35 @@ export default function Home() {
     );
   }
   
+  // If status page is disabled and not in preview mode with forceShow, show a placeholder
+  if (siteConfig?.statusPage?.enabled === false && (!isPreview || !forceShow)) {
+    return (
+      <div className="flex min-h-screen flex-col bg-white">
+        <div className="mx-auto w-full max-w-3xl px-4 py-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{siteConfig.siteName || 'OpenUptimes'}</h1>
+          <p className="text-gray-500 mb-6">Status page is currently disabled</p>
+        </div>
+        <div className="mt-auto">
+          <Footer />
+        </div>
+      </div>
+    );
+  }
+  
+  // If in preview mode with forceShow, show a preview banner
+  const showPreviewBanner = isPreview && forceShow && siteConfig?.statusPage?.enabled === false;
+
   return (
     <div className="flex min-h-screen flex-col bg-white">
+      {showPreviewBanner && (
+        <div className="bg-amber-50 border-b border-amber-100 py-2 px-4 text-center text-amber-800 text-sm">
+          <span className="font-medium">Preview Mode</span> — This is a preview of how your status page will look when enabled. 
+          It is currently disabled for public viewing.
+        </div>
+      )}
+      
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
-        {statusLoading && services.length === 0 ? (
+        {statusLoading && visibleServices.length === 0 ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500"></div>
           </div>
@@ -67,7 +134,12 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <StatusHeader services={services} lastUpdated={lastUpdated} />
+            <StatusHeader 
+              title={siteConfig?.statusPage?.title}
+              description={siteConfig?.statusPage?.description}
+              services={visibleServices} 
+              lastUpdated={lastUpdated} 
+            />
             
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Services</h2>
@@ -106,9 +178,15 @@ export default function Home() {
             </div>
             
             <div className="space-y-2">
-              {services.map((service) => (
-                <StatusCard key={service.name} service={service} showHistory={showHistory} />
-              ))}
+              {visibleServices.length > 0 ? (
+                visibleServices.map((service) => (
+                  <StatusCard key={service.name} service={service} showHistory={showHistory} />
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No services are currently configured to be visible on this status page.
+                </div>
+              )}
             </div>
           </>
         )}

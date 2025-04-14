@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSetupStatus } from "../hooks/useSetupStatus";
 
@@ -19,9 +19,24 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // If setup is already complete, redirect to home
-  if (setupComplete === true && !loading) {
-    router.push('/');
+  // Use useEffect to handle redirection when setup is complete
+  useEffect(() => {
+    if (setupComplete === true && !loading) {
+      router.push('/');
+    }
+  }, [setupComplete, loading, router]);
+  
+  // If still loading, show a loading indicator
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+      </div>
+    );
+  }
+  
+  // If setup is complete and we're still on this page, render nothing as we're about to redirect
+  if (setupComplete === true) {
     return null;
   }
   

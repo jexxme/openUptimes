@@ -15,6 +15,10 @@ interface StatusData {
   name: string;
   url: string;
   description?: string;
+  config?: {
+    visible?: boolean;
+    expectedStatus?: number;
+  };
   currentStatus: {
     status: ServiceStatus;
     timestamp: number;

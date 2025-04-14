@@ -56,32 +56,40 @@ export async function GET(request: Request) {
         try {
           const status = await getServiceStatus(service.name);
           
+          // Build the base response
+          const serviceResponse = { 
+            name: service.name, 
+            url: service.url,
+            description: service.description,
+            config: {
+              visible: service.visible !== undefined ? service.visible : true,
+              expectedStatus: service.expectedStatus
+            },
+            currentStatus: status
+          };
+          
           if (includeHistory) {
             console.log(`Fetching history for service: ${service.name}`);
             const history = await getServiceHistory(service.name, historyLimit);
             console.log(`Received ${history.length} history records for ${service.name}`);
             
             return { 
-              name: service.name, 
-              url: service.url,
-              description: service.description,
-              currentStatus: status,
+              ...serviceResponse,
               history 
             };
           }
           
-          return { 
-            name: service.name, 
-            url: service.url,
-            description: service.description,
-            currentStatus: status 
-          };
+          return serviceResponse;
         } catch (serviceError) {
           console.error(`Error fetching data for service ${service.name}:`, serviceError);
           return { 
             name: service.name, 
             url: service.url,
             description: service.description,
+            config: {
+              visible: service.visible !== undefined ? service.visible : true,
+              expectedStatus: service.expectedStatus
+            },
             currentStatus: null,
             error: (serviceError as Error).message
           };

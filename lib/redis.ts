@@ -104,6 +104,24 @@ export async function setServiceStatus(name: string, data: ServiceStatus): Promi
 }
 
 /**
+ * Helper function to get the configured history TTL in seconds
+ * Returns null if no TTL is set (disabled)
+ */
+export async function getHistoryTTL(): Promise<number | null> {
+  try {
+    const client = await getRedisClient();
+    const configStr = await client.get('config:site');
+    if (!configStr) return 30 * 24 * 60 * 60; // Default to 30 days if no config exists
+    
+    const config = JSON.parse(configStr);
+    return config.historyTTL === 0 ? null : (config.historyTTL || 30 * 24 * 60 * 60);
+  } catch (err) {
+    console.error('Error fetching history TTL:', err);
+    return 30 * 24 * 60 * 60; // Default to 30 days on error
+  }
+}
+
+/**
  * Helper function to append to history and maintain its size
  */
 export async function appendServiceHistory(name: string, data: ServiceStatus): Promise<boolean> {
@@ -112,6 +130,13 @@ export async function appendServiceHistory(name: string, data: ServiceStatus): P
     await client.lPush(`history:${name}`, JSON.stringify(data));
     // Trim history to last 1440 entries (24h at 1-min intervals)
     await client.lTrim(`history:${name}`, 0, 1439);
+    
+    // Apply TTL if configured
+    const ttl = await getHistoryTTL();
+    if (ttl !== null) {
+      await client.expire(`history:${name}`, ttl);
+    }
+    
     return true;
   } catch (err) {
     console.error(`Error appending history for ${name}:`, err);

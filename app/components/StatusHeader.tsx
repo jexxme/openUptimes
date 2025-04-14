@@ -8,9 +8,11 @@ interface StatusHeaderProps {
     } | null;
   }[];
   lastUpdated: string;
+  title?: string;
+  description?: string;
 }
 
-export function StatusHeader({ services, lastUpdated }: StatusHeaderProps) {
+export function StatusHeader({ services, lastUpdated, title, description }: StatusHeaderProps) {
   // Calculate overall status
   const allUp = services.every(service => service.currentStatus?.status === 'up');
   const anyDown = services.some(service => service.currentStatus?.status === 'down');
@@ -23,11 +25,15 @@ export function StatusHeader({ services, lastUpdated }: StatusHeaderProps) {
   const upServices = services.filter(service => service.currentStatus?.status === 'up').length;
   const downServices = services.filter(service => service.currentStatus?.status === 'down').length;
   
+  // Use props if provided, otherwise fall back to config values
+  const displayTitle = title || config.statusPage.title;
+  const displayDescription = description || config.statusPage.description;
+  
   return (
     <div className="mb-6">
       <div className="flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold">{config.siteName}</h1>
-        <p className="text-sm text-gray-500 mt-1">{config.description}</p>
+        <h1 className="text-2xl font-bold">{displayTitle}</h1>
+        <p className="text-sm text-gray-500 mt-1">{displayDescription}</p>
       </div>
       
       <div className="mt-4 flex items-center justify-center">

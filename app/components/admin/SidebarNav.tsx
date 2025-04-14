@@ -1,14 +1,16 @@
 "use client";
 
-import { Home, Settings, Server, LogOut, ChevronRight, History } from "lucide-react";
+import { Home, Settings, Server, LogOut, ChevronRight, History, Globe } from "lucide-react";
 import { Button } from "../ui/button";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 interface SidebarNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   handleLogout: () => void;
   isLoggingOut: boolean;
+  preloadedLogoUrl?: string;
 }
 
 // NavButton component
@@ -53,11 +55,59 @@ const NavButton = ({
   </Button>
 );
 
-export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut }: SidebarNavProps) {
+export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut, preloadedLogoUrl }: SidebarNavProps) {
+  const [logoUrl, setLogoUrl] = useState(preloadedLogoUrl || "");
+  const [isLoading, setIsLoading] = useState(!preloadedLogoUrl);
+  const [imageLoaded, setImageLoaded] = useState(!!preloadedLogoUrl);
+
+  // Only fetch logo URL if not provided via props
+  useEffect(() => {
+    if (preloadedLogoUrl) return;
+    
+    async function fetchLogoUrl() {
+      try {
+        const response = await fetch('/api/settings/appearance');
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setLogoUrl(data.logoUrl || "");
+      } catch (err) {
+        console.error("Failed to fetch logo:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchLogoUrl();
+  }, [preloadedLogoUrl]);
+
+  // Preload the image only if not already preloaded
+  useEffect(() => {
+    if (preloadedLogoUrl || !logoUrl || imageLoaded) return;
+    
+    const img = new Image();
+    img.onload = () => setImageLoaded(true);
+    img.onerror = () => setImageLoaded(false);
+    img.src = logoUrl;
+  }, [logoUrl, imageLoaded, preloadedLogoUrl]);
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center px-4 border-b">
-        <h2 className="text-lg font-semibold">OpenUptimes</h2>
+        {logoUrl && imageLoaded ? (
+          <div className="flex items-center h-full py-2">
+            <img 
+              src={logoUrl} 
+              alt="Logo" 
+              className="max-h-full max-w-[140px] object-contain"
+            />
+          </div>
+        ) : (
+          <h2 className="text-lg font-semibold">OpenUptimes</h2>
+        )}
       </div>
       <div className="flex-1 overflow-auto py-4 px-3">
         <div className="space-y-1">
@@ -73,6 +123,12 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
             label="Services" 
             isActive={activeTab === "services"}
             onClick={() => setActiveTab("services")} 
+          />
+          <NavButton 
+            icon={Globe}
+            label="Status Page" 
+            isActive={activeTab === "statuspage"}
+            onClick={() => setActiveTab("statuspage")} 
           />
           <NavButton 
             icon={History} 

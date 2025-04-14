@@ -1,115 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServiceHistory, closeRedisConnection, getRedisClient } from '@/lib/redis';
+import { ServiceConfig } from '@/lib/config';
 
-// Mock history data
-type StatusType = 'up' | 'down' | 'unknown';
-
-interface HistoryItem {
-  status: StatusType;
-  timestamp: number;
-  responseTime?: number;
-  statusCode?: number;
-  error?: string;
-}
-
-interface ServiceHistory {
-  name: string;
-  history: HistoryItem[];
-}
-
-// Generate mock history data
-function generateMockHistory(
-  serviceName?: string | null,
-  fromTimestamp?: number | null
-): ServiceHistory[] {
-  // Sample service names
-  const serviceNames = ['Google', 'GitHub', 'Non-existent site'];
-  const filteredServices = serviceName 
-    ? [serviceName]
-    : serviceNames;
-  
-  // Set the from time to 30 days ago if not specified
-  const from = fromTimestamp || (Date.now() - 30 * 24 * 60 * 60 * 1000);
-  
-  // Generate history for each service
-  return filteredServices.map(name => {
-    const history: HistoryItem[] = [];
-    let timestamp = Date.now();
+/**
+ * Get all services from Redis
+ */
+async function getServicesFromRedis(): Promise<ServiceConfig[]> {
+  try {
+    const client = await getRedisClient();
+    const services = await client.get('config:services');
     
-    // Generate one entry per day going back from today
-    for (let i = 0; i < 30; i++) {
-      // Add an entry if it's after the fromTimestamp
-      if (timestamp > from) {
-        // Generate more realistic status distribution:
-        // Google: mostly up
-        // GitHub: occasionally down
-        // Non-existent: mostly down
-        let status: StatusType;
-        let statusCode: number | undefined;
-        let responseTime: number | undefined;
-        let error: string | undefined;
-        
-        if (name === 'Google') {
-          // Google is up 95% of time
-          const rand = Math.random();
-          if (rand > 0.95) {
-            status = 'down';
-            statusCode = 500;
-            responseTime = undefined;
-            error = 'Internal Server Error';
-          } else {
-            status = 'up';
-            statusCode = 200;
-            responseTime = Math.floor(Math.random() * 100) + 50; // 50-150ms
-            error = undefined;
-          }
-        } else if (name === 'GitHub') {
-          // GitHub is down 10% of time
-          const rand = Math.random();
-          if (rand > 0.9) {
-            status = 'down';
-            statusCode = 503;
-            responseTime = undefined;
-            error = 'Service Unavailable';
-          } else {
-            status = 'up';
-            statusCode = 200;
-            responseTime = Math.floor(Math.random() * 150) + 100; // 100-250ms
-            error = undefined;
-          }
-        } else {
-          // Non-existent site is down 90% of time
-          const rand = Math.random();
-          if (rand > 0.1) {
-            status = 'down';
-            statusCode = undefined;
-            responseTime = undefined;
-            error = 'Connection failed';
-          } else {
-            status = 'unknown';
-            statusCode = undefined;
-            responseTime = undefined;
-            error = 'Timeout';
-          }
-        }
-        
-        history.push({
-          status,
-          timestamp,
-          responseTime,
-          statusCode,
-          error
-        });
-      }
-      
-      // Go back one day
-      timestamp -= 24 * 60 * 60 * 1000;
+    if (!services) {
+      return []; // If empty, return empty array
     }
     
-    return {
-      name,
-      history
-    };
-  });
+    return JSON.parse(services);
+  } catch (error) {
+    console.error('Error reading services from Redis:', error);
+    throw error;
+  }
 }
 
 /**
@@ -118,7 +27,9 @@ function generateMockHistory(
  * 
  * Query Parameters:
  * - service: Filter by service name
- * - timeRange: Filter by time range (24h, 7d, 30d, all)
+ * - timeRange: Filter by time range (30m, 1h, 2h, 24h, 7d, 30d, all)
+ * - startTime: Custom start time (timestamp)
+ * - endTime: Custom end time (timestamp)
  * - limit: Limit the number of records returned
  */
 export async function GET(request: NextRequest) {
@@ -127,28 +38,98 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const serviceName = searchParams.get('service');
     const timeRange = searchParams.get('timeRange');
+    const startTime = searchParams.get('startTime');
+    const endTime = searchParams.get('endTime');
     
-    // Calculate timestamp filter based on timeRange
-    let fromTimestamp: number | undefined;
-    const now = Date.now();
+    // Calculate history limit based on timeRange
+    let historyLimit = 60; // Default to 1 hour (60 entries at 1-min intervals)
     
-    if (timeRange === '24h') {
-      fromTimestamp = now - 24 * 60 * 60 * 1000; // 24 hours
-    } else if (timeRange === '7d') {
-      fromTimestamp = now - 7 * 24 * 60 * 60 * 1000; // 7 days
-    } else if (timeRange === '30d') {
-      fromTimestamp = now - 30 * 24 * 60 * 60 * 1000; // 30 days
+    // Handle custom time range if provided
+    if (startTime && endTime) {
+      // Calculate approximate limit based on date range
+      // Each entry is roughly 1 minute apart
+      const start = parseInt(startTime, 10);
+      const end = parseInt(endTime, 10);
+      const rangeInMs = end - start;
+      const rangeInMinutes = Math.ceil(rangeInMs / (60 * 1000));
+      historyLimit = Math.min(Math.max(rangeInMinutes, 60), 30 * 24 * 60); // Min 60, Max 30 days
+      console.log(`Custom time range: ${new Date(start).toISOString()} to ${new Date(end).toISOString()}, limit: ${historyLimit}`);
+    } else if (timeRange) {
+      // Calculate limit based on predefined ranges
+      if (timeRange === '30m') {
+        historyLimit = 30; // 30 minutes
+      } else if (timeRange === '1h') {
+        historyLimit = 60; // 1 hour
+      } else if (timeRange === '2h') {
+        historyLimit = 120; // 2 hours
+      } else if (timeRange === '24h') {
+        historyLimit = 24 * 60; // 24 hours (full resolution)
+      } else if (timeRange === '7d') {
+        historyLimit = 7 * 24 * 6; // 7 days (10-min resolution)
+      } else if (timeRange === '30d') {
+        historyLimit = 30 * 24 * 2; // 30 days (30-min resolution)
+      } else if (timeRange === 'all') {
+        historyLimit = 30 * 24 * 60; // Max 30 days of data
+      }
     }
     
-    // Generate mock history data
-    const historyData = generateMockHistory(serviceName, fromTimestamp);
+    // Get all services or filter by service name
+    const services = await getServicesFromRedis();
+    const filteredServices = serviceName 
+      ? services.filter(service => service.name === serviceName)
+      : services;
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Fetch history data for each service
+    const results = await Promise.all(
+      filteredServices.map(async (service) => {
+        console.log(`Fetching history for service: ${service.name}`);
+        try {
+          const history = await getServiceHistory(service.name, historyLimit);
+          
+          // Filter by time range if custom range is provided
+          let filteredHistory = history;
+          if (startTime && endTime) {
+            const start = parseInt(startTime, 10);
+            const end = parseInt(endTime, 10);
+            filteredHistory = history.filter(item => 
+              item.timestamp >= start && item.timestamp <= end
+            );
+          }
+          
+          return {
+            name: service.name,
+            history: filteredHistory
+          };
+        } catch (serviceError) {
+          console.error(`Error fetching history for service ${service.name}:`, serviceError);
+          return {
+            name: service.name,
+            history: [],
+            error: (serviceError as Error).message
+          };
+        }
+      })
+    );
     
-    return NextResponse.json(historyData);
+    // Close Redis connection to avoid exhausting connections in serverless environment
+    try {
+      await closeRedisConnection();
+      console.log('Redis connection closed successfully');
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
+    return NextResponse.json(results);
   } catch (error) {
     console.error('Error in history API:', error);
+    
+    // Close Redis connection even on error
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection after error:', closeError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch history data' },
       { status: 500 }

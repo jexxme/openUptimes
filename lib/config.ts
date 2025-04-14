@@ -6,6 +6,7 @@ export type ServiceConfig = {
   url: string;
   description?: string;
   expectedStatus?: number;
+  visible?: boolean;
 }
 
 /**
@@ -15,18 +16,21 @@ export const services: ServiceConfig[] = [
   {
     name: 'Google',
     url: 'https://www.google.com',
-    description: 'Google Search Engine'
+    description: 'Google Search Engine',
+    visible: true
   },
   {
     name: 'GitHub',
     url: 'https://github.com',
     description: 'GitHub Development Platform',
-    expectedStatus: 200
+    expectedStatus: 200,
+    visible: true
   },
   {
     name: 'Example',
     url: 'https://example.com',
-    description: 'Example Website'
+    description: 'Example Website',
+    visible: true
   }
 ];
 
@@ -34,13 +38,16 @@ export const services: ServiceConfig[] = [
  * General configuration
  */
 export const config = {
-  siteName: 'OpenUptimes',
-  description: 'Service Status Monitor',
   refreshInterval: 60000,
   historyLength: 1440,
   theme: {
     up: '#10b981',
     down: '#ef4444',
     unknown: '#6b7280'
+  },
+  statusPage: {
+    enabled: true,
+    title: 'Service Status',
+    description: 'Current status of our services'
   }
 }; 
