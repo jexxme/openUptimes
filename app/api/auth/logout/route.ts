@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseTokenFromCookie } from '../../../../lib/edge-auth';
 import { removeSession } from '../../../../middleware';
+import { deleteSession } from '../../../../lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,10 +9,14 @@ export async function POST(request: NextRequest) {
     const token = parseTokenFromCookie(cookieHeader);
     
     if (token) {
+      // Remove from Redis (for production)
+      await deleteSession(token);
+      
+      // Also remove from memory (for development compatibility)
       removeSession(token);
     }
     
-    // Create response and clear the cookie by setting an expired date
+    // Create response and clear cookie with multiple approaches
     const response = NextResponse.json({ success: true });
     
     // Use multiple approaches to ensure cookie is cleared in all browsers

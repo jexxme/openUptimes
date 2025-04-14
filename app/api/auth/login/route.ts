@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword, generateSessionToken } from '../../../../lib/auth';
 import { addSession } from '../../../../middleware';
-import { getAdminPassword } from '../../../../lib/redis';
+import { getAdminPassword, storeSession } from '../../../../lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,13 +38,16 @@ export async function POST(request: NextRequest) {
     // Generate session token
     const token = generateSessionToken();
     
-    // Add the session to our active sessions
+    // Store session in Redis (for production) - 24 hour expiry by default
+    await storeSession(token);
+    
+    // Also store in memory for development compatibility
     addSession(token);
     
-    // Create the success response
+    // Create response and set cookie
     const response = NextResponse.json({ success: true });
     
-    // Set the auth cookie with more reliable settings
+    // Set cookie with appropriate settings
     response.cookies.set({
       name: 'authToken',
       value: token,

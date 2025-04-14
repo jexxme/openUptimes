@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryService, setSelectedHistoryService] = useState<string | null>(null);
+  const [isValidatingSession, setIsValidatingSession] = useState(true);
   
   // Get real data using the hooks
   const { services, loading: statusLoading, error: statusError, lastUpdated, refresh } = useStatus(showHistory, 60);
@@ -63,17 +64,39 @@ export default function AdminPage() {
     }
   }, [activeTab]);
 
-  // Ensure we've fully loaded in the browser
+  // Ensure the session is valid on page load
   useEffect(() => {
-    setIsLoaded(true);
+    async function validateSession() {
+      if (process.env.NODE_ENV === 'production') {
+        try {
+          const response = await fetch('/api/auth/validate');
+          const data = await response.json();
+          
+          if (!data.valid) {
+            // Add timestamp to prevent cache issues
+            window.location.href = `/login?from=/admin&t=${Date.now()}`;
+            return;
+          }
+        } catch (error) {
+          console.error("Session validation error:", error);
+          // If we can't validate, let the user stay on the page
+        }
+      }
+      
+      // Set loaded state when validation is complete
+      setIsValidatingSession(false);
+      setIsLoaded(true);
+    }
+    
+    validateSession();
   }, []);
 
   // Redirect to setup if not complete
   useEffect(() => {
-    if (setupComplete === false && !setupLoading) {
+    if (setupComplete === false && !setupLoading && !isValidatingSession) {
       router.push('/setup');
     }
-  }, [setupComplete, setupLoading, router]);
+  }, [setupComplete, setupLoading, router, isValidatingSession]);
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -105,7 +128,7 @@ export default function AdminPage() {
     }
   }
 
-  if (!isLoaded || setupLoading) {
+  if (!isLoaded || setupLoading || isValidatingSession) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>

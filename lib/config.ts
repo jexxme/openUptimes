@@ -25,7 +25,7 @@ export const services: ServiceConfig[] = [
   },
   {
     name: 'Example',
-    url: 'https://exampleaaa.com',
+    url: 'https://example.com',
     description: 'Example Website'
   }
 ];
