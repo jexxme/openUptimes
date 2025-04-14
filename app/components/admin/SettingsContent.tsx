@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui
 import { Button } from "../../../components/ui/button";
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Settings, Shield, AlertCircle, CheckCircle } from "lucide-react";
+import { Settings, Shield, AlertCircle } from "lucide-react";
 
 // Add toast notification
 import { useToast } from "../ui/use-toast";
@@ -144,7 +144,7 @@ export function SettingsContent() {
         description: "Your password has been updated successfully.",
         duration: 3000,
       });
-    } catch (err) {
+    } catch (error) {
       setError("Failed to change password. Please try again.");
     } finally {
       setIsChanging(false);

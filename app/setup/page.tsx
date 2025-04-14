@@ -110,7 +110,7 @@ export default function SetupPage() {
               </p>
               
               <p className="text-gray-700">
-                You'll need to:
+                You&apos;ll need to:
               </p>
               
               <ul className="ml-5 list-disc space-y-1 text-gray-700">

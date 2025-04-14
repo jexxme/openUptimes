@@ -1,5 +1,4 @@
 import { getServiceHistory } from './redis';
-import { config } from './config';
 import { services } from './config';
 
 // Define status types

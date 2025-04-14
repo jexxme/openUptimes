@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
-export default function LoginPage() {
-  const router = useRouter();
+// The inner component that uses useSearchParams
+function LoginForm() {
   const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -102,12 +103,12 @@ export default function LoginPage() {
           </form>
           
           <div className="mt-4">
-            <a
+            <Link
               href="/"
               className="block text-center text-sm text-gray-500 hover:text-gray-700"
             >
               Return to Status Page
-            </a>
+            </Link>
             <a
               href="/reset"
               className="mt-2 block text-center text-sm text-red-500 hover:text-red-700"
@@ -118,5 +119,18 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main component wrapped in Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 } 

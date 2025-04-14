@@ -1,10 +1,23 @@
 "use client";
 
 import { Server, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { ServiceConfig } from "@/lib/config";
+import { ServiceStatus } from "@/lib/status";
+
+interface StatusData {
+  name: string;
+  currentStatus?: {
+    status: ServiceStatus;
+    timestamp: number;
+    responseTime?: number;
+    statusCode?: number;
+    error?: string;
+  } | null;
+}
 
 interface ServicesStatsProps {
-  servicesConfig: any[];
-  servicesStatus: any[];
+  servicesConfig: ServiceConfig[];
+  servicesStatus: StatusData[];
 }
 
 // StatCard component from admin page

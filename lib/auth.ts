@@ -77,8 +77,9 @@ function generateRandomString(length: number): string {
   if (typeof window === 'undefined') {
     // Server-side: Use Node.js crypto (only in API routes, not middleware)
     // This will only be used in API routes which run on the server
-    const { randomBytes } = require('crypto');
-    const randomBytesBuffer = randomBytes(length);
+    // Using dynamic import for server-side only code
+    const crypto = require('node:crypto');
+    const randomBytesBuffer = crypto.randomBytes(length);
     
     for (let i = 0; i < length; i++) {
       bytes[i] = randomBytesBuffer[i];
