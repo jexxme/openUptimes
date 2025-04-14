@@ -713,34 +713,19 @@ export function StatusPageContent({
                   
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      The favicon is automatically set to use your logo. If you don't have a logo, a default favicon will be used.
+                      The favicon is set to the OpenUptimes logo.
                     </p>
                     
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 border rounded-md bg-background flex flex-col items-center justify-center p-1">
-                        {logoUrl ? (
-                          <img
-                            src={logoUrl}
-                            alt="Favicon preview"
-                            className="max-h-10 max-w-full object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/default-favicon.svg';
-                            }}
-                          />
-                        ) : (
-                          <img
-                            src="/default-favicon.svg"
-                            alt="Default favicon"
-                            className="max-h-10 max-w-full object-contain"
-                          />
-                        )}
+                        <img
+                          src="/default-favicon.svg"
+                          alt="Default favicon"
+                          className="max-h-10 max-w-full object-contain"
+                        />
                       </div>
                       <div className="text-sm">
-                        {logoUrl ? (
-                          <p>Your logo is being used as the favicon.</p>
-                        ) : (
-                          <p>Upload a logo above to use it as your favicon.</p>
-                        )}
+                        <p>The default OpenUptimes favicon is being used.</p>
                       </div>
                     </div>
                   </div>

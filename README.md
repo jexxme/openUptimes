@@ -1,186 +1,247 @@
 # OpenUptimes
 
-A self-hosted, zero-dependency status page to monitor and display the uptime of your services. Built with Next.js, Tailwind CSS, and node-redis.
+<p align="center">
+  <img src="public/default-favicon.svg" alt="OpenUptimes Logo" width="120" />
+</p>
+
+<p align="center">
+  A simple, elegant, and self-hosted status page to monitor and display the uptime of your services.
+</p>
+
+<p align="center">
+  <a href="#introduction">Introduction</a> •
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#api-endpoints">API Endpoints</a> •
+  <a href="#troubleshooting">Troubleshooting</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#license">License</a>
+</p>
+
+<p align="center">
+  <a href="https://vercel.com/new/clone?repository-url=https://github.com/openuptimes/openuptimes">
+    <img src="https://vercel.com/button" alt="Deploy with Vercel" />
+  </a>
+</p>
+
+## Introduction
+
+OpenUptimes is a modern, lightweight status page designed to help you monitor and display the uptime of your services. With its clean interface and real-time updates, you can easily keep track of your infrastructure's health and share this information with your users.
+
+Built with Next.js, Tailwind CSS, and Redis, OpenUptimes provides a seamless experience across all devices and can be deployed in minutes, whether you're a technical user or not.
 
 ## Features
 
-- 🚀 One-click deploy on Vercel
-- 🔌 Plug-and-play setup
-- 📊 Monitors uptime of custom services
-- 📝 Logs and displays uptime history
-- 🛑 Zero external services (uses your own Redis instance)
-- 🧹 Minimal, clean, contributor-friendly codebase
-- 🎨 Modern, responsive UI with live status updates
-- 📱 Mobile-friendly design that works on all devices
-- 🔄 Automatic refresh and fault-tolerant data fetching
+- 🚀 **One-click deploy** - Get started in seconds with Vercel
+- 🔌 **Plug-and-play setup** - Minimal configuration required
+- 📊 **Real-time monitoring** - Track your services' status in real-time
+- 📝 **Historical data** - View uptime history and identify patterns
+- 🛑 **Zero external dependencies** - Uses only your own Redis instance
+- 🧹 **Clean, maintainable codebase** - Easy to understand and extend
+- 🎨 **Beautiful, responsive UI** - Works on all devices
+- 📱 **Mobile-first design** - Perfect experience on any screen size
+- 🔄 **Auto-refreshing data** - Always see the latest status
 
-## Tech Stack
+## Motivation
 
-- **Framework**: Next.js (App Router)
-- **UI**: Tailwind CSS + shadcn/ui
-- **Storage**: Redis (via node-redis)
-- **Monitoring**: Vercel Functions + Client-side Polling
-- **Deployment**: Vercel Deploy Button
+OpenUptimes was created to provide an easy, simple, and free solution for monitoring service uptime without relying on external dependencies. By using only your own Redis instance, it ensures that you have full control over your data and infrastructure.
 
-## System Architecture
+It is also (currently) 100% free and open source, so you can start using it right away and self-host it later if you want.
 
-OpenUptimes consists of three main components:
+## Installation
 
-1. **API Endpoints**:
-   - `/api/ping`: Actively checks the status of all configured services and stores results in Redis
-   - `/api/status`: Retrieves the current status and optional history of all services
-   - `/api/test-redis`: Test endpoint to verify Redis connectivity
+Choose the installation method that works best for you:
 
-2. **Data Layer**:
-   - Redis for storing status data and history
-   - Each service has a current status record and a history log
-   - Automatic trimming of history to prevent excessive storage usage
+### Option 1: Deploy to Vercel (Beginner-Friendly)
 
-3. **Frontend Components**:
-   - Status Dashboard: Overview of all service statuses
-   - StatusCard: Individual service status card with detailed metrics
-   - StatusHeader: Overall system status summary with uptime statistics
-   - ServiceHistory: Historical view of service status changes
+This is the easiest way to get started, even if you're not a technical user:
 
-## Quick Start
+1. Click the "Deploy with Vercel" button above
+2. Connect your GitHub account and wait for the initial deployment to complete
+3. Set up Redis in your Vercel project:
+   - In your Vercel dashboard, go to your newly deployed project
+   - Click on "Storage" in the left sidebar
+   - Click "Add" and select "Vercel Redis"
+   - Follow the prompts to create a new Redis database
+   - Once completed, Vercel will automatically add the Redis connection details to your project
 
-1. Fork and clone this repository
+4. Configure your project:
+   - In your Vercel project dashboard, go to "Settings" → "Environment Variables"
+   - Add the following environment variables:
+     ```
+     NEXT_PUBLIC_SITE_NAME=Your Status Page Name
+     NEXT_PUBLIC_SITE_DESCRIPTION=A brief description of your status page
+     NEXT_PUBLIC_REFRESH_INTERVAL=60000
+     ```
+   - Navigate to your site's Admin page at "your-domain.com/admin" to add and configure your services
+   - Your status page will now display and monitor all your configured services!
+
+That's it! Your status page is now live and monitoring your services.
+
+### Option 2: Self-Hosted Deployment (Advanced)
+
+For users who want more control over their deployment:
+
+1. Fork and clone the repository:
+   ```bash
+   git clone https://github.com/openuptimes/openuptimes.git
+   cd openuptimes
+   ```
+
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Configure your services in `lib/config.ts`
-4. Set up environment variables (see below)
+
+3. Set up Redis:
+   - Install Redis locally: [Redis Quick Start](https://redis.io/topics/quickstart)
+   - Or use Docker: `docker run -p 6379:6379 redis`
+   - Or use a managed Redis service like [Upstash](https://upstash.com/) or [Redis Cloud](https://redis.com/redis-enterprise-cloud/overview/)
+
+4. Create a `.env.local` file:
+   ```
+   REDIS_URL=redis://localhost:6379
+   NEXT_PUBLIC_SITE_NAME="OpenUptimes"
+   NEXT_PUBLIC_SITE_DESCRIPTION="Service Status Monitor"
+   NEXT_PUBLIC_REFRESH_INTERVAL=60000
+   ```
+
 5. Run the development server:
    ```bash
    npm run dev
    ```
 
-## Redis Setup
+6. Navigate to `http://localhost:3000/admin` to configure your services
 
-OpenUptimes requires a Redis instance to store uptime data. You have several options:
-
-1. **Local Development**: 
-   - Install Redis locally: [Redis Quick Start](https://redis.io/topics/quickstart)
-   - Use Docker: `docker run -p 6379:6379 redis`
-
-2. **Production Deployment**:
-   - [Redis Cloud](https://redis.com/redis-enterprise-cloud/overview/) (offers a free tier)
-   - [Upstash](https://upstash.com/) (serverless Redis, works well with Vercel)
-   - Any Redis-compatible service
-
-## Environment Variables
-
-Create a `.env.local` file with the following variables:
-
-```
-# Redis Connection URL
-# Format: redis[s]://[[username][:password]@][host][:port][/db-number]
-REDIS_URL=redis://localhost:6379
-
-# Site Configuration
-NEXT_PUBLIC_SITE_NAME="OpenUptimes"
-NEXT_PUBLIC_SITE_DESCRIPTION="Service Status Monitor" 
-NEXT_PUBLIC_REFRESH_INTERVAL=60000
-```
-
-When deploying to Vercel, add these environment variables in your project settings.
-
-## Redis Connection URL Format
-
-The Redis URL follows this format:
-- `redis://` - Standard Redis protocol
-- `rediss://` - Use for SSL/TLS encrypted connection
-- `username:password@` - Authentication credentials (if required)
-- `host` - Hostname or IP address of Redis server
-- `port` - Redis port (default: 6379)
-- `/db-number` - Redis database number (default: 0)
-
-Examples:
-- Local: `redis://localhost:6379`
-- With auth: `redis://username:password@redis.example.com:6379`
-- With SSL: `rediss://username:password@redis.example.com:6379`
+7. For production, build and start:
+   ```bash
+   npm run build
+   npm run start
+   ```
 
 ## Configuration
 
-Configure the services you want to monitor in `lib/config.ts`:
+OpenUptimes provides an admin dashboard at `/admin` where you can easily configure all your services without touching any code. 
 
-```typescript
-export const services: ServiceConfig[] = [
-  { 
-    name: "My Website", 
-    url: "https://example.com",
-    description: "Main website" 
-  },
-  { 
-    name: "API Service", 
-    url: "https://api.example.com",
-    description: "Backend API",
-    expectedStatus: 200
-  }
-];
-```
+Through the admin dashboard, you can:
+- Add new services to monitor
+- Edit existing service configurations
+- Delete services you no longer wish to monitor
+- View monitoring history and statistics
 
-Each service requires:
-- `name`: Display name for the service
-- `url`: The URL to check
-- `description`: (Optional) Description of the service
-- `expectedStatus`: (Optional) HTTP status code to expect (defaults to 200)
+Each service can be configured with:
+- Name: Display name for the service
+- URL: The URL to check
+- Description: (Optional) Description of the service
+- Expected Status: (Optional) HTTP status code to expect (defaults to 200)
+- Method: (Optional) HTTP method to use (defaults to GET)
+- Timeout: (Optional) Timeout in milliseconds (defaults to 10000)
 
-## Frontend Components
+### Environment Variables
 
-### StatusHeader
+OpenUptimes supports the following environment variables:
 
-Displays a summary of the overall system status:
-- Overall status message based on service health
-- Count of operational vs disrupted services
-- Last update timestamp
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `REDIS_URL` | URL to your Redis instance | - | Yes |
+| `NEXT_PUBLIC_SITE_NAME` | Name of your status page | "OpenUptimes" | No |
+| `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description | "Service Status Monitor" | No |
+| `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
 
-### StatusCard
+## API Endpoints
 
-Individual service status cards showing:
-- Service name and description
-- Current status with visual indicators
-- Response time and HTTP status code
-- Historical status data when enabled
+OpenUptimes provides several API endpoints for monitoring and configuring services:
 
-### ServiceHistory
+### Core Monitoring Endpoints
 
-Displays historical uptime data for each service:
-- Timestamp of status checks
-- Status results with color-coding
-- Response times for performance tracking
+- **GET `/api/ping`**: Actively checks the status of all configured services and stores results in Redis
+- **GET `/api/status`**: Retrieves the current status of all services
+- **GET `/api/history/{serviceName}`**: Retrieves historical data for a specific service
 
-## How It Works
+### Service Management Endpoints
 
-1. The system uses the `/api/ping` endpoint to regularly check the status of all configured services
-2. Results are stored in Redis with a timestamp and performance metrics
-3. The frontend periodically fetches current status via the `/api/status` endpoint
-4. The UI automatically updates to reflect the latest status information
-5. Historical data can be viewed to track performance over time
+- **GET `/api/services`**: Lists all configured services
+- **POST `/api/services`**: Adds a new service to monitor
+- **PUT `/api/services?name={serviceName}`**: Updates an existing service
+- **DELETE `/api/services?name={serviceName}`**: Deletes a service
 
-## Deployment
+### Setup and Configuration
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https%3A%2F%2Fgithub.com%2Fyour-username%2Fopenuptimes)
-
-When deploying to Vercel:
-1. Connect your GitHub repository
-2. Add the REDIS_URL environment variable pointing to your Redis instance
-3. Deploy
+- **GET `/api/setup/status`**: Checks if the initial setup has been completed
+- **POST `/api/setup/complete`**: Marks the setup as completed
+- **POST `/api/setup/reset`**: Resets the application to its initial state
 
 ## Troubleshooting
 
-If you encounter issues with the status not displaying:
+### Redis Connection Issues
 
-1. Verify Redis connection in the server logs
-2. Try accessing the `/api/test-redis` endpoint to check Redis connectivity
-3. Make sure your services are properly configured in `lib/config.ts`
-4. Check browser console for any errors in the network requests
+If you're having trouble connecting to Redis:
+
+1. **Check your Redis URL format**:
+   ```
+   redis[s]://[[username][:password]@][host][:port][/db-number]
+   ```
+
+2. **Test Redis connectivity**:
+   Visit `/api/test-redis` in your browser to verify connectivity
+
+3. **Redis URL examples**:
+   - Local: `redis://localhost:6379`
+   - With auth: `redis://username:password@redis.example.com:6379`
+   - With SSL: `rediss://username:password@redis.example.com:6379`
+
+### Status Not Updating
+
+If your service statuses aren't updating:
+
+1. Check browser console for any errors
+2. Verify the `/api/ping` endpoint is working
+3. Ensure your Redis instance is working properly
+4. Check that your service URLs are accessible from your deployment environment
+
+### Admin UI Issues
+
+If you're having trouble with the admin interface:
+
+1. Make sure you're accessing the correct URL: `your-domain.com/admin`
+2. Check that your Redis connection is working properly (try `/api/test-redis`)
+3. Clear your browser cache and cookies if you see outdated information
+4. Ensure your browser has JavaScript enabled
+
+### Vercel Deployment Issues
+
+1. Ensure all environment variables are set correctly
+2. Check that the Vercel Redis integration is properly configured
+3. Review build logs for any errors during deployment
 
 ## Contributing
 
-Contributions are welcome! Please see our [contributing guidelines](CONTRIBUTING.md) for details.
+We welcome contributions to OpenUptimes! Here's how you can help:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a pull request
+
+Please make sure your code follows our style guidelines and includes appropriate tests.
+
+## Tech Stack
+
+- **Framework**: Next.js 14+ (App Router)
+- **UI**: Tailwind CSS + shadcn/ui
+- **Storage**: Redis (via node-redis)
+- **Monitoring**: Vercel Edge Functions + Client-side Polling
+- **Deployment**: Vercel
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<p align="center">
+Made on a healthy dose of ☕️
+</p>
