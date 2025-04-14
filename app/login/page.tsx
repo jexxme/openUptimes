@@ -25,8 +25,6 @@ function LoginForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ password }),
-        // Include credentials to ensure cookies are sent/received
-        credentials: 'include'
       });
       
       // Parse the response data
@@ -36,22 +34,16 @@ function LoginForm() {
         throw new Error(data.error || 'Authentication failed');
       }
       
-      // In development, display debug info
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Login successful, debug:', data.debug);
-      }
+      // Add timestamp to bust cache and prevent old redirects
+      const redirectUrl = `${from}?t=${Date.now()}`;
       
-      // Force a longer delay before redirect to ensure cookie is set properly
-      // This is especially important in production environments
+      // Ensure cookie is set before redirect with a slight delay
       setTimeout(() => {
-        // Use window.location instead of router to ensure a full page reload
-        // Add a cache-busting parameter to avoid any caching issues
-        window.location.href = `${from}?auth=${new Date().getTime()}`;
-      }, 800);
+        // Use window.location for a full page reload to ensure cookies are applied
+        window.location.href = redirectUrl;
+      }, 500);
       
-      // Don't call setIsLoading(false) here - we're redirecting
     } catch (err) {
-      console.error('Login error:', err);
       if (err instanceof Error) {
         setError(err.message);
       } else {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword, generateSessionToken } from '../../../../lib/auth';
 import { addSession } from '../../../../middleware';
-import { getAdminPassword, storeSession } from '../../../../lib/redis';
+import { getAdminPassword } from '../../../../lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('Checking admin password');
     // Check if admin password exists
     const storedHash = await getAdminPassword();
     if (!storedHash) {
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('Verifying password');
     // Verify password
     const isValid = await verifyPassword(password, storedHash);
     
@@ -39,35 +37,20 @@ export async function POST(request: NextRequest) {
     
     // Generate session token
     const token = generateSessionToken();
-    console.log('Password verified, adding session');
     
-    // Store session in both middleware memory cache and Redis
-    try {
-      await addSession(token);
-      console.log('Session added to middleware and Redis');
-    } catch (sessionError) {
-      console.error('Error storing session:', sessionError);
-      // Fallback direct Redis storage if middleware fails
-      await storeSession(token);
-      console.log('Fallback: Session stored directly in Redis');
-    }
+    // Add the session to our active sessions
+    addSession(token);
     
-    // Set cookie
-    const response = NextResponse.json({ 
-      success: true,
-      debug: { tokenLength: token.length } 
-    });
+    // Create the success response
+    const response = NextResponse.json({ success: true });
     
-    // 24 hours expiry (in seconds)
-    const SESSION_EXPIRY = 60 * 60 * 24;
-    
-    console.log('Setting auth cookie');
+    // Set the auth cookie with more reliable settings
     response.cookies.set({
       name: 'authToken',
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: SESSION_EXPIRY,
+      maxAge: 60 * 60 * 24, // 24 hours
       path: '/',
       sameSite: 'lax',
     });

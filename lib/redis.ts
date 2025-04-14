@@ -186,48 +186,4 @@ export async function getAdminPassword(): Promise<string | null> {
     console.error('Error getting admin password:', err);
     return null;
   }
-}
-
-/**
- * Store a session token in Redis
- */
-export async function storeSession(token: string, expiresInSeconds: number = 86400): Promise<boolean> {
-  try {
-    const client = await getRedisClient();
-    await client.set(`session:${token}`, '1', {
-      EX: expiresInSeconds // 24 hours default
-    });
-    return true;
-  } catch (err) {
-    console.error('Error storing session:', err);
-    return false;
-  }
-}
-
-/**
- * Check if a session token exists in Redis
- */
-export async function checkSession(token: string): Promise<boolean> {
-  try {
-    const client = await getRedisClient();
-    const result = await client.get(`session:${token}`);
-    return result === '1';
-  } catch (err) {
-    console.error('Error checking session:', err);
-    return false;
-  }
-}
-
-/**
- * Delete a session token from Redis
- */
-export async function deleteSession(token: string): Promise<boolean> {
-  try {
-    const client = await getRedisClient();
-    await client.del(`session:${token}`);
-    return true;
-  } catch (err) {
-    console.error('Error deleting session:', err);
-    return false;
-  }
 } 

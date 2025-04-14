@@ -4,16 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui
 import { Button } from "../../../components/ui/button";
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Settings, Shield, AlertCircle, RefreshCcw, AlertTriangle } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../ui/dialog";
+import { Settings, Shield, AlertCircle } from "lucide-react";
 
 // Add toast notification
 import { useToast } from "../ui/use-toast";
@@ -34,11 +25,6 @@ export function SettingsContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isChanging, setIsChanging] = useState(false);
-
-  // Reset app state
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
-  const [resetConfirmText, setResetConfirmText] = useState("");
 
   // Fetch settings on component mount
   useEffect(() => {
@@ -165,56 +151,6 @@ export function SettingsContent() {
     }
   };
 
-  const handleResetApplication = async () => {
-    if (resetConfirmText !== "RESET") {
-      toast({
-        title: "Reset canceled",
-        description: "You must type RESET to confirm.",
-        variant: "destructive",
-        duration: 3000,
-      });
-      return;
-    }
-    
-    setIsResetting(true);
-    try {
-      const response = await fetch('/api/setup/reset', {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Reset failed');
-      }
-      
-      // Clear auth cookies
-      document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      toast({
-        title: "Reset successful",
-        description: "Application has been reset. Redirecting to setup...",
-        duration: 3000,
-      });
-      
-      // Redirect to setup after a brief delay
-      setTimeout(() => {
-        window.location.href = '/?t=' + new Date().getTime();
-      }, 2000);
-      
-    } catch (err) {
-      console.error("Failed to reset application:", err);
-      toast({
-        title: "Reset failed",
-        description: err instanceof Error ? err.message : "An unknown error occurred",
-        variant: "destructive",
-        duration: 5000,
-      });
-      setIsResetting(false);
-    }
-  };
-
   return (
     <Card className="h-full">
       <CardHeader>
@@ -237,10 +173,6 @@ export function SettingsContent() {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span>Security</span>
-            </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <RefreshCcw className="h-4 w-4" />
-              <span>System</span>
             </TabsTrigger>
           </TabsList>
           
@@ -325,70 +257,6 @@ export function SettingsContent() {
                   "Change Password"}
               </Button>
             </form>
-          </TabsContent>
-          
-          <TabsContent value="system">
-            <p className="mb-4 text-sm text-muted-foreground">System maintenance operations</p>
-            
-            <div className="space-y-8">
-              <div className="border border-red-200 rounded-md p-4 bg-red-50">
-                <h3 className="text-lg font-medium text-red-800 flex items-center mb-2">
-                  <AlertTriangle className="h-5 w-5 mr-2" />
-                  Reset Application
-                </h3>
-                <p className="text-sm text-red-700 mb-4">
-                  This will reset OpenUptimes to its initial state. All services, settings, history,
-                  and login credentials will be permanently deleted.
-                </p>
-                
-                <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="destructive">
-                      Reset Application
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle className="text-red-600 flex items-center">
-                        <AlertTriangle className="h-5 w-5 mr-2" />
-                        Confirm Application Reset
-                      </DialogTitle>
-                      <DialogDescription>
-                        This action cannot be undone. All your data, services, settings and history will be permanently deleted.
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="py-4">
-                      <p className="text-sm font-medium mb-2">Type RESET to confirm:</p>
-                      <input
-                        type="text"
-                        value={resetConfirmText}
-                        onChange={(e) => setResetConfirmText(e.target.value)}
-                        className="px-3 py-2 rounded-md border border-red-300 w-full focus:outline-none focus:ring-2 focus:ring-red-500"
-                        placeholder="RESET"
-                      />
-                    </div>
-                    
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        onClick={handleResetApplication}
-                        disabled={isResetting || resetConfirmText !== "RESET"}
-                      >
-                        {isResetting ? (
-                          <><div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>Resetting...</>
-                        ) : (
-                          "Reset Everything"
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
           </TabsContent>
         </Tabs>
       </CardContent>

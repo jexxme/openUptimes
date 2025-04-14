@@ -88,14 +88,14 @@ export default function AdminPage() {
         throw new Error('Logout request failed');
       }
       
-      // Clear any client-side state/storage if needed
-      // ...
+      // Add timestamp to prevent cache issues
+      const redirectUrl = `/login?from=/admin&t=${Date.now()}`;
       
-      // Use a longer timeout to ensure cookies are properly cleared
+      // Use a delay to ensure cookies are properly cleared
       setTimeout(() => {
         // Force a full page reload to the login page
-        window.location.href = '/login?from=/admin&t=' + new Date().getTime();
-      }, 800);
+        window.location.href = redirectUrl;
+      }, 500);
     } catch (error) {
       console.error('Logout failed:', error);
       setIsLoggingOut(false);
