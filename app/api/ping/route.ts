@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server';
-import { services } from '@/lib/config';
-import { setServiceStatus, appendServiceHistory, closeRedisConnection, ServiceStatus } from '@/lib/redis';
+import { setServiceStatus, appendServiceHistory, closeRedisConnection, ServiceStatus, getRedisClient } from '@/lib/redis';
+import { ServiceConfig } from '@/lib/config';
+
+/**
+ * Get all services from Redis
+ */
+async function getServicesFromRedis(): Promise<ServiceConfig[]> {
+  try {
+    const client = await getRedisClient();
+    const services = await client.get('config:services');
+    
+    if (!services) {
+      // If Redis is empty, return empty array
+      return [];
+    }
+    
+    return JSON.parse(services);
+  } catch (error) {
+    console.error('Error reading services from Redis:', error);
+    throw error;
+  }
+}
 
 /**
  * Check the status of a single service
@@ -78,11 +98,17 @@ async function checkService(service: { name: string; url: string; expectedStatus
 }
 
 /**
- * Check all services defined in config
+ * Check all services defined in Redis
  */
 async function checkAllServices() {
-  console.log('Checking all services:', services);
-  return Promise.all(services.map(service => checkService(service)));
+  try {
+    const services = await getServicesFromRedis();
+    console.log('Checking all services:', services);
+    return Promise.all(services.map(service => checkService(service)));
+  } catch (error) {
+    console.error('Error getting services from Redis:', error);
+    throw error;
+  }
 }
 
 /**

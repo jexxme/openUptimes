@@ -230,4 +230,33 @@ export async function deleteSession(token: string): Promise<boolean> {
     console.error('Error deleting session:', err);
     return false;
   }
+}
+
+/**
+ * Initialize Redis with default services from config
+ */
+export async function initializeRedisWithDefaults(): Promise<void> {
+  try {
+    const client = await getRedisClient();
+    
+    // Check if services config exists in Redis
+    const servicesInRedis = await client.get('config:services');
+    
+    // If services don't exist in Redis, load them from config.ts
+    if (!servicesInRedis) {
+      // Dynamic import to avoid circular dependencies
+      const { services, config } = await import('./config');
+      
+      // Store services in Redis
+      await client.set('config:services', JSON.stringify(services));
+      console.log('Initialized Redis with default services from config.ts');
+      
+      // Store site config in Redis
+      await client.set('config:site', JSON.stringify(config));
+      console.log('Initialized Redis with default site config from config.ts');
+    }
+  } catch (error) {
+    console.error('Error initializing Redis with defaults:', error);
+    throw error;
+  }
 } 

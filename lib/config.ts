@@ -27,12 +27,6 @@ export const services: ServiceConfig[] = [
     name: 'Example',
     url: 'https://example.com',
     description: 'Example Website'
-  },
-  {
-    name: 'qwertzuksa',
-    url: 'https://www.google.com/api/',
-    description: 'dwdsads',
-    expectedStatus: 200
   }
 ];
 

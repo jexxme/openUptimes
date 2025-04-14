@@ -1,6 +1,35 @@
 import { NextResponse } from 'next/server';
-import { services } from '@/lib/config';
-import { getServiceStatus, getServiceHistory, closeRedisConnection } from '@/lib/redis';
+import { getServiceStatus, getServiceHistory, closeRedisConnection, getRedisClient } from '@/lib/redis';
+import { ServiceConfig } from '@/lib/config';
+import { initializeRedisWithDefaults } from '@/lib/redis';
+
+/**
+ * Get all services from Redis
+ */
+async function getServicesFromRedis(): Promise<ServiceConfig[]> {
+  try {
+    const client = await getRedisClient();
+    const services = await client.get('config:services');
+    
+    if (!services) {
+      // If Redis is empty, initialize with defaults
+      await initializeRedisWithDefaults();
+      
+      // Try again after initialization
+      const initializedServices = await client.get('config:services');
+      if (!initializedServices) {
+        return []; // If still empty, return empty array
+      }
+      
+      return JSON.parse(initializedServices);
+    }
+    
+    return JSON.parse(services);
+  } catch (error) {
+    console.error('Error reading services from Redis:', error);
+    throw error;
+  }
+}
 
 /**
  * API route handler for /api/status
@@ -17,6 +46,9 @@ export async function GET(request: Request) {
       : 60; // Default to 1 hour at 1-min intervals
     
     console.log(`Fetching status with params - includeHistory: ${includeHistory}, historyLimit: ${historyLimit}`);
+    
+    // Get services from Redis instead of importing static config
+    const services = await getServicesFromRedis();
     
     const results = await Promise.all(
       services.map(async (service) => {

@@ -1,57 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { ServiceConfig } from '@/lib/config';
-import { setServiceStatus, appendServiceHistory, ServiceStatus, closeRedisConnection } from '@/lib/redis';
-
-const CONFIG_PATH = path.join(process.cwd(), 'lib', 'config.ts');
+import { setServiceStatus, appendServiceHistory, ServiceStatus, closeRedisConnection, getRedisClient } from '@/lib/redis';
 
 /**
- * Read the current services configuration from config.ts
+ * Get all services from Redis
  */
-async function readServicesConfig(): Promise<ServiceConfig[]> {
+async function getServicesFromRedis(): Promise<ServiceConfig[]> {
   try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf8');
+    const client = await getRedisClient();
+    const services = await client.get('config:services');
     
-    // Extract services array using regex
-    const match = content.match(/export const services: ServiceConfig\[] = \[([\s\S]*?)\];/);
-    if (!match) {
-      throw new Error('Could not parse services configuration');
+    if (!services) {
+      // If no services in Redis, return empty array
+      return [];
     }
     
-    // Convert the string representation to actual array
-    // This is a simple approach - in production, you might want a more robust solution
-    const servicesString = `[${match[1]}]`;
-    const services = eval(`(${servicesString})`);
-    
-    return services;
+    return JSON.parse(services);
   } catch (error) {
-    console.error('Error reading services config:', error);
+    console.error('Error reading services from Redis:', error);
     throw error;
   }
 }
 
 /**
- * Write updated services configuration to config.ts
+ * Save services to Redis
  */
-async function writeServicesConfig(services: ServiceConfig[]): Promise<void> {
+async function saveServicesToRedis(services: ServiceConfig[]): Promise<void> {
   try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf8');
-    
-    // Format services array as string
-    const servicesString = JSON.stringify(services, null, 2)
-      .replace(/"([^"]+)":/g, '$1:') // Convert "key": to key:
-      .replace(/"/g, "'"); // Use single quotes
-    
-    // Replace the services array in the file
-    const updatedContent = content.replace(
-      /export const services: ServiceConfig\[] = \[([\s\S]*?)\];/,
-      `export const services: ServiceConfig[] = ${servicesString};`
-    );
-    
-    await fs.writeFile(CONFIG_PATH, updatedContent, 'utf8');
+    const client = await getRedisClient();
+    await client.set('config:services', JSON.stringify(services));
   } catch (error) {
-    console.error('Error writing services config:', error);
+    console.error('Error writing services to Redis:', error);
     throw error;
   }
 }
@@ -122,7 +101,7 @@ async function checkService(service: ServiceConfig) {
  */
 export async function GET() {
   try {
-    const services = await readServicesConfig();
+    const services = await getServicesFromRedis();
     return NextResponse.json(services);
   } catch (error) {
     return NextResponse.json(
@@ -147,7 +126,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const services = await readServicesConfig();
+    const services = await getServicesFromRedis();
     
     // Check if service with the same name already exists
     if (services.some(service => service.name === newService.name)) {
@@ -159,7 +138,7 @@ export async function POST(request: NextRequest) {
     
     // Add the new service
     services.push(newService);
-    await writeServicesConfig(services);
+    await saveServicesToRedis(services);
     
     // Check the new service status immediately
     await checkService(newService);
@@ -208,7 +187,7 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    const services = await readServicesConfig();
+    const services = await getServicesFromRedis();
     
     // Find the service to update
     const serviceIndex = services.findIndex(service => service.name === originalName);
@@ -222,7 +201,7 @@ export async function PUT(request: NextRequest) {
     // Update the service
     const oldService = services[serviceIndex];
     services[serviceIndex] = updatedService;
-    await writeServicesConfig(services);
+    await saveServicesToRedis(services);
     
     // If the name has changed or if the URL has changed, check the service status immediately
     const nameChanged = originalName !== updatedService.name;
@@ -264,7 +243,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    const services = await readServicesConfig();
+    const services = await getServicesFromRedis();
     
     // Find the service to delete
     const serviceIndex = services.findIndex(service => service.name === name);
@@ -277,7 +256,7 @@ export async function DELETE(request: NextRequest) {
     
     // Remove the service
     services.splice(serviceIndex, 1);
-    await writeServicesConfig(services);
+    await saveServicesToRedis(services);
     
     return NextResponse.json({ success: true });
   } catch (error) {

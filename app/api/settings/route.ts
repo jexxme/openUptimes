@@ -1,54 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-
-const CONFIG_PATH = path.join(process.cwd(), 'lib', 'config.ts');
+import { getRedisClient, closeRedisConnection } from '@/lib/redis';
 
 /**
- * Read the current site configuration from config.ts
+ * Read the current site configuration from Redis
  */
-async function readSiteConfig() {
+async function getSiteConfigFromRedis() {
   try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf8');
+    const client = await getRedisClient();
+    const configStr = await client.get('config:site');
     
-    // Extract config object using regex
-    const match = content.match(/export const config = ({[\s\S]*?});/);
-    if (!match) {
-      throw new Error('Could not parse site configuration');
+    if (!configStr) {
+      // Return default config if not found in Redis
+      return {
+        siteName: 'OpenUptimes',
+        description: 'Service Status Monitor',
+        refreshInterval: 60000,
+        historyLength: 1440,
+        theme: {
+          up: '#10b981',
+          down: '#ef4444',
+          unknown: '#6b7280'
+        }
+      };
     }
     
-    // Convert the string representation to actual object
-    const configString = match[1];
-    const config = eval(`(${configString})`);
-    
-    return config;
+    return JSON.parse(configStr);
   } catch (error) {
-    console.error('Error reading site config:', error);
+    console.error('Error reading site config from Redis:', error);
     throw error;
   }
 }
 
 /**
- * Write updated site configuration to config.ts
+ * Write updated site configuration to Redis
  */
-async function writeSiteConfig(config: any): Promise<void> {
+async function saveSiteConfigToRedis(config: any): Promise<void> {
   try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf8');
-    
-    // Format config object as string
-    const configString = JSON.stringify(config, null, 2)
-      .replace(/"([^"]+)":/g, '$1:') // Convert "key": to key:
-      .replace(/"/g, "'"); // Use single quotes
-    
-    // Replace the config object in the file
-    const updatedContent = content.replace(
-      /export const config = ({[\s\S]*?});/,
-      `export const config = ${configString};`
-    );
-    
-    await fs.writeFile(CONFIG_PATH, updatedContent, 'utf8');
+    const client = await getRedisClient();
+    await client.set('config:site', JSON.stringify(config));
   } catch (error) {
-    console.error('Error writing site config:', error);
+    console.error('Error writing site config to Redis:', error);
     throw error;
   }
 }
@@ -58,9 +49,22 @@ async function writeSiteConfig(config: any): Promise<void> {
  */
 export async function GET() {
   try {
-    const config = await readSiteConfig();
+    const config = await getSiteConfigFromRedis();
+    
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
     return NextResponse.json(config);
   } catch (error) {
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch settings' },
       { status: 500 }
@@ -76,7 +80,7 @@ export async function PUT(request: NextRequest) {
     const updatedConfig = await request.json();
     
     // Get current config 
-    const currentConfig = await readSiteConfig();
+    const currentConfig = await getSiteConfigFromRedis();
     
     // Merge updated settings with current config
     // This ensures we don't lose properties that weren't updated
@@ -85,11 +89,24 @@ export async function PUT(request: NextRequest) {
       ...updatedConfig
     };
     
-    await writeSiteConfig(newConfig);
+    await saveSiteConfigToRedis(newConfig);
+    
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
     
     return NextResponse.json(newConfig);
   } catch (error) {
     console.error('Error updating settings:', error);
+    
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to update settings' },
       { status: 500 }
