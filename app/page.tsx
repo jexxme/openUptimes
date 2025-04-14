@@ -1,26 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useStatus } from "./hooks/useStatus";
+import { useSetupStatus } from "./hooks/useSetupStatus";
 import { StatusHeader } from "./components/StatusHeader";
 import { StatusCard } from "./components/StatusCard";
 import { Footer } from "./components/Footer";
 
 export default function Home() {
+  const router = useRouter();
   const [showHistory, setShowHistory] = useState(false);
-  const { services, loading, error, lastUpdated, refresh } = useStatus(showHistory, 60);
+  const { services, loading: statusLoading, error: statusError, lastUpdated, refresh } = useStatus(showHistory, 60);
+  const { setupComplete, loading: setupLoading, error: setupError } = useSetupStatus();
+  
+  // Redirect to setup wizard if not complete
+  useEffect(() => {
+    if (setupComplete === false && !setupLoading) {
+      router.push('/setup');
+    }
+  }, [setupComplete, setupLoading, router]);
+  
+  if (setupLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500"></div>
+        <p className="mt-2 text-sm text-gray-500">Checking setup status...</p>
+      </div>
+    );
+  }
+  
+  if (setupError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+        <div className="rounded-lg border border-red-100 bg-white p-4 text-center max-w-md">
+          <h2 className="mb-2 text-lg font-medium text-red-600">Setup Error</h2>
+          <p className="text-sm text-red-500">{setupError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 rounded-md bg-red-50 px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-100"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
-        {loading && services.length === 0 ? (
+        {statusLoading && services.length === 0 ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500"></div>
           </div>
-        ) : error ? (
+        ) : statusError ? (
           <div className="rounded-lg border border-red-100 bg-white p-4 text-center">
             <h2 className="mb-2 text-lg font-medium text-red-600">Error Loading Status</h2>
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-sm text-red-500">{statusError}</p>
             <button
               onClick={refresh}
               className="mt-3 rounded-md bg-red-50 px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-100"

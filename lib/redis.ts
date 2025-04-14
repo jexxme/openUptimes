@@ -20,16 +20,32 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
       throw new Error('REDIS_URL environment variable is not set');
     }
     
-    console.log('Initializing Redis client with URL:', process.env.REDIS_URL);
-    
     try {
       redisClient = createClient({
         url: process.env.REDIS_URL,
+        socket: {
+          reconnectStrategy: (retries) => {
+            return Math.min(retries * 100, 3000); // Increasing delay up to 3s
+          }
+        }
+      });
+      
+      // Handle connection events
+      redisClient.on('connect', () => {
+        console.log('Redis client connecting...');
+      });
+      
+      redisClient.on('ready', () => {
+        console.log('Redis client ready and connected');
       });
       
       // Handle connection errors
       redisClient.on('error', (err) => {
         console.error('Redis connection error:', err);
+      });
+      
+      redisClient.on('end', () => {
+        console.log('Redis connection ended, client will be reinitialized on next request');
         redisClient = null;
       });
       
@@ -37,6 +53,7 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
       console.log('Redis client connected successfully');
     } catch (error) {
       console.error('Failed to initialize Redis client:', error);
+      redisClient = null;
       throw error;
     }
   }
@@ -113,5 +130,60 @@ export async function getServiceHistory(name: string, limit: number = 1440): Pro
   } catch (err) {
     console.error(`Error fetching history for ${name}:`, err);
     return [];
+  }
+}
+
+/**
+ * Check if initial setup has been completed
+ */
+export async function isSetupComplete(): Promise<boolean> {
+  try {
+    const client = await getRedisClient();
+    const setupComplete = await client.get('setup:complete');
+    return setupComplete === 'true';
+  } catch (err) {
+    console.error('Error checking setup status:', err);
+    return false;
+  }
+}
+
+/**
+ * Mark setup as complete
+ */
+export async function markSetupComplete(): Promise<boolean> {
+  try {
+    const client = await getRedisClient();
+    await client.set('setup:complete', 'true');
+    return true;
+  } catch (err) {
+    console.error('Error marking setup as complete:', err);
+    return false;
+  }
+}
+
+/**
+ * Store admin password hash
+ */
+export async function setAdminPassword(passwordHash: string): Promise<boolean> {
+  try {
+    const client = await getRedisClient();
+    await client.set('admin:password', passwordHash);
+    return true;
+  } catch (err) {
+    console.error('Error setting admin password:', err);
+    return false;
+  }
+}
+
+/**
+ * Get admin password hash
+ */
+export async function getAdminPassword(): Promise<string | null> {
+  try {
+    const client = await getRedisClient();
+    return await client.get('admin:password');
+  } catch (err) {
+    console.error('Error getting admin password:', err);
+    return null;
   }
 } 

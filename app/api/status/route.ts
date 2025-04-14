@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRedisConfig } from '@/lib/config';
+import { services } from '@/lib/config';
 import { getServiceStatus, getServiceHistory, closeRedisConnection } from '@/lib/redis';
 
 /**
@@ -17,9 +17,6 @@ export async function GET(request: Request) {
       : 60; // Default to 1 hour at 1-min intervals
     
     console.log(`Fetching status with params - includeHistory: ${includeHistory}, historyLimit: ${historyLimit}`);
-    
-    // Load potentially dynamic configuration from Redis
-    const { services } = await getRedisConfig();
     
     const results = await Promise.all(
       services.map(async (service) => {

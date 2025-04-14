@@ -200,44 +200,104 @@ Your Redis credentials are incorrect.
 - Ensure special characters are properly URL-encoded
 - Verify Redis is configured to use authentication
 
-## Admin Access Issues
+## Authentication Issues
 
-### Admin Authentication
+### Registration/Login Problems
 
-If you're having trouble accessing the admin interface:
+**Problem**: After registration, login doesn't work.
 
-1. **Vercel OIDC Token**
-   - Make sure the `VERCEL_OIDC_TOKEN` environment variable is set in your Vercel deployment
-   - You can get this token from your Vercel project settings or by examining `.env.local` locally
-   - When prompted, paste this token exactly as it appears (including all characters)
+**Possible causes and solutions**:
 
-2. **Token Expiration**
-   - OIDC tokens expire after some time (usually 24 hours)
-   - If you suddenly lose admin access, check if your token has expired
-   - Update your environment variable with a fresh token from Vercel
+1. **Redis Connection Issues**:
+   - Verify your Redis connection is working by checking the console logs
+   - Make sure your REDIS_URL environment variable is correct in `.env.local`
+   - Try using the `/api/auth/debug` endpoint to see if Redis is properly connected
 
-3. **Local Development**
-   - For local development, you can add the `VERCEL_OIDC_TOKEN` to your `.env.local` file
-   - In development mode, the admin auth is more relaxed for easier testing
+2. **Password Storage Issues**:
+   - The password might not be saved correctly during registration
+   - Check Redis with `redis-cli` to verify that the `admin:password` key exists
+   - Command: `redis-cli -u <your-redis-url> GET admin:password`
 
-### Configuration Not Saving
+3. **Setup Completion**:
+   - Verify setup was marked as complete
+   - Check Redis: `redis-cli -u <your-redis-url> GET setup:complete`
+   - If not "true", try resetting and completing setup again
 
-If your configuration changes aren't being saved:
+4. **Password Format**:
+   - Make sure your password doesn't contain special characters that could cause issues
+   - For testing, try a simple alphanumeric password
 
-1. **Redis Access**
-   - Verify Redis write permissions
-   - Check Redis logs for any errors during save operations
-   - Ensure there's enough storage in your Redis instance
+5. **Reset & Retry**:
+   - Visit the `/reset` page to clear all auth data
+   - Complete the setup process again
 
-2. **Invalid Configuration**
-   - Make sure all required fields are filled in
-   - Check for any console errors during the save operation
-   - Validate that service URLs are properly formatted
+## Redis Connection Issues
 
-3. **Redis Data Structure**
-   - Admin configs are stored in Redis under:
-     - `config:site` - Site configuration (JSON string)
-     - `config:services` - Services list (JSON string)
+**Problem**: Redis connection fails or times out.
+
+**Solutions**:
+
+1. **Check Redis URL**:
+   - Make sure your REDIS_URL is correctly formatted
+   - Format: `redis[s]://[[username][:password]@][host][:port][/db-number]`
+
+2. **Firewall/Network Issues**:
+   - Check if your Redis host is accessible from your deployment environment
+   - Verify IP restrictions on Redis provider (if any)
+
+3. **Redis Provider-Specific Issues**:
+   - Redis Cloud: Verify your subscription is active
+   - Upstash: Check database is operational
+   - Local Redis: Verify Redis server is running (`redis-cli ping`)
+
+4. **Debug Redis Connection**:
+   - Use `/api/debug/auth` endpoint to check Redis status
+
+## Session Management
+
+**Problem**: You get logged out unexpectedly.
+
+**Solutions**:
+
+1. **Session Storage**:
+   - OpenUptimes uses in-memory session storage
+   - Sessions are lost on server restart/redeploy
+   - This is expected behavior for the current version
+
+2. **Cookie Issues**:
+   - Check browser cookie settings
+   - Ensure cookies are not being blocked
+   - Verify auth cookie is present (`authToken`)
+
+## Environment Variables
+
+**Problem**: Configuration not taking effect.
+
+**Solutions**:
+
+1. **Verify Environment Variables**:
+   - Check that `.env.local` exists and has proper values
+   - Required variables: `REDIS_URL`
+   - Optional variables: `NEXT_PUBLIC_SITE_NAME`, `NEXT_PUBLIC_SITE_DESCRIPTION`, `NEXT_PUBLIC_REFRESH_INTERVAL`
+
+2. **Restart Development Server**:
+   - After changing environment variables, restart the server
+   - Command: `npm run dev`
+
+## Development Workflow
+
+**Problem**: Changes not applying in development.
+
+**Solutions**:
+
+1. **Clear Cache and Restart**:
+   - Stop the development server
+   - Clear Next.js cache: `rm -rf .next`
+   - Restart: `npm run dev`
+
+2. **Browser Cache**:
+   - Hard refresh browser: `Ctrl+Shift+R` or `Cmd+Shift+R`
+   - Or open DevTools Network tab and check "Disable cache"
 
 ## Next Steps if Issues Persist
 
