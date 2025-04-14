@@ -40,6 +40,7 @@ export const services: ServiceConfig[] = [
 export const config = {
   refreshInterval: 60000,
   historyLength: 1440,
+  siteName: 'OpenUptimes',
   theme: {
     up: '#10b981',
     down: '#ef4444',

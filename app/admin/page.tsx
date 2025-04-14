@@ -316,14 +316,10 @@ export default function AdminPage() {
         <div className="w-full max-w-xs px-4 text-center">
           <div className="mb-4">
             <h1 className="text-xl font-semibold mb-1">OpenUptimes</h1>
-            <p className="text-sm text-muted-foreground">{loadingState}</p>
           </div>
           
           <Progress value={loadingProgress} className="h-1.5 mb-2" />
-          
-          <div className="flex justify-center mt-6">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          </div>
+          <p className="text-sm text-muted-foreground mt-2">{loadingState}</p>
         </div>
       </div>
     );

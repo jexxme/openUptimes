@@ -55,7 +55,7 @@ export function HistoryContent({
   const [selectedService, setSelectedService] = useState<string>(initialService || "all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedResponseCode, setSelectedResponseCode] = useState<string>("all");
-  const [entriesLimit, setEntriesLimit] = useState<string>("50");
+  const [entriesLimit, setEntriesLimit] = useState<string>("10");
   const [historyItems, setHistoryItems] = useState<{ service: string; item: StatusHistoryItem }[]>(preloadedHistory || []);
   const [isLoading, setIsLoading] = useState<boolean>(!preloadedHistory);
   const [error, setError] = useState<string | null>(null);
@@ -439,6 +439,7 @@ export function HistoryContent({
           onChange={(e) => setEntriesLimit(e.target.value)}
           disabled={isLoading}
         >
+          <option value="10">10</option>
           <option value="50">50</option>
           <option value="100">100</option>
           <option value="250">250</option>
