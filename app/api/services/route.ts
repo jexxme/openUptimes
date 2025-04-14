@@ -3,27 +3,36 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ServiceConfig } from '@/lib/config';
 
-const CONFIG_PATH = path.join(process.cwd(), 'lib', 'config.ts');
+// Use JSON file for configuration storage in production
+const CONFIG_DIR = path.join(process.cwd(), 'data');
+const CONFIG_PATH = path.join(CONFIG_DIR, 'services.json');
 
 /**
- * Read the current services configuration from config.ts
+ * Read the current services configuration
  */
 async function readServicesConfig(): Promise<ServiceConfig[]> {
   try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf8');
-    
-    // Extract services array using regex
-    const match = content.match(/export const services: ServiceConfig\[] = \[([\s\S]*?)\];/);
-    if (!match) {
-      throw new Error('Could not parse services configuration');
+    // Create the config directory if it doesn't exist
+    try {
+      await fs.mkdir(CONFIG_DIR, { recursive: true });
+    } catch (err) {
+      // Ignore if directory already exists
     }
     
-    // Convert the string representation to actual array
-    // This is a simple approach - in production, you might want a more robust solution
-    const servicesString = `[${match[1]}]`;
-    const services = eval(`(${servicesString})`);
-    
-    return services;
+    // Try to read the config file
+    try {
+      const content = await fs.readFile(CONFIG_PATH, 'utf8');
+      return JSON.parse(content);
+    } catch (err) {
+      // If file doesn't exist, return default from lib/config.ts
+      // For development, we can still import the config
+      const { services } = await import('@/lib/config');
+      
+      // Write the default config to the JSON file
+      await fs.writeFile(CONFIG_PATH, JSON.stringify(services, null, 2), 'utf8');
+      
+      return services;
+    }
   } catch (error) {
     console.error('Error reading services config:', error);
     throw error;
@@ -31,24 +40,19 @@ async function readServicesConfig(): Promise<ServiceConfig[]> {
 }
 
 /**
- * Write updated services configuration to config.ts
+ * Write updated services configuration
  */
 async function writeServicesConfig(services: ServiceConfig[]): Promise<void> {
   try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf8');
+    // Create the config directory if it doesn't exist
+    try {
+      await fs.mkdir(CONFIG_DIR, { recursive: true });
+    } catch (err) {
+      // Ignore if directory already exists
+    }
     
-    // Format services array as string
-    const servicesString = JSON.stringify(services, null, 2)
-      .replace(/"([^"]+)":/g, '$1:') // Convert "key": to key:
-      .replace(/"/g, "'"); // Use single quotes
-    
-    // Replace the services array in the file
-    const updatedContent = content.replace(
-      /export const services: ServiceConfig\[] = \[([\s\S]*?)\];/,
-      `export const services: ServiceConfig[] = ${servicesString};`
-    );
-    
-    await fs.writeFile(CONFIG_PATH, updatedContent, 'utf8');
+    // Write services to the JSON file
+    await fs.writeFile(CONFIG_PATH, JSON.stringify(services, null, 2), 'utf8');
   } catch (error) {
     console.error('Error writing services config:', error);
     throw error;
