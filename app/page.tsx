@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStatus } from "./hooks/useStatus";
 import { useSetupStatus } from "./hooks/useSetupStatus";
@@ -16,7 +16,8 @@ interface ServiceConfig {
   visible?: boolean;
 }
 
-export default function Home() {
+// Client component that uses search params
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isPreview = searchParams.get('preview') === 'true';
@@ -196,5 +197,24 @@ export default function Home() {
         <Footer />
       </div>
     </div>
+  );
+}
+
+// Loading fallback component
+function HomeLoading() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500"></div>
+      <p className="mt-2 text-sm text-gray-500">Loading...</p>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function Home() {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeContent />
+    </Suspense>
   );
 }
