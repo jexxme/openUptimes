@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword, generateSessionToken } from '../../../../lib/auth';
 import { addSession } from '../../../../middleware';
-import { getAdminPassword } from '../../../../lib/redis';
+import { getAdminPassword, storeSession } from '../../../../lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +40,17 @@ export async function POST(request: NextRequest) {
     // Generate session token
     const token = generateSessionToken();
     console.log('Password verified, adding session');
-    addSession(token);
+    
+    // Store session in both middleware memory cache and Redis
+    try {
+      await addSession(token);
+      console.log('Session added to middleware and Redis');
+    } catch (sessionError) {
+      console.error('Error storing session:', sessionError);
+      // Fallback direct Redis storage if middleware fails
+      await storeSession(token);
+      console.log('Fallback: Session stored directly in Redis');
+    }
     
     // Set cookie
     const response = NextResponse.json({ 
@@ -48,13 +58,16 @@ export async function POST(request: NextRequest) {
       debug: { tokenLength: token.length } 
     });
     
+    // 24 hours expiry (in seconds)
+    const SESSION_EXPIRY = 60 * 60 * 24;
+    
     console.log('Setting auth cookie');
     response.cookies.set({
       name: 'authToken',
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: SESSION_EXPIRY,
       path: '/',
       sameSite: 'lax',
     });

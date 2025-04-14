@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { parseTokenFromCookie } from './lib/edge-auth';
+import { checkSession, storeSession, deleteSession } from './lib/redis';
 
-// Active sessions (in memory for simplicity)
-// This is a problematic approach for production as it doesn't persist across deploys/restarts
-// We'll improve this to use Redis in a future update
+// Legacy in-memory sessions approach - kept for backward compatibility
+// In production, we now use Redis for session storage
 export const activeSessions = new Set<string>();
 
 // For development, let's add a default token that's always valid
@@ -16,15 +16,21 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Debug: Print all active sessions
-console.log('Current active sessions count:', activeSessions.size);
+console.log('Current active sessions count (legacy):', activeSessions.size);
 
-export function addSession(token: string) {
+// These functions are kept for backward compatibility
+// But they are enhanced to also store sessions in Redis for persistence
+export async function addSession(token: string) {
   console.log('Adding session token');
   activeSessions.add(token);
+  // Also store in Redis for persistence across deployments
+  await storeSession(token);
 }
 
-export function removeSession(token: string) {
+export async function removeSession(token: string) {
   activeSessions.delete(token);
+  // Also remove from Redis
+  await deleteSession(token);
 }
 
 export async function middleware(request: NextRequest) {
@@ -68,12 +74,30 @@ export async function middleware(request: NextRequest) {
     
     console.log('Token found, checking session validity');
     
+    // Check in memory first (faster) and then in Redis if not found (persistent)
     if (!activeSessions.has(token)) {
-      console.log('Invalid token used');
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('from', pathname);
-      return NextResponse.redirect(url);
+      // Token not in memory, check Redis
+      try {
+        const isValidSession = await checkSession(token);
+        
+        if (!isValidSession) {
+          console.log('Invalid token used (not in Redis)');
+          const url = request.nextUrl.clone();
+          url.pathname = '/login';
+          url.searchParams.set('from', pathname);
+          return NextResponse.redirect(url);
+        }
+        
+        // If valid in Redis but not in memory, add it to memory for future checks
+        activeSessions.add(token);
+        console.log('Valid session found in Redis, added to memory cache');
+      } catch (error) {
+        console.error('Error checking session in Redis:', error);
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        url.searchParams.set('from', pathname);
+        return NextResponse.redirect(url);
+      }
     }
 
     console.log('Valid session found, allowing access');
