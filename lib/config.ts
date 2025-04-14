@@ -34,7 +34,7 @@ export const services: ServiceConfig[] = [
  * General configuration
  */
 export const config = {
-  siteName: 'OpenUptimessasaee',
+  siteName: 'MyOpenUptimesEEE',
   description: 'Service Status Monitor',
   refreshInterval: 60000,
   historyLength: 1440,
