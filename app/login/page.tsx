@@ -111,12 +111,6 @@ function LoginForm() {
             >
               Return to Status Page
             </Link>
-            <a
-              href="/reset"
-              className="mt-2 block text-center text-sm text-red-500 hover:text-red-700"
-            >
-              Reset Application
-            </a>
           </div>
         </div>
       </div>

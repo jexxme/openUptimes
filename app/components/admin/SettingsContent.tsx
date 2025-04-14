@@ -4,13 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui
 import { Button } from "../../../components/ui/button";
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Settings, Shield, AlertCircle } from "lucide-react";
+import { Settings, Shield, AlertCircle, RefreshCcw } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 // Add toast notification
 import { useToast } from "../ui/use-toast";
 
+// Dialog components for confirmation
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Input } from "../../../components/ui/input";
+
 export function SettingsContent() {
   const { toast } = useToast();
+  const router = useRouter();
 
   // General settings state
   const [siteName, setSiteName] = useState("");
@@ -25,6 +38,17 @@ export function SettingsContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isChanging, setIsChanging] = useState(false);
+
+  // Reset settings state
+  const [resetting, setResetting] = useState(false);
+  const [resetComplete, setResetComplete] = useState(false);
+  const [resetStats, setResetStats] = useState<{keysDeleted?: number} | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+  
+  // Reset confirmation dialog state
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetConfirmError, setResetConfirmError] = useState<string | null>(null);
 
   // Fetch settings on component mount
   useEffect(() => {
@@ -151,6 +175,78 @@ export function SettingsContent() {
     }
   };
 
+  // Show the reset confirmation dialog
+  const handleShowResetConfirmation = () => {
+    setResetConfirmText("");
+    setResetConfirmError(null);
+    setShowResetDialog(true);
+  };
+
+  // Handle the confirmation dialog submission
+  const handleResetConfirmation = () => {
+    if (resetConfirmText.toLowerCase() !== "reset") {
+      setResetConfirmError("Please type 'reset' to confirm");
+      return;
+    }
+    
+    setShowResetDialog(false);
+    handleReset();
+  };
+
+  async function handleReset() {
+    setResetting(true);
+    setResetError(null);
+    
+    try {
+      const response = await fetch('/api/setup/reset', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Reset failed');
+      }
+      
+      const result = await response.json();
+      setResetStats(result);
+      setResetComplete(true);
+      
+      // Clear any client-side state or cookies
+      document.cookie = "authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Show success notification
+      toast({
+        title: "Reset complete",
+        description: "Your application has been reset successfully.",
+        duration: 3000,
+      });
+      
+    } catch (err) {
+      if (err instanceof Error) {
+        setResetError(err.message);
+      } else {
+        setResetError('An unknown error occurred');
+      }
+      
+      // Show error notification
+      toast({
+        title: "Reset failed",
+        description: "There was a problem resetting your application.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  function handleGoToSetup() {
+    // Force a full page reload to ensure all state is cleared
+    window.location.href = '/?t=' + new Date().getTime();
+  }
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -173,6 +269,10 @@ export function SettingsContent() {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span>Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="reset" className="flex items-center gap-2">
+              <RefreshCcw className="h-4 w-4" />
+              <span>Reset</span>
             </TabsTrigger>
           </TabsList>
           
@@ -257,6 +357,126 @@ export function SettingsContent() {
                   "Change Password"}
               </Button>
             </form>
+          </TabsContent>
+          
+          <TabsContent value="reset">
+            <p className="mb-4 text-sm text-muted-foreground">Reset OpenUptimes to its initial state</p>
+            
+            {resetError && (
+              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md mb-4">
+                {resetError}
+              </div>
+            )}
+            
+            {resetComplete ? (
+              <div className="space-y-4 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+                
+                <h2 className="text-lg font-medium text-gray-900">Reset Complete!</h2>
+                
+                <p className="text-sm text-gray-500">
+                  Your application has been reset successfully.
+                  {resetStats?.keysDeleted !== undefined && 
+                    ` ${resetStats.keysDeleted} data items were removed.`
+                  }
+                </p>
+                
+                <div className="mt-4">
+                  <Button onClick={handleGoToSetup} className="w-full">
+                    Go to Setup
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-gray-700">
+                  This will reset your OpenUptimes installation to its initial state. You will need to:
+                </p>
+                
+                <ul className="ml-5 list-disc space-y-1 text-gray-700">
+                  <li>Go through the setup wizard again</li>
+                  <li>Create a new admin password</li>
+                  <li>Reconfigure site settings</li>
+                  <li>Set up monitored services</li>
+                </ul>
+                
+                <div className="mt-6 rounded-md bg-red-50 p-3 text-sm text-red-600">
+                  <strong>Warning:</strong> This action cannot be undone. All your configuration, login credentials,
+                  <br /> service status history, and settings will be permanently deleted.
+                </div>
+                
+                <div className="mt-4 flex justify-end space-x-3">
+                  <Button
+                    variant="outline" 
+                    onClick={() => router.push('/')}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleShowResetConfirmation}
+                    disabled={resetting}
+                  >
+                    Reset Application
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Reset Confirmation Dialog */}
+            <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Confirm Reset</DialogTitle>
+                  <DialogDescription>
+                    This action cannot be undone. Type <span className="font-bold">reset</span> below to confirm.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Input
+                      id="reset-confirm"
+                      placeholder="Type 'reset' to confirm"
+                      value={resetConfirmText}
+                      onChange={(e) => setResetConfirmText(e.target.value)}
+                      className="col-span-3"
+                    />
+                    {resetConfirmError && (
+                      <p className="text-sm text-red-500">{resetConfirmError}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowResetDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleResetConfirmation}
+                    disabled={resetConfirmText.toLowerCase() !== "reset"}
+                  >
+                    Confirm Reset
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       </CardContent>
