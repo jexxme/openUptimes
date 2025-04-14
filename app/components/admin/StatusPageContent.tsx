@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Globe, Palette, ExternalLink, EyeOff, Eye, Layout, Sliders } from "lucide-react";
+import { Globe, Palette, ExternalLink, EyeOff, Eye, Layout, Sliders, Image } from "lucide-react";
 import { Switch } from "../ui/switch";
 import { Label } from "../ui/label";
 import { useToast } from "../ui/use-toast";
@@ -700,6 +700,47 @@ export function StatusPageContent({
                             <li>SVG format provides the best quality at any size</li>
                           </ul>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="rounded-lg border bg-card p-6 mt-6">
+                  <h3 className="font-medium mb-3 flex items-center gap-2">
+                    <Image className="h-4 w-4 text-muted-foreground" />
+                    <span>Favicon</span>
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      The favicon is automatically set to use your logo. If you don't have a logo, a default favicon will be used.
+                    </p>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 border rounded-md bg-background flex flex-col items-center justify-center p-1">
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt="Favicon preview"
+                            className="max-h-10 max-w-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/default-favicon.svg';
+                            }}
+                          />
+                        ) : (
+                          <img
+                            src="/default-favicon.svg"
+                            alt="Default favicon"
+                            className="max-h-10 max-w-full object-contain"
+                          />
+                        )}
+                      </div>
+                      <div className="text-sm">
+                        {logoUrl ? (
+                          <p>Your logo is being used as the favicon.</p>
+                        ) : (
+                          <p>Upload a logo above to use it as your favicon.</p>
+                        )}
                       </div>
                     </div>
                   </div>
