@@ -11,7 +11,7 @@ export type ServiceConfig = {
 }
 
 /**
- * List of services to monitor
+List of example services to monitor after setup
  */
 export const services: ServiceConfig[] = [
   {
@@ -26,12 +26,6 @@ export const services: ServiceConfig[] = [
     description: 'GitHub Development Platform',
     expectedStatus: 200,
     visible: true
-  },
-  {
-    name: 'Example',
-    url: 'https://example.com',
-    description: 'Example Website',
-    visible: true
   }
 ];
 
@@ -40,10 +34,9 @@ export const services: ServiceConfig[] = [
  */
 export const config = {
   refreshInterval: 60000,
-  historyLength: 1440,
   siteName: 'OpenUptimes',
   theme: {
-    up: '#10b981',
+    up: '#22c55e',
     down: '#ef4444',
     unknown: '#6b7280'
   },

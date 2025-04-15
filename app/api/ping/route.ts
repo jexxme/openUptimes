@@ -26,9 +26,7 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
  * Check the status of a single service
  */
 async function checkService(service: { name: string; url: string; expectedStatus?: number }) {
-  console.log(`Checking service: ${service.name} at URL: ${service.url}`);
   const startTime = Date.now();
-  let fetchSucceeded = false;
   let statusData: ServiceStatus;
   
   try {
@@ -46,21 +44,15 @@ async function checkService(service: { name: string; url: string; expectedStatus
     const expectedStatus = service.expectedStatus || 200;
     const isUp = response.status === expectedStatus;
     
-    console.log(`Service ${service.name} status: ${isUp ? 'UP' : 'DOWN'}, Code: ${response.status}, Time: ${responseTime}ms`);
-    
     statusData = {
       status: isUp ? 'up' : 'down',
       timestamp: endTime,
       responseTime,
       statusCode: response.status,
     };
-    
-    fetchSucceeded = true;
   } catch (error) {
     const endTime = Date.now();
     const responseTime = endTime - startTime;
-    
-    console.error(`Error checking service ${service.name}:`, error);
     
     statusData = {
       status: 'down',
@@ -70,51 +62,10 @@ async function checkService(service: { name: string; url: string; expectedStatus
     };
   }
   
-  // Store data with retry regardless of fetch success/failure
+  // Store the service status and history
   try {
-    // Store current status with retry
-    const maxStatusRetries = 3;
-    let retries = 0;
-    let statusSaved = false;
-    let historySaved = false;
-    
-    // Loop until both operations succeed or max retries reached
-    while (retries < maxStatusRetries && (!statusSaved || !historySaved)) {
-      try {
-        if (!statusSaved) {
-          await setServiceStatus(service.name, statusData);
-          statusSaved = true;
-          console.log(`Saved status for ${service.name}`);
-        }
-        
-        if (!historySaved) {
-          await appendServiceHistory(service.name, statusData);
-          historySaved = true;
-          console.log(`Saved history for ${service.name}`);
-        }
-      } catch (retryError) {
-        retries++;
-        console.warn(`Redis error (${retries}/${maxStatusRetries}) for ${service.name}:`, retryError);
-        
-        // Check if this is a connection error
-        const isConnectionError = retryError instanceof Error && 
-          (retryError.message.includes('client is closed') || 
-           retryError.message.includes('connection') ||
-           retryError.message.includes('ECONNREFUSED') ||
-           retryError.message.includes('Redis'));
-        
-        if (isConnectionError && retries < maxStatusRetries) {
-          // Exponential backoff for connection issues
-          const delay = Math.min(50 * Math.pow(2, retries), 1000);
-          console.log(`Retrying Redis operations in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-    
-    if (!statusSaved || !historySaved) {
-      console.error(`Failed to store all data for ${service.name} after ${maxStatusRetries} retries`);
-    }
+    await setServiceStatus(service.name, statusData);
+    await appendServiceHistory(service.name, statusData);
   } catch (storageError) {
     console.error(`Failed to store status for ${service.name}:`, storageError);
   }
@@ -129,77 +80,93 @@ async function checkService(service: { name: string; url: string; expectedStatus
  * Check all services defined in Redis
  */
 async function checkAllServices() {
-  try {
-    const services = await getServicesFromRedis();
-    console.log('Checking all services:', services);
-    return Promise.all(services.map(service => checkService(service)));
-  } catch (error) {
-    console.error('Error getting services from Redis:', error);
-    throw error;
-  }
+  const services = await getServicesFromRedis();
+  return Promise.all(services.map(service => checkService(service)));
 }
 
 /**
  * API route handler for /api/ping
  */
-export async function GET() {
-  console.log('API ping endpoint called');
-  let retries = 0;
-  const maxRetries = 3;
+export async function GET(request: Request) {
+  const startTime = Date.now();
+  console.log(`[Ping] Started at ${new Date(startTime).toISOString()}`);
   
-  while (retries <= maxRetries) {
-    try {
-      const results = await checkAllServices();
-      console.log('All services checked successfully');
-      
-      // Ensure a small delay before attempting to close the connection
-      // This allows any pending Redis operations to complete
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Close Redis connection to avoid exhausting connections in serverless environment
-      try {
-        await closeRedisConnection();
-        console.log('Redis connection scheduled for closure');
-      } catch (closeError) {
-        console.error('Error scheduling Redis connection closure:', closeError);
-      }
-      
-      return NextResponse.json(results);
-    } catch (err) {
-      console.error(`Failed to check services (attempt ${retries + 1}/${maxRetries + 1}):`, err);
-      
-      // Only retry for Redis-related errors
-      if (err instanceof Error && 
-          (err.message.includes('Redis') || 
-           err.message.includes('ECONNREFUSED') || 
-           err.message.includes('connection') ||
-           err.message.includes('client is closed'))) {
-        retries++;
-        if (retries <= maxRetries) {
-          // Exponential backoff
-          const delay = Math.min(100 * 2 ** retries, 2000);
-          console.log(`Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-      }
-      
-      // Non-retryable error or max retries exceeded
-      // Ensure a small delay before attempting to close the connection
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Close Redis connection even on error
-      try {
-        await closeRedisConnection();
-      } catch (closeError) {
-        console.error('Error scheduling Redis connection closure after error:', closeError);
-      }
-      
-      // Use the error parameter in the response
-      return NextResponse.json(
-        { error: 'Failed to check services', message: (err as Error).message },
-        { status: 500 }
-      );
+  try {
+    // Store current timestamp as the last ping time
+    const now = Date.now();
+    const client = await getRedisClient();
+    
+    // Get site config for refresh interval
+    const configStr = await client.get('config:site');
+    let refreshInterval = 60000; // Default to 60s
+    
+    if (configStr) {
+      const config = JSON.parse(configStr);
+      refreshInterval = config.refreshInterval || 60000;
     }
+    
+    console.log(`[Ping] Using refresh interval: ${refreshInterval}ms (${refreshInterval/1000}s)`);
+    
+    // Update ping statistics
+    await client.set('stats:last-ping', now.toString());
+    const nextPing = now + refreshInterval;
+    await client.set('stats:next-ping', nextPing.toString());
+    
+    // Track the cycle that triggered this ping
+    const url = new URL(request.url);
+    const cycleId = url.searchParams.get('cycleId');
+    if (cycleId) {
+      console.log(`[Ping] Triggered by cycle ID: ${cycleId}`);
+      await client.set('stats:last-cycle-id', cycleId);
+    }
+    
+    // Store a ping event record for tracking in the UI
+    const pingEvent = {
+      type: 'Service Ping',
+      timestamp: now,
+      cycleId: cycleId || 'unknown',
+      executionStart: startTime,
+      interval: refreshInterval / 1000
+    };
+    
+    // Store in a Redis list, limit to recent events
+    await client.lPush('stats:ping-events', JSON.stringify(pingEvent));
+    await client.lTrim('stats:ping-events', 0, 50); // Keep last 50 events
+    
+    // Check all services
+    console.log('[Ping] Checking all services...');
+    const results = await checkAllServices();
+    console.log(`[Ping] Checked ${results.length} services`);
+    
+    // Close Redis connection
+    await closeRedisConnection();
+    
+    // Calculate total execution time
+    const endTime = Date.now();
+    const executionTime = endTime - startTime;
+    console.log(`[Ping] Completed in ${executionTime}ms`);
+    
+    return NextResponse.json({
+      status: 'success',
+      timestamp: now,
+      nextPing: nextPing,
+      refreshInterval: refreshInterval,
+      executionTime: executionTime,
+      results: results
+    });
+  } catch (err) {
+    console.error('[Ping] Failed to check services:', err);
+    
+    // Close Redis connection even on error
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('[Ping] Error closing Redis connection:', closeError);
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to check services', message: (err as Error).message },
+      { status: 500 }
+    );
   }
 } 

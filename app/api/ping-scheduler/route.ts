@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getRedisClient, closeRedisConnection } from '@/lib/redis';
 
-// Lock duration in ms
-const LOCK_DURATION = 60 * 1000; // 1 minute
+// Lock duration in ms - this is a fallback for safety
+const DEFAULT_LOCK_DURATION = 60 * 1000; // 1 minute
 
 /**
  * This endpoint implements a self-sustaining ping mechanism for Vercel
@@ -14,82 +14,64 @@ const LOCK_DURATION = 60 * 1000; // 1 minute
  * 4. We schedule the next ping by calling the same edge function
  */
 export async function GET(request: Request) {
-  console.log('Ping scheduler called');
-  
   try {
-    const client = await getRedisClient();
+    const url = new URL(request.url);
+    const action = url.searchParams.get('action');
     
-    // Get site config for the refresh interval
-    const configStr = await client.get('config:site');
-    if (!configStr) {
-      console.error('Site config not found');
-      return NextResponse.json({ error: 'Site config not found' }, { status: 500 });
+    // Cancellation handling - mark all existing cycles as stale
+    if (action === 'cancel') {
+      const client = await getRedisClient();
+      
+      // Store cancellation timestamp to mark current cycles as stale
+      await client.set('scheduler:cancel-timestamp', Date.now().toString());
+      console.log('[PingScheduler] Cancellation marker set, new cycles will be created');
+      
+      // Close Redis connection
+      await closeRedisConnection();
+      
+      return NextResponse.json({
+        status: 'success',
+        message: 'All ping cycles marked for cancellation',
+        timestamp: Date.now()
+      });
     }
     
-    const config = JSON.parse(configStr);
-    const refreshInterval = config.refreshInterval || 60000; // Default to 60s
-    
-    // Try to acquire a lock using Redis
-    const now = Date.now();
-    const lockKey = 'lock:ping-scheduler';
-    const lockValue = `${now}`;
-    
-    // Check if lock exists
-    const existingLock = await client.get(lockKey);
-    if (existingLock) {
-      // Check if lock is expired
-      const lockTimestamp = parseInt(existingLock, 10);
-      if (now - lockTimestamp < LOCK_DURATION) {
-        console.log('Another ping scheduler is already running');
-        
-        // Close Redis connection
-        await closeRedisConnection();
-        
-        return NextResponse.json({ status: 'already_running' });
-      }
-      // Lock is expired, so we can acquire it
-      console.log('Found expired lock, acquiring it');
+    // Status check
+    if (action === 'status') {
+      const client = await getRedisClient();
+      
+      // Get cancellation timestamp
+      const cancelTimestamp = await client.get('scheduler:cancel-timestamp');
+      const activeCount = await client.get('scheduler:active-cycles') || '0';
+      const lastPingTimestamp = await client.get('stats:last-ping');
+      
+      // Get additional stats
+      const lastCycleId = await client.get('scheduler:last-cycle-id');
+      const lastCycleTime = await client.get('scheduler:last-cycle-time');
+      
+      // Close Redis connection
+      await closeRedisConnection();
+      
+      return NextResponse.json({
+        status: 'success',
+        lastCancelTimestamp: cancelTimestamp ? parseInt(cancelTimestamp, 10) : null,
+        activeCycles: parseInt(activeCount, 10),
+        lastPingTimestamp: lastPingTimestamp ? parseInt(lastPingTimestamp, 10) : null,
+        lastCycleId,
+        lastCycleTime: lastCycleTime ? parseInt(lastCycleTime, 10) : null,
+        timestamp: Date.now()
+      });
     }
-    
-    // Acquire the lock with expiration
-    await client.set(lockKey, lockValue, { EX: Math.ceil(LOCK_DURATION / 1000) });
-    console.log('Acquired ping scheduler lock');
-    
-    // Perform the actual ping by calling our ping API endpoint
-    console.log('Triggering ping process');
-    const pingResponse = await fetch(new URL('/api/ping', request.url).toString(), {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'OpenUptimes Internal Scheduler'
-      },
-    });
-    
-    if (!pingResponse.ok) {
-      console.error('Ping process failed:', await pingResponse.text());
-    } else {
-      console.log('Ping process completed successfully');
-    }
-    
-    // Store last ping timestamp
-    await client.set('stats:last-ping', now.toString());
-    
-    // Store next scheduled ping time for frontend reference
-    const nextPing = now + refreshInterval;
-    await client.set('stats:next-ping', nextPing.toString());
-    
-    // Close Redis connection
-    await closeRedisConnection();
     
     return NextResponse.json({
-      status: 'completed',
-      timestamp: now,
-      nextPing: nextPing
-    });
-    
+      status: 'error',
+      message: 'Invalid action specified',
+      timestamp: Date.now()
+    }, { status: 400 });
   } catch (error) {
     console.error('Error in ping scheduler:', error);
     
-    // Close Redis connection
+    // Close Redis connection on error
     try {
       await closeRedisConnection();
     } catch (closeError) {
@@ -97,7 +79,10 @@ export async function GET(request: Request) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to run ping scheduler', message: (error as Error).message },
+      { 
+        error: 'Scheduler operation failed', 
+        message: (error as Error).message 
+      },
       { status: 500 }
     );
   }
