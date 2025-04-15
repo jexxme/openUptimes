@@ -15,6 +15,7 @@
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#api-endpoints">API Endpoints</a> •
+  <a href="#automated-ping-system">Automated Ping System</a> •
   <a href="#troubleshooting">Troubleshooting</a> •
   <a href="#contributing">Contributing</a> •
   <a href="#license">License</a>
@@ -30,7 +31,9 @@
 
 OpenUptimes is a modern, lightweight status page designed to help you monitor and display the uptime of your services. With its clean interface and real-time updates, you can easily keep track of your infrastructure's health and share this information with your users.
 
-Built with Next.js, Tailwind CSS, and Redis, OpenUptimes provides a seamless experience across all devices and can be deployed in minutes, whether you're a technical user or not.
+Built with Next.js, Tailwind CSS, and Redis, OpenUptimes provides a seamless experience across all devices and can be deployed in minutes. The system leverages Vercel's Edge Runtime for reliable background monitoring, ensuring consistent uptime checks even without frontend interaction.
+
+Unlike other solutions that require external cron jobs or additional infrastructure, OpenUptimes is fully self-contained and runs entirely on serverless and edge functions, making it perfect for one-click deployment with zero configuration.
 
 ## Features
 
@@ -44,10 +47,9 @@ Built with Next.js, Tailwind CSS, and Redis, OpenUptimes provides a seamless exp
 - 📱 **Mobile-first design** - Perfect experience on any screen size
 - 🔄 **Auto-refreshing data** - Always see the latest status
 - **Automated Service Monitoring**: Background ping mechanism regularly checks service availability
-- **Redis-based Storage**: Fast and reliable storage for service status and history
-- **Serverless-compatible**: Designed to work within Vercel's constraints
+- **Serverless-compatible**: Runs entirely on Edge and Serverless functions
+- **Self-sustaining ping system**: No need for external cron jobs or schedulers
 - **Admin Dashboard**: Manage services, view status history, and configure settings
-- **Customizable**: Adjust ping intervals, theme colors, and more
 
 ## Motivation
 
@@ -177,6 +179,41 @@ OpenUptimes provides several API endpoints for monitoring and configuring servic
 - **GET `/api/setup/status`**: Checks if the initial setup has been completed
 - **POST `/api/setup/complete`**: Marks the setup as completed
 - **POST `/api/setup/reset`**: Resets the application to its initial state
+
+## Automated Ping System
+
+OpenUptimes implements an innovative self-sustaining ping mechanism that works reliably in serverless environments without requiring traditional cron jobs:
+
+### How It Works
+
+1. **Edge Runtime Execution**: The system uses Next.js Edge Runtime which allows for longer execution times than standard serverless functions
+2. **Self-scheduling Architecture**: The ping system schedules its own next ping using Redis locks and timeouts
+3. **Automatic Bootstrap**: Whenever the application starts (or receives traffic), the ping cycle is automatically initialized
+4. **Fault Tolerance**: Multiple failsafe mechanisms ensure consistent monitoring even in edge cases
+
+### System Components
+
+- **Edge Ping Function**: Long-running Edge Runtime function that bootstraps the cycle
+- **Ping Scheduler**: Coordinates ping timing and prevents overlap using Redis locks
+- **Service Monitor**: The actual service checking mechanism that stores uptime data
+- **Stats Endpoint**: Provides visibility into the ping system's operations
+
+### Technical Details
+
+- No traditional cron jobs or external schedulers required
+- Works within Vercel and other serverless platforms' constraints
+- Automatically adapts to the configured refresh interval
+- Resistant to cold starts and serverless function timeouts
+- Maintains consistent ping intervals without frontend interaction
+
+### Debugging (Development Only)
+
+When running in development mode, OpenUptimes provides a debug interface at `/debug/ping` that allows you to:
+
+- Monitor ping system statistics in real-time
+- Trigger manual pings through different components of the system
+- View ping history and intervals
+- Troubleshoot the monitoring system
 
 ## Troubleshooting
 

@@ -75,6 +75,8 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
   const [logoUrl, setLogoUrl] = useState(preloadedLogoUrl || "");
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isDev, setIsDev] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
+  const [showDebug, setShowDebug] = useState(false);
   
   // Detect development environment
   useEffect(() => {
@@ -113,6 +115,14 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
       img.src = logoUrl;
     }
   }, [logoUrl]);
+
+  const handleLogoClick = () => {
+    const newCount = logoClickCount + 1;
+    setLogoClickCount(newCount);
+    if (newCount >= 5) {
+      setShowDebug(true);
+    }
+  };
 
   // Helper function to handle navigation with sections
   const handleNavigation = (tab: string, section?: string) => {
@@ -160,7 +170,10 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
       <div className="flex h-16 items-center justify-center px-5 border-b border-sidebar-border/80 relative">
         <div className="absolute left-0 bottom-0 w-full h-[1px] bg-gradient-to-r from-transparent via-sidebar-primary/20 to-transparent"></div>
         {logoUrl && imageLoaded ? (
-          <div className="flex items-center justify-center h-full py-2 w-full">
+          <div 
+            className="flex items-center justify-center h-full py-2 w-full cursor-pointer"
+            onClick={handleLogoClick}
+          >
             <img 
               src={logoUrl} 
               alt="Logo" 
@@ -168,8 +181,15 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
             />
           </div>
         ) : (
-          <div className="flex items-center">
-            <Activity className="w-5 h-5 text-sidebar-primary mr-2 stroke-[2.5px]" />
+          <div 
+            className="flex items-center cursor-pointer"
+            onClick={handleLogoClick}
+          >
+            <img 
+              src="/default-favicon.svg" 
+              alt="OpenUptimes" 
+              className="w-5 h-5 mr-2"
+            />
             <h2 className="text-lg font-semibold bg-gradient-to-r from-primary via-sidebar-primary to-primary bg-clip-text text-transparent tracking-tight">
               OpenUptimes
             </h2>
@@ -254,8 +274,8 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
           </motion.div>
         </motion.div>
         
-        {/* Only show debug section in development */}
-        {isDev && (
+        {/* Show debug section in development or when logo clicked 5 times */}
+        {(isDev || showDebug) && (
           <motion.div 
             variants={sectionVariants}
             initial="hidden"
