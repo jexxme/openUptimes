@@ -10,6 +10,8 @@ export default function PingDebugPage() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [logs, setLogs] = useState<string[]>([]);
   const [pingHistory, setPingHistory] = useState<any[]>([]);
+  const [edgePingStatus, setEdgePingStatus] = useState<string>("Unknown");
+  const [retries, setRetries] = useState(0);
   const router = useRouter();
 
   const addLog = (message: string) => {
@@ -39,13 +41,29 @@ export default function PingDebugPage() {
             timestamp: Date.now(), 
             lastPing: data.lastPing, 
             nextPing: data.nextPing,
-            nextPingCountdown: data.nextPingCountdown
+            nextPingCountdown: data.nextPingCountdown,
+            timeSinceLastPing: data.lastPing ? Math.floor((Date.now() - data.lastPing) / 1000) : null
           }, 
           ...prev
         ];
         // Keep only last 20 entries
         return newHistory.slice(0, 20);
       });
+
+      // Auto-retry if ping is overdue more than 30 seconds
+      if (data.lastPing && (Date.now() - data.lastPing > 90000)) {
+        setRetries(prev => {
+          if (prev < 3) {
+            const newCount = prev + 1;
+            addLog(`Ping is overdue by ${Math.floor((Date.now() - data.lastPing)/1000)}s. Auto-retry attempt ${newCount}`);
+            setTimeout(() => triggerPing('edge-ping'), 1000);
+            return newCount;
+          }
+          return prev;
+        });
+      } else {
+        setRetries(0);
+      }
     } catch (err) {
       setError((err as Error).message);
       addLog(`Error: ${(err as Error).message}`);
@@ -57,6 +75,12 @@ export default function PingDebugPage() {
   const triggerPing = async (endpoint: string) => {
     try {
       addLog(`Triggering ping via ${endpoint}...`);
+      
+      // Special handling for edge-ping to check its status
+      if (endpoint === 'edge-ping') {
+        setEdgePingStatus("Triggering...");
+      }
+      
       const response = await fetch(`/api/${endpoint}`);
       
       if (!response.ok) {
@@ -67,10 +91,38 @@ export default function PingDebugPage() {
       addLog(`Ping triggered successfully via ${endpoint}`);
       addLog(`Response: ${JSON.stringify(data)}`);
       
+      if (endpoint === 'edge-ping') {
+        setEdgePingStatus(`Active: ${data.nextPingIn}ms until next ping`);
+        // Schedule a status update
+        setTimeout(() => {
+          setEdgePingStatus("Checking status...");
+          fetchPingStats();
+        }, Math.min(data.nextPingIn + 2000, 10000));
+      }
+      
       // Refresh ping stats after a short delay
       setTimeout(fetchPingStats, 1000);
     } catch (err) {
       addLog(`Error triggering ping: ${(err as Error).message}`);
+      if (endpoint === 'edge-ping') {
+        setEdgePingStatus(`Error: ${(err as Error).message}`);
+      }
+    }
+  };
+
+  const testEdgePingConnection = async () => {
+    try {
+      addLog("Testing edge ping cycle connection...");
+      const testUrl = new URL(window.location.origin + '/api/edge-ping');
+      testUrl.searchParams.set('test', 'true');
+      
+      const response = await fetch(testUrl.toString());
+      const data = await response.json();
+      
+      addLog(`Edge function connection test: ${response.ok ? 'SUCCESS' : 'FAILED'}`);
+      addLog(`Response: ${JSON.stringify(data)}`);
+    } catch (err) {
+      addLog(`Edge connection test error: ${(err as Error).message}`);
     }
   };
 
@@ -109,6 +161,12 @@ export default function PingDebugPage() {
     return `${seconds}s`;
   };
 
+  // Format relative time with color coding
+  const formatRelativeTimeWithStatus = (seconds: number) => {
+    const statusClass = seconds > 90 ? 'text-red-600 font-bold' : seconds > 60 ? 'text-orange-500' : 'text-green-600';
+    return <span className={statusClass}>{seconds} seconds ago</span>;
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Ping System Debug</h1>
@@ -133,7 +191,11 @@ export default function PingDebugPage() {
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Time since last ping:</span>
-                <span>{timeSinceLastPing()}</span>
+                {pingStats?.lastPing ? (
+                  formatRelativeTimeWithStatus(Math.floor((Date.now() - pingStats.lastPing) / 1000))
+                ) : (
+                  <span>N/A</span>
+                )}
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Next ping:</span>
@@ -142,6 +204,12 @@ export default function PingDebugPage() {
               <div className="flex justify-between">
                 <span className="font-medium">Time until next ping:</span>
                 <span>{timeUntilNextPing()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Edge ping status:</span>
+                <span className={edgePingStatus.includes("Error") ? "text-red-500" : "text-blue-500"}>
+                  {edgePingStatus}
+                </span>
               </div>
               <div className="flex justify-between mt-4 pt-4 border-t border-gray-100">
                 <span className="font-medium">System timestamp:</span>
@@ -173,6 +241,16 @@ export default function PingDebugPage() {
                 Trigger Edge Ping
               </button>
               <p className="text-xs text-gray-500">Start the self-sustaining ping cycle through the edge function - this is the main ping bootstrap mechanism</p>
+            </div>
+            
+            <div>
+              <button 
+                onClick={() => testEdgePingConnection()} 
+                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-2 px-4 rounded mb-1"
+              >
+                Test Edge Connection
+              </button>
+              <p className="text-xs text-gray-500">Test if the edge function is accessible and responding properly</p>
             </div>
             
             <div>
@@ -221,6 +299,7 @@ export default function PingDebugPage() {
                     <th className="text-left font-medium py-1">Timestamp</th>
                     <th className="text-left font-medium py-1">Last Ping</th>
                     <th className="text-left font-medium py-1">Interval</th>
+                    <th className="text-left font-medium py-1">Since Last</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -241,6 +320,9 @@ export default function PingDebugPage() {
                             : 'Never'}
                         </td>
                         <td className="py-1">{interval}</td>
+                        <td className={`py-1 ${entry.timeSinceLastPing > 90 ? 'text-red-500' : entry.timeSinceLastPing > 60 ? 'text-orange-500' : ''}`}>
+                          {entry.timeSinceLastPing ? `${entry.timeSinceLastPing}s` : 'N/A'}
+                        </td>
                       </tr>
                     );
                   })}
