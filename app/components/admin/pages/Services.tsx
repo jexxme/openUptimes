@@ -1,32 +1,46 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useStatus } from "@/app/hooks/useStatus";
 import { useServicesConfig } from "@/app/hooks/useServicesConfig";
-import { ServicesStats } from "@/app/components/admin/ServicesStats";
 import { ServicesList } from "@/app/components/admin/ServicesList";
 
 interface AdminServicesProps {
   preloadedServices?: any;
   preloadedServicesConfig?: any;
+  setActiveTab?: (tab: string) => void;
 }
 
-export function AdminServices({ preloadedServices, preloadedServicesConfig }: AdminServicesProps) {
+export function AdminServices({ 
+  preloadedServices, 
+  preloadedServicesConfig,
+  setActiveTab 
+}: AdminServicesProps) {
   const router = useRouter();
+  const isFirstRender = useRef(true);
+  
   // Always fetch history data for expandable service details
   const [showHistory, setShowHistory] = useState(true);
   
-  // Get status data using the hooks
+  // We'll skip the initial API fetch if we have preloaded data
+  const hasPreloadedServices = !!preloadedServices && Array.isArray(preloadedServices) && preloadedServices.length > 0;
+  const hasPreloadedConfig = !!preloadedServicesConfig && Array.isArray(preloadedServicesConfig) && preloadedServicesConfig.length > 0;
+  
+  // Get status data using the hooks with initialData from preloaded data
   const { 
     services, 
     loading: statusLoading, 
     error: statusError, 
     lastUpdated, 
     refresh 
-  } = useStatus(showHistory, 60);
+  } = useStatus(
+    showHistory, 
+    60, 
+    hasPreloadedServices ? preloadedServices : undefined
+  );
   
-  // Get services configuration data
+  // Get services configuration data with initialData
   const { 
     services: servicesConfig, 
     loading: servicesConfigLoading, 
@@ -36,29 +50,43 @@ export function AdminServices({ preloadedServices, preloadedServicesConfig }: Ad
     updateService,
     deleteService,
     fetchServices: refreshServicesConfig
-  } = useServicesConfig();
+  } = useServicesConfig(
+    hasPreloadedConfig ? preloadedServicesConfig : undefined
+  );
   
-  // Use preloaded data if available
+  // Track initial render state
   useEffect(() => {
-    if (preloadedServices && statusLoading) {
-      refresh();
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
     }
-    if (preloadedServicesConfig && servicesConfigLoading) {
-      refreshServicesConfig();
-    }
-  }, [preloadedServices, preloadedServicesConfig, statusLoading, servicesConfigLoading, refresh, refreshServicesConfig]);
+  }, []);
 
   // Handle viewing history for a specific service
   const handleViewHistory = (serviceName: string) => {
-    // Navigate to history page with service name
-    router.push(`/admin?tab=history&service=${encodeURIComponent(serviceName)}`);
+    if (setActiveTab) {
+      // Use client-side tab switching
+      setActiveTab("history");
+      
+      // Update URL with the new tab and service parameter
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'history');
+        url.searchParams.set('service', encodeURIComponent(serviceName));
+        window.history.pushState({}, '', url.toString());
+      }
+    } else {
+      // Fallback to traditional navigation
+      router.push(`/admin?tab=history&service=${encodeURIComponent(serviceName)}`);
+    }
   };
 
-  // Use preloaded data or live data
-  const displayServices = preloadedServices && statusLoading ? preloadedServices : services;
-  const displayServicesConfig = preloadedServicesConfig && servicesConfigLoading ? preloadedServicesConfig : servicesConfig;
-  const displayStatusLoading = !preloadedServices && statusLoading;
-  const displayConfigLoading = !preloadedServicesConfig && servicesConfigLoading;
+  // Use preloaded data or live data, prioritizing preloaded data on first render
+  const displayServices = (isFirstRender.current && hasPreloadedServices) ? preloadedServices : services;
+  const displayServicesConfig = (isFirstRender.current && hasPreloadedConfig) ? preloadedServicesConfig : servicesConfig;
+  
+  // Only show loading if no preloaded data available and still loading
+  const displayStatusLoading = statusLoading && !hasPreloadedServices && !isFirstRender.current;
+  const displayConfigLoading = servicesConfigLoading && !hasPreloadedConfig && !isFirstRender.current;
 
   // Handle error rendering
   const renderErrorMessage = () => {
@@ -96,13 +124,7 @@ export function AdminServices({ preloadedServices, preloadedServicesConfig }: Ad
   };
 
   return (
-    <div className="space-y-8">
-      {/* Services stats */}
-      <ServicesStats 
-        servicesConfig={displayServicesConfig} 
-        servicesStatus={displayServices} 
-      />
-      
+    <div className="w-full" style={{ minWidth: "860px" }}>
       {/* Services management */}
       <ServicesList
         services={displayServices}

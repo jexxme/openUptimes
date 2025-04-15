@@ -6,11 +6,13 @@ import { StatusPageContent } from "@/app/components/admin/StatusPageContent";
 interface AdminStatusPageProps {
   preloadedStatusPageData?: any;
   preloadedAppearanceData?: any;
+  setActiveTab?: (tab: string) => void;
 }
 
 export function AdminStatusPage({
   preloadedStatusPageData,
-  preloadedAppearanceData
+  preloadedAppearanceData,
+  setActiveTab
 }: AdminStatusPageProps) {
   const [statusPageSection, setStatusPageSection] = useState("general");
   const [initialized, setInitialized] = useState(false);

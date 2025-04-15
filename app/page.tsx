@@ -142,18 +142,18 @@ function HomeContent() {
               lastUpdated={lastUpdated} 
             />
             
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">Services</h2>
-              <div className="flex items-center gap-2">
+            <div className="mb-6 mt-8 flex items-center justify-between border-b pb-3">
+              <h2 className="text-xl font-semibold text-gray-900">Services</h2>
+              <div className="flex items-center gap-3">
                 <button
                   onClick={refresh}
-                  className="rounded-md p-1 text-gray-500 hover:bg-gray-50"
+                  className="rounded-md p-1.5 text-gray-500 hover:bg-gray-50 border"
                   aria-label="Refresh"
                 >
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
-                    width="16" 
-                    height="16" 
+                    width="20" 
+                    height="20" 
                     viewBox="0 0 24 24" 
                     fill="none" 
                     stroke="currentColor" 
@@ -167,10 +167,10 @@ function HomeContent() {
                 </button>
                 <button
                   onClick={() => setShowHistory(!showHistory)}
-                  className={`rounded-md px-2 py-1 text-xs ${
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
                     showHistory 
-                      ? "bg-blue-50 text-blue-600" 
-                      : "text-gray-500 hover:bg-gray-50"
+                      ? "bg-blue-100 text-blue-700" 
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   {showHistory ? "Hide History" : "Show History"}

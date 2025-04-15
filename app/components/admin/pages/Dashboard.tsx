@@ -1,17 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useStatus } from "@/app/hooks/useStatus";
 import { DashboardContent } from "@/app/components/admin/DashboardContent";
 
 interface AdminDashboardProps {
   preloadedServices?: any;
+  preloadedStatusPageData?: any;
+  preloadedHistoryData?: any;
+  setActiveTab?: (tab: string) => void;
 }
 
-export function AdminDashboard({ preloadedServices }: AdminDashboardProps) {
+export function AdminDashboard({ 
+  preloadedServices, 
+  preloadedStatusPageData,
+  preloadedHistoryData,
+  setActiveTab
+}: AdminDashboardProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [errorRetries, setErrorRetries] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isFirstRender = useRef(true);
   const MAX_ERROR_RETRIES = 3;
   
   // Get status data using the hooks
@@ -21,38 +31,49 @@ export function AdminDashboard({ preloadedServices }: AdminDashboardProps) {
     error: statusError, 
     lastUpdated, 
     refresh 
-  } = useStatus(showHistory, 60);
+  } = useStatus(showHistory, 60, preloadedServices);
 
-  // Use preloaded services for initial render if available
+  // Track if this is the initial render with preloaded data
   useEffect(() => {
-    if (preloadedServices && 
-        Array.isArray(preloadedServices) && 
-        preloadedServices.length > 0 && 
-        statusLoading && 
-        !initialDataLoaded) {
-      // Mark as initialized to prevent repeated refreshes
+    if (isFirstRender.current && preloadedServices) {
+      isFirstRender.current = false;
       setInitialDataLoaded(true);
-      // Trigger a refresh to get the latest data
-      refresh();
     }
-  }, [preloadedServices, statusLoading, refresh, initialDataLoaded]);
+  }, [preloadedServices]);
 
+  // Handle refresh with animation using useCallback to avoid dependency issues
+  const handleRefresh = useCallback(() => {
+    if (isRefreshing || statusLoading) return;
+    
+    setIsRefreshing(true);
+    
+    // Delay the actual refresh to complete animation
+    setTimeout(() => {
+      refresh();
+      
+      // Reset refreshing state after a short delay
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 100);
+    }, 650); // Animation takes ~600ms
+  }, [isRefreshing, statusLoading, refresh]);
+  
   // Auto-retry on error
   useEffect(() => {
     if (statusError && errorRetries < MAX_ERROR_RETRIES) {
       const timer = setTimeout(() => {
         console.log(`Auto-retrying dashboard refresh (${errorRetries + 1}/${MAX_ERROR_RETRIES})...`);
         setErrorRetries(prev => prev + 1);
-        refresh();
+        handleRefresh();
       }, Math.min(1000 * Math.pow(2, errorRetries), 8000)); // Exponential backoff
       
       return () => clearTimeout(timer);
     }
-  }, [statusError, errorRetries, refresh]);
+  }, [statusError, errorRetries, handleRefresh, MAX_ERROR_RETRIES]);
 
-  // Determine what data to display
-  const displayServices = preloadedServices && statusLoading ? preloadedServices : services;
-  const displayLoading = !preloadedServices && statusLoading;
+  // Determine what data to display - prioritize preloaded data on first render
+  const displayServices = (isFirstRender.current && preloadedServices) ? preloadedServices : services;
+  const displayLoading = !preloadedServices && statusLoading && !initialDataLoaded;
   
   // Show a more informative error message
   const getErrorMessage = () => {
@@ -75,7 +96,10 @@ export function AdminDashboard({ preloadedServices }: AdminDashboardProps) {
       statusLoading={displayLoading}
       statusError={getErrorMessage()} 
       lastUpdated={lastUpdated || "Using preloaded data..."} 
-      refresh={refresh}
+      refresh={handleRefresh}
+      statusPageData={preloadedStatusPageData}
+      historyData={preloadedHistoryData}
+      setActiveTab={setActiveTab}
     />
   );
 } 

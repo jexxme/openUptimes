@@ -122,21 +122,21 @@ export function ResetSettings() {
       <Dialog open={isFactoryResetDialogOpen} onOpenChange={setIsFactoryResetDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirm Factory Reset</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xl">Confirm Factory Reset</DialogTitle>
+            <DialogDescription className="text-base mt-2">
               This action will erase all data and cannot be undone.
             </DialogDescription>
           </DialogHeader>
           
           {factoryResetError && (
-            <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-600">{factoryResetError}</p>
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-start">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 font-medium">{factoryResetError}</p>
             </div>
           )}
           
           <div className="space-y-4 p-1">
-            <div className="p-3 bg-amber-50 border border-amber-100 rounded-md">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
               <p className="text-sm text-amber-800 font-medium">
                 To confirm, type "reset" in the field below:
               </p>
@@ -149,30 +149,35 @@ export function ResetSettings() {
                 value={resetConfirmText}
                 onChange={(e) => setResetConfirmText(e.target.value)}
                 placeholder="Type 'reset' to confirm"
+                className="h-10"
               />
             </div>
           </div>
           
-          <DialogFooter className="sm:justify-between">
+          <DialogFooter className="sm:justify-between mt-2">
             <Button 
-              variant="ghost"
+              variant="outline"
+              size="lg"
               onClick={() => {
                 setFactoryResetError("");
                 setResetConfirmText("");
                 setIsFactoryResetDialogOpen(false);
               }}
               disabled={isResettingApplication}
+              className="h-10"
             >
               Cancel
             </Button>
             <Button 
               variant="destructive"
+              size="lg"
               onClick={handleFactoryReset}
               disabled={isResettingApplication || resetConfirmText !== "reset"}
+              className="h-10"
             >
               {isResettingApplication ? (
                 <>
-                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  <div className="h-5 w-5 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                   Resetting...
                 </>
               ) : "Factory Reset"}

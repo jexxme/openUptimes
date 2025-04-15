@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import { SettingsContent } from "@/app/components/admin/SettingsContent";
 
-export function AdminSettings() {
+interface AdminSettingsProps {
+  setActiveTab?: (tab: string) => void;
+}
+
+export function AdminSettings({ setActiveTab }: AdminSettingsProps) {
   const [settingsSection, setSettingsSection] = useState("general");
   const [initialized, setInitialized] = useState(false);
   

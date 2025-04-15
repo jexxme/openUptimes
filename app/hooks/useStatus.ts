@@ -224,7 +224,7 @@ export function useStatus(includeHistory = false, historyLimit = 60, initialData
       const timer = setTimeout(() => {
         console.log(`[useStatus:${instanceId}] Fetching fresh data after using initialData`);
         fetchStatus();
-      }, 3000);
+      }, 30000); // Increased from 3000ms to 30000ms (30 seconds)
       
       return () => clearTimeout(timer);
     } else {

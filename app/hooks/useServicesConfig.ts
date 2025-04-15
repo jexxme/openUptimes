@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ServiceConfig } from '@/lib/config';
 
-export function useServicesConfig() {
-  const [services, setServices] = useState<ServiceConfig[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useServicesConfig(initialData?: ServiceConfig[]) {
+  const [services, setServices] = useState<ServiceConfig[]>(initialData || []);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -169,8 +169,18 @@ export function useServicesConfig() {
 
   // Initial fetch
   useEffect(() => {
-    fetchServices();
-  }, [fetchServices]);
+    // Skip initial fetch if we have initialData
+    if (initialData && initialData.length > 0) {
+      // Schedule a delayed fetch to get fresh data
+      const timer = setTimeout(() => {
+        fetchServices();
+      }, 30000); // Delay refresh by 30 seconds
+      
+      return () => clearTimeout(timer);
+    } else {
+      fetchServices();
+    }
+  }, [fetchServices, initialData]);
 
   return {
     services,

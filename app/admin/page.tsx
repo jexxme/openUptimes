@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 
@@ -71,6 +71,24 @@ export default function AdminPage() {
       window.history.pushState({}, '', url.toString());
     }
   }, [activeTab, isLoaded]);
+
+  // Save preloaded data in a ref to avoid rerenders on tab change
+  const preloadedDataRef = useRef({
+    services: servicesData,
+    servicesConfig: servicesConfigData,
+    statusPage: statusPageData,
+    appearance: appearanceData,
+    history: historyData
+  });
+
+  // Only update preloaded data refs when the data actually changes
+  useEffect(() => {
+    if (servicesData) preloadedDataRef.current.services = servicesData;
+    if (servicesConfigData) preloadedDataRef.current.servicesConfig = servicesConfigData;
+    if (statusPageData) preloadedDataRef.current.statusPage = statusPageData;
+    if (appearanceData) preloadedDataRef.current.appearance = appearanceData;
+    if (historyData) preloadedDataRef.current.history = historyData;
+  }, [servicesData, servicesConfigData, statusPageData, appearanceData, historyData]);
 
   // Preload logo during loading phase
   useEffect(() => {
@@ -403,32 +421,41 @@ export default function AdminPage() {
 
   // Render the appropriate content based on active tab
   const renderContent = () => {
-    // Only pass preloaded data on first render to avoid unnecessary API calls
-    // when switching between tabs
     switch(activeTab) {
       case "dashboard":
         return <AdminDashboard 
-          preloadedServices={isLoaded ? servicesData : null} 
+          preloadedServices={preloadedDataRef.current.services} 
+          preloadedStatusPageData={preloadedDataRef.current.statusPage}
+          preloadedHistoryData={preloadedDataRef.current.history}
+          setActiveTab={setActiveTab}
         />;
       case "services":
         return <AdminServices 
-          preloadedServices={isLoaded ? servicesData : null}
-          preloadedServicesConfig={isLoaded ? servicesConfigData : null}
+          preloadedServices={preloadedDataRef.current.services}
+          preloadedServicesConfig={preloadedDataRef.current.servicesConfig}
+          setActiveTab={setActiveTab}
         />;
       case "statuspage":
         return <AdminStatusPage 
-          preloadedStatusPageData={isLoaded ? statusPageData : null}
-          preloadedAppearanceData={isLoaded ? appearanceData : null}
+          preloadedStatusPageData={preloadedDataRef.current.statusPage}
+          preloadedAppearanceData={preloadedDataRef.current.appearance}
+          setActiveTab={setActiveTab}
         />;
       case "history":
         return <AdminHistory 
-          preloadedHistory={isLoaded ? historyData : null}
+          preloadedHistory={preloadedDataRef.current.history}
+          setActiveTab={setActiveTab}
         />;
       case "settings":
-        return <AdminSettings />;
+        return <AdminSettings 
+          setActiveTab={setActiveTab}
+        />;
       default:
         return <AdminDashboard 
-          preloadedServices={isLoaded ? servicesData : null}
+          preloadedServices={preloadedDataRef.current.services}
+          preloadedStatusPageData={preloadedDataRef.current.statusPage}
+          preloadedHistoryData={preloadedDataRef.current.history}
+          setActiveTab={setActiveTab}
         />;
     }
   };

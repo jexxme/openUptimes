@@ -6,9 +6,10 @@ import { HistoryContent } from "@/app/components/admin/HistoryContent";
 
 interface AdminHistoryProps {
   preloadedHistory?: any;
+  setActiveTab?: (tab: string) => void;
 }
 
-export function AdminHistory({ preloadedHistory }: AdminHistoryProps) {
+export function AdminHistory({ preloadedHistory, setActiveTab }: AdminHistoryProps) {
   const [showHistory, setShowHistory] = useState(true);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [initialDataLoaded, setInitialDataLoaded] = useState(!!preloadedHistory);
