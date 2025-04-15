@@ -21,31 +21,52 @@ export function AdminHistory({ preloadedHistory, setActiveTab }: AdminHistoryPro
     error: statusError, 
     lastUpdated, 
     refresh 
-  } = useStatus(showHistory, 60);
+  } = useStatus(showHistory, 60, preloadedHistory);
   
   // Extract service from URL if present
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const service = urlParams.get('service');
-    if (service) {
-      setSelectedService(service);
-    }
+    const getServiceFromUrl = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const service = urlParams.get('service');
+      if (service) {
+        // Decode the service name if it was encoded
+        try {
+          const decodedService = decodeURIComponent(service);
+          setSelectedService(decodedService);
+        } catch (e) {
+          // If decoding fails, use as-is
+          setSelectedService(service);
+        }
+      }
+    };
+
+    getServiceFromUrl();
+
+    // Also set up a listener for popstate to handle browser back/forward navigation
+    const handlePopState = () => {
+      getServiceFromUrl();
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
   
-  // Use preloaded data to optimize initial loading
+  // Use preloaded data to optimize initial loading and ensure we have latest data
   useEffect(() => {
-    if (preloadedHistory && statusLoading && !initialDataLoaded) {
+    if ((!initialDataLoaded && preloadedHistory) || selectedService) {
       // Set flag to prevent infinite loop
       setInitialDataLoaded(true);
       // Trigger a refresh to get the latest data
-      refresh();
+      setTimeout(() => {
+        refresh();
+      }, 300);
     }
-  }, [preloadedHistory, statusLoading, initialDataLoaded, refresh]);
+  }, [preloadedHistory, initialDataLoaded, refresh, selectedService]);
   
   return (
     <HistoryContent
       services={services}
-      statusLoading={!preloadedHistory && statusLoading}
+      statusLoading={statusLoading && (!preloadedHistory || services.length === 0)}
       statusError={statusError} 
       lastUpdated={lastUpdated || "Using preloaded data..."} 
       refresh={refresh}

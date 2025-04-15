@@ -54,12 +54,19 @@ export function AdminServices({
     hasPreloadedConfig ? preloadedServicesConfig : undefined
   );
   
-  // Track initial render state
+  // Track initial render state and refresh data on mount
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      
+      // Automatically refresh data on initial mount
+      // This ensures complete data for uptime calculations
+      setTimeout(() => {
+        refresh();
+        refreshServicesConfig();
+      }, 500);
     }
-  }, []);
+  }, [refresh, refreshServicesConfig]);
 
   // Handle viewing history for a specific service
   const handleViewHistory = (serviceName: string) => {
@@ -80,13 +87,13 @@ export function AdminServices({
     }
   };
 
-  // Use preloaded data or live data, prioritizing preloaded data on first render
-  const displayServices = (isFirstRender.current && hasPreloadedServices) ? preloadedServices : services;
-  const displayServicesConfig = (isFirstRender.current && hasPreloadedConfig) ? preloadedServicesConfig : servicesConfig;
+  // Use preloaded data or live data, prioritizing live data after first refresh
+  const displayServices = services.length > 0 ? services : preloadedServices;
+  const displayServicesConfig = servicesConfig.length > 0 ? servicesConfig : preloadedServicesConfig;
   
-  // Only show loading if no preloaded data available and still loading
-  const displayStatusLoading = statusLoading && !hasPreloadedServices && !isFirstRender.current;
-  const displayConfigLoading = servicesConfigLoading && !hasPreloadedConfig && !isFirstRender.current;
+  // Only show loading if no data available and still loading
+  const displayStatusLoading = statusLoading && !displayServices?.length;
+  const displayConfigLoading = servicesConfigLoading && !displayServicesConfig?.length;
 
   // Handle error rendering
   const renderErrorMessage = () => {
@@ -124,26 +131,28 @@ export function AdminServices({
   };
 
   return (
-    <div className="w-full" style={{ minWidth: "860px" }}>
-      {/* Services management */}
-      <ServicesList
-        services={displayServices}
-        servicesConfig={displayServicesConfig}
-        statusLoading={displayStatusLoading}
-        servicesConfigLoading={displayConfigLoading}
-        statusError={statusError}
-        servicesConfigError={servicesConfigError}
-        isUpdating={isUpdating}
-        lastUpdated={lastUpdated || "Using preloaded data..."}
-        refreshServicesConfig={refreshServicesConfig}
-        refresh={refresh}
-        addService={addService}
-        updateService={updateService}
-        deleteService={deleteService}
-        onViewHistory={handleViewHistory}
-      />
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[1000px] w-full">
+        {/* Services management */}
+        <ServicesList
+          services={displayServices}
+          servicesConfig={displayServicesConfig}
+          statusLoading={displayStatusLoading}
+          servicesConfigLoading={displayConfigLoading}
+          statusError={statusError}
+          servicesConfigError={servicesConfigError}
+          isUpdating={isUpdating}
+          lastUpdated={lastUpdated || "Using preloaded data..."}
+          refreshServicesConfig={refreshServicesConfig}
+          refresh={refresh}
+          addService={addService}
+          updateService={updateService}
+          deleteService={deleteService}
+          onViewHistory={handleViewHistory}
+        />
 
-      {renderErrorMessage()}
+        {renderErrorMessage()}
+      </div>
     </div>
   );
 } 
