@@ -11,67 +11,133 @@ export type ServiceStatus = {
 
 // Create and initialize Redis client
 let redisClient: RedisClientType | null = null;
+let isConnecting = false;
+let connectionPromise: Promise<RedisClientType> | null = null;
 
-// Initialize Redis client
+// Initialize Redis client with improved connection handling
 export const getRedisClient = async (): Promise<RedisClientType> => {
-  if (!redisClient) {
-    if (!process.env.REDIS_URL) {
-      console.error('REDIS_URL environment variable is not set');
-      throw new Error('REDIS_URL environment variable is not set');
-    }
-    
+  // If client exists and is open, return it
+  if (redisClient && redisClient.isOpen) {
     try {
-      redisClient = createClient({
-        url: process.env.REDIS_URL,
-        socket: {
-          reconnectStrategy: (retries) => {
-            return Math.min(retries * 100, 3000); // Increasing delay up to 3s
-          }
-        }
-      });
-      
-      // Handle connection events
-      redisClient.on('connect', () => {
-        console.log('Redis client connecting...');
-      });
-      
-      redisClient.on('ready', () => {
-        console.log('Redis client ready and connected');
-      });
-      
-      // Handle connection errors
-      redisClient.on('error', (err) => {
-        console.error('Redis connection error:', err);
-      });
-      
-      redisClient.on('end', () => {
-        console.log('Redis connection ended, client will be reinitialized on next request');
-        redisClient = null;
-      });
-      
-      await redisClient.connect();
-      console.log('Redis client connected successfully');
+      // Verify connection is alive
+      await redisClient.ping();
+      return redisClient;
     } catch (error) {
-      console.error('Failed to initialize Redis client:', error);
-      redisClient = null;
-      throw error;
+      console.warn('Redis client ping failed, reconnecting...', error);
+      // Continue to reconnection code
     }
   }
+
+  // If already connecting, wait for that connection instead of starting a new one
+  if (isConnecting && connectionPromise) {
+    try {
+      return await connectionPromise;
+    } catch (error) {
+      console.error('Shared connection attempt failed:', error);
+      // Fall through to create a new connection
+    }
+  }
+
+  // Set connecting flag and create a new connection
+  isConnecting = true;
   
-  return redisClient;
+  try {
+    // Create connection promise
+    connectionPromise = (async () => {
+      if (!process.env.REDIS_URL) {
+        console.error('REDIS_URL environment variable is not set');
+        throw new Error('REDIS_URL environment variable is not set');
+      }
+      
+      try {
+        // Clean up old client if it exists
+        if (redisClient) {
+          try {
+            await redisClient.quit().catch(() => {});
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          redisClient = null;
+        }
+        
+        // Create new client
+        const newClient = createClient({
+          url: process.env.REDIS_URL,
+          socket: {
+            connectTimeout: 5000, // 5s connection timeout
+            reconnectStrategy: (retries) => {
+              const delay = Math.min(retries * 100, 3000);
+              console.log(`Redis reconnecting in ${delay}ms (attempt ${retries})`);
+              return delay; // Increasing delay up to 3s
+            }
+          }
+        });
+        
+        // Handle connection events
+        newClient.on('connect', () => {
+          console.log('Redis client connecting...');
+        });
+        
+        newClient.on('ready', () => {
+          console.log('Redis client ready and connected');
+        });
+        
+        // Handle errors
+        newClient.on('error', (err) => {
+          console.error('Redis connection error:', err);
+        });
+        
+        newClient.on('end', () => {
+          console.log('Redis connection ended');
+          // Only reset if this is the current client
+          if (redisClient === newClient) {
+            redisClient = null;
+          }
+        });
+        
+        await newClient.connect();
+        console.log('Redis client connected successfully');
+        
+        // Store the new client
+        redisClient = newClient;
+        return newClient;
+      } catch (error) {
+        console.error('Failed to initialize Redis client:', error);
+        throw error;
+      }
+    })();
+    
+    // Wait for the connection and return the client
+    const client = await connectionPromise;
+    return client;
+  } catch (error) {
+    throw error;
+  } finally {
+    // Reset connection state
+    isConnecting = false;
+    connectionPromise = null;
+  }
 };
 
-// Close Redis connection - important for serverless environments
+/**
+ * Close Redis connection - now implemented with a delayed closure
+ * to avoid closing connections that are still in use
+ */
 export async function closeRedisConnection(): Promise<void> {
   if (redisClient) {
-    try {
-      await redisClient.quit();
-      console.log('Redis connection closed');
-    } catch (error) {
-      console.error('Error closing Redis connection:', error);
-    } finally {
-      redisClient = null;
-    }
+    // Schedule connection closure after a delay to allow pending operations to complete
+    setTimeout(async () => {
+      try {
+        if (redisClient && redisClient.isOpen) {
+          await redisClient.quit();
+          console.log('Redis connection closed after timeout');
+        }
+      } catch (error) {
+        console.error('Error in delayed Redis connection closure:', error);
+      }
+    }, 1000); // 1 second delay
+    
+    console.log('Redis connection scheduled for closure');
   }
 }
 

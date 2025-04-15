@@ -108,10 +108,13 @@ export function useStatus(includeHistory = false, historyLimit = 60, initialData
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
-        }
-      }).then(response => {
+        },
+        // Add a longer timeout for the fetch
+        signal: AbortSignal.timeout(10000) // 10 seconds timeout
+      }).then(async response => {
         if (!response.ok) {
-          throw new Error(`Failed to fetch status: ${response.status}`);
+          const errorText = await response.text().catch(() => 'Unknown error');
+          throw new Error(`Failed to fetch status: ${response.status}${errorText ? ` - ${errorText}` : ''}`);
         }
         return response.json();
       });
@@ -136,23 +139,45 @@ export function useStatus(includeHistory = false, historyLimit = 60, initialData
       };
     } catch (err) {
       console.error(`[useStatus:${instanceId}] Error fetching status:`, err);
+      
+      // If we still have valid cache data, use it despite the error
+      if (globalCache && globalCache.data.length > 0) {
+        console.log(`[useStatus:${instanceId}] Using stale cache data after error`);
+        setServices(globalCache.data);
+        setLastUpdated(`${globalCache.lastUpdated} (stale)`);
+      }
+      
       setError((err as Error).message);
       
       // If we haven't exceeded max retries, try again
       if (retryCount < maxRetries) {
-        console.log(`[useStatus:${instanceId}] Retry attempt ${retryCount + 1} of ${maxRetries}`);
-        setRetryCount(prev => prev + 1);
+        const nextRetry = retryCount + 1;
+        console.log(`[useStatus:${instanceId}] Scheduling retry ${nextRetry} of ${maxRetries}`);
+        setRetryCount(nextRetry);
+        
+        // Exponential backoff for retries
+        const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 8000);
+        console.log(`[useStatus:${instanceId}] Will retry in ${backoffTime}ms`);
         
         // Only ping if we haven't pinged recently
         if (Date.now() - pingRequestTimestamp > 5000) {
           pingRequestTimestamp = Date.now();
           try {
-            await fetch('/api/ping');
-            console.log(`[useStatus:${instanceId}] Ping successful, fetching status data`);
+            // Try to trigger a service check
+            console.log(`[useStatus:${instanceId}] Triggering ping to refresh service data`);
+            await fetch('/api/ping', { 
+              signal: AbortSignal.timeout(5000),
+              headers: {
+                'Cache-Control': 'no-cache'
+              }
+            });
+            console.log(`[useStatus:${instanceId}] Ping successful`);
           } catch (pingErr) {
             console.error(`[useStatus:${instanceId}] Ping attempt failed:`, pingErr);
           }
         }
+      } else {
+        console.log(`[useStatus:${instanceId}] Maximum retries (${maxRetries}) exceeded`);
       }
     } finally {
       setLoading(false);
@@ -163,14 +188,18 @@ export function useStatus(includeHistory = false, historyLimit = 60, initialData
   // Retry logic for initial load
   useEffect(() => {
     if (retryCount > 0 && retryCount <= maxRetries) {
+      // Exponential backoff for retries
+      const retryDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 8000);
+      
+      console.log(`[useStatus:${instanceId}] Scheduled retry ${retryCount} of ${maxRetries} in ${retryDelay}ms`);
       const retryTimer = setTimeout(() => {
         console.log(`[useStatus:${instanceId}] Executing retry ${retryCount} of ${maxRetries}`);
         fetchStatus(true); // Force refresh on retry
-      }, 2000 * retryCount); // Increase wait time for subsequent retries
+      }, retryDelay);
       
       return () => clearTimeout(retryTimer);
     }
-  }, [retryCount, fetchStatus, instanceId]);
+  }, [retryCount, fetchStatus, instanceId, maxRetries]);
 
   // Initial fetch
   useEffect(() => {

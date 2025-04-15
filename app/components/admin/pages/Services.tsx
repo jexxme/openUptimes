@@ -14,7 +14,8 @@ interface AdminServicesProps {
 
 export function AdminServices({ preloadedServices, preloadedServicesConfig }: AdminServicesProps) {
   const router = useRouter();
-  const [showHistory, setShowHistory] = useState(false);
+  // Always fetch history data for expandable service details
+  const [showHistory, setShowHistory] = useState(true);
   
   // Get status data using the hooks
   const { 

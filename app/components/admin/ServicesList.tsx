@@ -11,7 +11,11 @@ import {
   Trash2, 
   AlertTriangle,
   ExternalLink,
-  History
+  History,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Calendar
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -56,6 +60,7 @@ export function ServicesList({
   const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceConfig | undefined>(undefined);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [expandedServices, setExpandedServices] = useState<Record<string, boolean>>({});
 
   const handleAddService = async (service: ServiceConfig) => {
     return await addService(service);
@@ -96,6 +101,74 @@ export function ServicesList({
         (service.description && service.description.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : servicesConfig;
+
+  // Toggle service expansion
+  const toggleServiceExpansion = (serviceName: string) => {
+    setExpandedServices(prev => ({
+      ...prev,
+      [serviceName]: !prev[serviceName]
+    }));
+  };
+
+  // Calculate uptime percentage and duration
+  const calculateUptimeStats = (serviceData: any) => {
+    if (!serviceData || !serviceData.history || serviceData.history.length === 0) {
+      return { uptimePercentage: null, onlineSince: null };
+    }
+
+    // Calculate uptime percentage
+    const totalChecks = serviceData.history.length;
+    const upChecks = serviceData.history.filter((item: any) => item.status === "up").length;
+    const uptimePercentage = (upChecks / totalChecks) * 100;
+
+    // Find when the service came online (last continuous period of uptime)
+    let onlineSince = null;
+    if (serviceData.currentStatus?.status === "up") {
+      // Start from the most recent history entry and work backwards
+      for (let i = 0; i < serviceData.history.length; i++) {
+        if (serviceData.history[i].status !== "up") {
+          // Found the transition point, use the next entry (which is "up")
+          if (i > 0) {
+            onlineSince = new Date(serviceData.history[i - 1].timestamp);
+          }
+          break;
+        }
+        
+        // If we reached the end and all are "up", use the oldest entry
+        if (i === serviceData.history.length - 1) {
+          onlineSince = new Date(serviceData.history[i].timestamp);
+        }
+      }
+    }
+
+    return { uptimePercentage, onlineSince };
+  };
+
+  // Format the "online since" time in a human-readable way
+  const formatOnlineSince = (timestamp: Date | null) => {
+    if (!timestamp) return "N/A";
+    
+    const now = new Date();
+    const diffMs = now.getTime() - timestamp.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    
+    if (diffSeconds < 60) {
+      return `${diffSeconds} seconds`;
+    }
+    
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) {
+      return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'}`;
+    }
+    
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours} hour${diffHours === 1 ? '' : 's'}`;
+    }
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
+  };
 
   return (
     <Card className="overflow-hidden border">
@@ -192,77 +265,246 @@ export function ServicesList({
               const statusData = services.find(s => s.name === service.name);
               const status = statusData?.currentStatus?.status || "unknown";
               const responseTime = statusData?.currentStatus?.responseTime;
+              const { uptimePercentage, onlineSince } = calculateUptimeStats(statusData);
+              const isExpanded = expandedServices[service.name] || false;
               
               return (
-                <div key={service.name} className="flex items-center justify-between p-4 bg-white rounded-lg border hover:shadow-sm transition-shadow duration-200">
-                  <div className="flex items-start space-x-4 flex-1 min-w-0">
-                    <div className={`h-3 w-3 mt-1.5 flex-shrink-0 rounded-full ${
-                      status === "up" ? "bg-emerald-500" : 
-                      status === "down" ? "bg-red-500" : 
-                      "bg-gray-300"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center">
-                        <h3 className="font-medium truncate">{service.name}</h3>
-                        {responseTime && (
-                          <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">
-                            {responseTime}ms
-                          </span>
-                        )}
-                        <div className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium
-                          ${status === "up" ? "bg-emerald-100 text-emerald-700" : 
-                            status === "down" ? "bg-red-100 text-red-700" : 
-                            "bg-slate-100 text-slate-700"}
-                        `}>
-                          {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
+                <div 
+                  key={service.name} 
+                  className="bg-white rounded-lg border hover:shadow-sm transition-shadow duration-200 overflow-hidden"
+                >
+                  <div 
+                    className="flex items-center justify-between p-4 cursor-pointer"
+                    onClick={() => toggleServiceExpansion(service.name)}
+                  >
+                    <div className="flex items-start space-x-4 flex-1 min-w-0">
+                      <div className={`h-3 w-3 mt-1.5 flex-shrink-0 rounded-full ${
+                        status === "up" ? "bg-emerald-500" : 
+                        status === "down" ? "bg-red-500" : 
+                        "bg-gray-300"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center">
+                          <h3 className="font-medium truncate">{service.name}</h3>
+                          {responseTime && (
+                            <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">
+                              {responseTime}ms
+                            </span>
+                          )}
+                          <div className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium
+                            ${status === "up" ? "bg-emerald-100 text-emerald-700" : 
+                              status === "down" ? "bg-red-100 text-red-700" : 
+                              "bg-slate-100 text-slate-700"}
+                          `}>
+                            {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
+                          </div>
                         </div>
+                        <div className="text-sm text-slate-500 truncate mt-1">
+                          <a 
+                            href={service.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center hover:text-blue-600"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {service.url}
+                            <ExternalLink className="h-3 w-3 ml-1" />
+                          </a>
+                        </div>
+                        {service.description && (
+                          <p className="text-xs text-slate-500 mt-1">{service.description}</p>
+                        )}
                       </div>
-                      <div className="text-sm text-slate-500 truncate mt-1">
-                        <a 
-                          href={service.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center hover:text-blue-600"
-                        >
-                          {service.url}
-                          <ExternalLink className="h-3 w-3 ml-1" />
-                        </a>
-                      </div>
-                      {service.description && (
-                        <p className="text-xs text-slate-500 mt-1">{service.description}</p>
+                    </div>
+                    <div className="flex items-center space-x-2 ml-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:text-blue-600 hover:bg-blue-50"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewHistory?.(service.name);
+                        }}
+                        title="View History"
+                      >
+                        <History className="h-4 w-4" />
+                        <span className="sr-only">History</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditDialog(service);
+                        }}
+                        title="Edit Service"
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:text-red-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteDialog(service);
+                        }}
+                        title="Delete Service"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-slate-400" />
                       )}
                     </div>
                   </div>
-                  <div className="flex space-x-2 ml-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:text-blue-600 hover:bg-blue-50"
-                      onClick={() => onViewHistory?.(service.name)}
-                      title="View History"
-                    >
-                      <History className="h-4 w-4" />
-                      <span className="sr-only">History</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => openEditDialog(service)}
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:text-red-600 hover:bg-red-50"
-                      onClick={() => openDeleteDialog(service)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  </div>
+                  
+                  {/* Expanded details section */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 pt-0 border-t border-slate-100">
+                      <div className="ml-7 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Metadata section */}
+                        <div className="bg-slate-50 p-3 rounded-md">
+                          <h4 className="text-sm font-medium mb-2 text-slate-700">Service Metadata</h4>
+                          <div className="space-y-2 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Expected Status:</span>
+                              <span className="font-medium">{service.expectedStatus || 200}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Visible on Status Page:</span>
+                              <span className="font-medium">{service.visible ? 'Yes' : 'No'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Last Check:</span>
+                              <span className="font-medium">
+                                {statusData?.currentStatus?.timestamp 
+                                  ? new Date(statusData.currentStatus.timestamp).toLocaleString() 
+                                  : 'N/A'}
+                              </span>
+                            </div>
+                            {statusData?.currentStatus?.statusCode && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Status Code:</span>
+                                <span className="font-medium">{statusData.currentStatus.statusCode}</span>
+                              </div>
+                            )}
+                            {statusData?.currentStatus?.error && (
+                              <div className="mt-2">
+                                <span className="text-slate-600 block mb-1">Last Error:</span>
+                                <span className="font-medium text-red-600 text-xs block p-1 bg-red-50 rounded overflow-auto">
+                                  {statusData.currentStatus.error}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Uptime & Statistics section */}
+                        <div className="bg-slate-50 p-3 rounded-md">
+                          <h4 className="text-sm font-medium mb-2 text-slate-700">Uptime Statistics</h4>
+                          <div className="space-y-3">
+                            {uptimePercentage !== null && (
+                              <div className="mb-3">
+                                <div className="flex justify-between text-xs mb-1">
+                                  <span className="text-slate-600">Uptime</span>
+                                  <span className="font-medium">{uptimePercentage.toFixed(2)}%</span>
+                                </div>
+                                <div className="relative w-full bg-slate-200 rounded-full h-2">
+                                  <div 
+                                    className={`absolute top-0 left-0 h-2 rounded-full ${
+                                      uptimePercentage > 99 ? 'bg-emerald-500' : 
+                                      uptimePercentage > 95 ? 'bg-green-500' : 
+                                      uptimePercentage > 90 ? 'bg-yellow-500' : 
+                                      'bg-red-500'
+                                    }`}
+                                    style={{ width: `${Math.min(100, uptimePercentage)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {status === 'up' && (
+                              <div className="flex items-start text-xs">
+                                <Clock className="h-3.5 w-3.5 text-emerald-600 mt-0.5 mr-1.5" />
+                                <div>
+                                  <span className="text-slate-600 block">Online since:</span>
+                                  <span className="font-medium text-emerald-700">
+                                    {onlineSince ? (
+                                      <>
+                                        {formatOnlineSince(onlineSince)} 
+                                        <span className="text-slate-500 ml-1">
+                                          ({onlineSince.toLocaleString()})
+                                        </span>
+                                      </>
+                                    ) : (
+                                      'Unknown'
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {statusData?.history && statusData.history.length > 0 && (
+                              <div className="mt-2">
+                                <div className="flex items-center justify-between text-xs mb-1">
+                                  <span className="text-slate-600">Response Time (Last 10 checks)</span>
+                                  <button
+                                    className="text-blue-600 hover:underline text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onViewHistory?.(service.name);
+                                    }}
+                                  >
+                                    View Details
+                                  </button>
+                                </div>
+                                <div className="flex h-10 items-end justify-between space-x-0.5 overflow-hidden">
+                                  {statusData.history.slice(0, 10).map((check: any, index: number) => {
+                                    // Calculate bar height based on response time
+                                    // Normalize between 5% and 100%
+                                    const maxTime = Math.max(...statusData.history.slice(0, 10)
+                                      .filter((c: any) => c.responseTime)
+                                      .map((c: any) => c.responseTime || 0));
+                                    
+                                    const height = check.responseTime 
+                                      ? Math.max(5, Math.min(100, (check.responseTime / maxTime) * 100)) 
+                                      : 5;
+                                    
+                                    return (
+                                      <div 
+                                        key={index} 
+                                        className="group relative flex-1 cursor-pointer"
+                                        title={`${new Date(check.timestamp).toLocaleString()}: ${check.responseTime || 'N/A'}ms`}
+                                      >
+                                        <div 
+                                          className={`w-full ${
+                                            check.status === 'up' ? 'bg-emerald-400' : 
+                                            check.status === 'down' ? 'bg-red-400' : 
+                                            'bg-gray-300'
+                                          } rounded-sm hover:opacity-80`}
+                                          style={{ height: `${height}%` }}
+                                        />
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-10 transition-opacity duration-200">
+                                          {check.responseTime ? `${check.responseTime}ms` : 'N/A'}
+                                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-t-slate-800 border-l-transparent border-r-transparent"></div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
