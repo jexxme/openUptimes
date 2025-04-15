@@ -82,18 +82,37 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Protect debug routes in production
-  if (pathname.startsWith('/debug') && process.env.NODE_ENV === 'production') {
+  // Protect debug routes in all environments
+  if (pathname.startsWith('/debug')) {
+    // In development, bypass auth check if not required
+    if (process.env.NODE_ENV === 'development' && process.env.REQUIRE_AUTH_IN_DEV !== 'true') {
+      return NextResponse.next();
+    }
+    
     // Check if user is authenticated
     const cookieHeader = request.headers.get('cookie') || '';
     const token = parseTokenFromCookie(cookieHeader);
     
     if (!token) {
-      // Redirect to 404 if no token found
-      return NextResponse.redirect(new URL('/404', request.url));
+      // Redirect to login page
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('from', pathname);
+      return NextResponse.redirect(url);
     }
     
-    // Allow access for authenticated users
+    // In development, check against in-memory session
+    if (process.env.NODE_ENV === 'development') {
+      if (!activeSessions.has(token)) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        url.searchParams.set('from', pathname);
+        return NextResponse.redirect(url);
+      }
+      return NextResponse.next();
+    }
+    
+    // For production, allow the request to continue to be checked by API route
     return NextResponse.next();
   }
   

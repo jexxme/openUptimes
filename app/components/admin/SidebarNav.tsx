@@ -273,35 +273,6 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
             />
           </motion.div>
         </motion.div>
-        
-        {/* Show debug section in development or when logo clicked 5 times */}
-        {(isDev || showDebug) && (
-          <motion.div 
-            variants={sectionVariants}
-            initial="hidden"
-            animate="visible"
-            transition={{ delay: 0.2 }}
-            className="mt-8 space-y-1"
-          >
-            <motion.div 
-              variants={itemVariants}
-              className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-3 ml-3 flex items-center"
-            >
-              <span className="pr-2 opacity-80">Development</span>
-              <div className="flex-grow h-px bg-sidebar-border/30"></div>
-            </motion.div>
-            
-            <motion.div variants={itemVariants}>
-              <Link href="/debug/ping" target="_blank">
-                <NavButton 
-                  icon={Bug} 
-                  label="Ping Debug" 
-                  onClick={() => {}} 
-                />
-              </Link>
-            </motion.div>
-          </motion.div>
-        )}
       </div>
       
       <div className="mt-auto border-t border-sidebar-border/80 p-4 space-y-3 bg-sidebar/95 relative">

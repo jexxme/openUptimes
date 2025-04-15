@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Settings, Shield, Trash2 } from "lucide-react";
+import { Settings, Shield, Trash2, Bug } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 
 // Import settings section components
 import { GeneralSettings } from "./settings/GeneralSettings";
 import { SecuritySettings } from "./settings/SecuritySettings";
+import { DebugSettings } from "./settings/DebugSettings";
 import { ResetSettings } from "./settings/ResetSettings";
 
 interface SettingsContentProps {
@@ -18,6 +19,7 @@ export function SettingsContent({ activeSection = "general" }: SettingsContentPr
   // Memoize section to tab mapping to prevent unnecessary recalculations  
   const sectionTabValue = useMemo(() => {
     return activeSection === "security" ? "security" : 
+           activeSection === "debug" ? "debug" :
            activeSection === "reset" ? "reset" : "general";
   }, [activeSection]);
   
@@ -33,6 +35,7 @@ export function SettingsContent({ activeSection = "general" }: SettingsContentPr
   const [tabsVisited, setTabsVisited] = useState<Record<string, boolean>>({
     general: currentTab === "general",
     security: currentTab === "security",
+    debug: currentTab === "debug",
     reset: currentTab === "reset",
   });
   
@@ -100,6 +103,10 @@ export function SettingsContent({ activeSection = "general" }: SettingsContentPr
               <Shield className="h-4 w-4" />
               <span>Security</span>
             </TabsTrigger>
+            <TabsTrigger value="debug" className="flex items-center gap-2">
+              <Bug className="h-4 w-4" />
+              <span>Debug</span>
+            </TabsTrigger>
             <TabsTrigger value="reset" className="flex items-center gap-2">
               <Trash2 className="h-4 w-4" />
               <span>Reset</span>
@@ -119,6 +126,11 @@ export function SettingsContent({ activeSection = "general" }: SettingsContentPr
           <TabsContent value="security">
             <p className="mb-4 text-sm text-muted-foreground">Manage admin password and authentication</p>
             <SecuritySettings />
+          </TabsContent>
+          
+          <TabsContent value="debug">
+            <p className="mb-4 text-sm text-muted-foreground">Access system diagnostic tools</p>
+            <DebugSettings />
           </TabsContent>
           
           <TabsContent value="reset">

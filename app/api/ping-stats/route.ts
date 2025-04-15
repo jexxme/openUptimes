@@ -1,71 +1,86 @@
 import { NextResponse } from 'next/server';
-import { getPingStats, getRedisClient, closeRedisConnection } from '@/lib/redis';
+import { getRedisClient, closeRedisConnection } from '@/lib/redis';
 
 /**
- * API handler for /api/ping-stats
- * Returns statistics about the last ping and the next scheduled ping
+ * API endpoint to get current ping statistics
  */
 export async function GET() {
   try {
-    // Get ping stats from Redis helper
-    const stats = await getPingStats();
-    
-    // Get additional information
     const client = await getRedisClient();
     
-    // Get the last cycle ID that triggered a ping
-    const lastCycleId = await client.get('stats:last-cycle-id');
+    // Get ping times
+    const [lastPing, nextPing] = await Promise.all([
+      client.get('ping:last'),
+      client.get('ping:next')
+    ]);
     
-    // Get latest ping event info
-    const pingEvents = await client.lRange('stats:ping-events', 0, 10) || [];
-    const events = pingEvents.map((event: string) => {
-      try {
-        return JSON.parse(event);
-      } catch (e) {
-        return null;
-      }
-    }).filter(Boolean);
+    // Get ping history
+    const pingHistory = await client.lRange('ping:history', 0, 9);
+    const parsedPingHistory = pingHistory.map((entry: string) => JSON.parse(entry));
     
-    // Calculate countdown to next ping
-    const nextPingCountdown = stats.nextPing ? Math.max(0, stats.nextPing - Date.now()) : null;
+    // Get recent service statuses
+    const services = await client.get('config:services');
+    let serviceStatuses = [];
     
-    // Get site config for reference
-    const configStr = await client.get('config:site');
-    let refreshInterval = 60000; // Default to 60s
-    
-    if (configStr) {
-      const config = JSON.parse(configStr);
-      refreshInterval = config.refreshInterval || 60000;
+    if (services) {
+      const serviceList = JSON.parse(services);
+      
+      // Gather statuses for each service
+      const statusPromises = serviceList.map(async (service: { name: string }) => {
+        const status = await client.get(`status:${service.name}`);
+        return status ? JSON.parse(status) : null;
+      });
+      
+      serviceStatuses = await Promise.all(statusPromises);
     }
     
     // Close Redis connection
     await closeRedisConnection();
     
-    // Calculate if the ping should have occurred but didn't
-    const isOverdue = stats.nextPing && Date.now() > stats.nextPing + 10000; // 10s grace period
+    // Calculate time until next ping
+    const now = Date.now();
+    const nextPingTime = nextPing ? parseInt(nextPing, 10) : null;
+    const nextPingIn = nextPingTime ? Math.max(0, nextPingTime - now) : null;
+    
+    // Recent ping interval trends
+    let intervalTrend = null;
+    if (parsedPingHistory.length >= 2) {
+      const intervals = [];
+      for (let i = 0; i < parsedPingHistory.length - 1; i++) {
+        const interval = parsedPingHistory[i].timestamp - parsedPingHistory[i+1].timestamp;
+        intervals.push(interval);
+      }
+      
+      const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+      
+      intervalTrend = {
+        average: Math.round(avgInterval),
+        min: Math.min(...intervals),
+        max: Math.max(...intervals)
+      };
+    }
     
     return NextResponse.json({
-      lastPing: stats.lastPing,
-      nextPing: stats.nextPing,
-      nextPingCountdown,
-      isOverdue,
-      lastCycleId,
-      pingEvents: events.slice(0, 5), // Just send the 5 most recent
-      refreshInterval,
-      now: Date.now()
+      lastPing: lastPing ? parseInt(lastPing, 10) : null,
+      nextPing: nextPingTime,
+      nextPingIn,
+      serviceStatuses,
+      recentHistory: parsedPingHistory,
+      intervalTrend,
+      currentTime: now
     });
   } catch (error) {
     console.error('Error fetching ping stats:', error);
     
-    // Close Redis connection on error
+    // Ensure Redis connection is closed on error
     try {
       await closeRedisConnection();
-    } catch (e) {
-      console.error('Error closing Redis connection:', e);
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
     }
     
     return NextResponse.json(
-      { error: 'Failed to fetch ping stats', message: (error as Error).message },
+      { error: 'Failed to fetch ping statistics', message: (error as Error).message },
       { status: 500 }
     );
   }

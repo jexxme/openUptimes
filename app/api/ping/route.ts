@@ -1,24 +1,164 @@
 import { NextResponse } from 'next/server';
-import { setServiceStatus, appendServiceHistory, closeRedisConnection, ServiceStatus, getRedisClient } from '@/lib/redis';
-import { ServiceConfig } from '@/lib/config';
+import { getRedisClient, closeRedisConnection } from '@/lib/redis';
+
+// Global state to track ping loop
+let pingLoopActive = false;
+let lastScheduledTime = 0;
+let scheduledTimeout: NodeJS.Timeout | null = null;
 
 /**
- * Get all services from Redis
+ * Single endpoint that handles both service checking and scheduling
+ * 
+ * - Checks all services and updates their status in Redis
+ * - Self-schedules the next ping based on configured interval
+ * - Can be manually triggered or restarted via query parameters
  */
-async function getServicesFromRedis(): Promise<ServiceConfig[]> {
-  try {
-    const client = await getRedisClient();
-    const services = await client.get('config:services');
+export async function GET(request: Request) {
+  const startTime = Date.now();
+  const url = new URL(request.url);
+  const action = url.searchParams.get('action');
+  
+  // Status check - return current ping loop state
+  if (action === 'status') {
+    try {
+      const client = await getRedisClient();
+      const [lastPing, nextPing] = await Promise.all([
+        client.get('ping:last'),
+        client.get('ping:next')
+      ]);
+      
+      await closeRedisConnection();
+      
+      return NextResponse.json({
+        pingLoopActive,
+        lastPing: lastPing ? parseInt(lastPing, 10) : null,
+        nextPing: nextPing ? parseInt(nextPing, 10) : null,
+        lastScheduledTime,
+        currentTime: Date.now()
+      });
+    } catch (error) {
+      console.error('Error getting ping status:', error);
+      return NextResponse.json(
+        { error: 'Failed to get ping status', message: (error as Error).message },
+        { status: 500 }
+      );
+    }
+  }
+  
+  // Stop the ping loop
+  if (action === 'stop') {
+    if (scheduledTimeout) {
+      clearTimeout(scheduledTimeout);
+      scheduledTimeout = null;
+    }
+    pingLoopActive = false;
+    console.log('Ping loop stopped');
     
-    if (!services) {
-      // If Redis is empty, return empty array
-      return [];
+    return NextResponse.json({
+      status: 'success',
+      message: 'Ping loop stopped',
+      timestamp: Date.now()
+    });
+  }
+  
+  console.log(`[Ping] Started at ${new Date(startTime).toISOString()}`);
+  
+  try {
+    // Get site config for refresh interval
+    const client = await getRedisClient();
+    const configStr = await client.get('config:site');
+    let refreshInterval = 60000; // Default to 60s
+    
+    if (configStr) {
+      const config = JSON.parse(configStr);
+      refreshInterval = config.refreshInterval || 60000;
     }
     
-    return JSON.parse(services);
-  } catch (error) {
-    console.error('Error reading services from Redis:', error);
-    throw error;
+    console.log(`[Ping] Using refresh interval: ${refreshInterval}ms (${refreshInterval/1000}s)`);
+    
+    // Update ping statistics
+    const now = Date.now();
+    await client.set('ping:last', now.toString());
+    const nextPing = now + refreshInterval;
+    await client.set('ping:next', nextPing.toString());
+    
+    // Check all services
+    console.log('[Ping] Checking all services...');
+    const results = await checkAllServices();
+    console.log(`[Ping] Checked ${results.length} services`);
+    
+    // Record this ping in history
+    const pingRecord = {
+      timestamp: now,
+      executionTime: Date.now() - startTime,
+      servicesChecked: results.length,
+      refreshInterval,
+      nextScheduled: nextPing
+    };
+    
+    // Store in Redis list with a limit
+    await client.lPush('ping:history', JSON.stringify(pingRecord));
+    await client.lTrim('ping:history', 0, 99); // Keep last 100 pings
+    
+    // Schedule next ping if not stopped
+    const restart = action === 'start' || action === 'restart';
+    if (restart || pingLoopActive) {
+      // Clear any existing timeout
+      if (scheduledTimeout) {
+        clearTimeout(scheduledTimeout);
+      }
+      
+      // Schedule next ping
+      scheduledTimeout = setTimeout(() => {
+        // Use fetch to call this endpoint again without awaiting
+        console.log(`[Ping] Triggering scheduled ping at ${new Date().toISOString()}`);
+        fetch(new URL(request.url).origin + '/api/ping', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store',
+            'User-Agent': 'OpenUptimes Self-Scheduler'
+          }
+        }).catch(error => {
+          console.error('[Ping] Error in scheduled ping:', error);
+        });
+      }, refreshInterval);
+      
+      lastScheduledTime = Date.now();
+      pingLoopActive = true;
+      console.log(`[Ping] Next ping scheduled in ${refreshInterval}ms at ${new Date(nextPing).toISOString()}`);
+    }
+    
+    // Calculate total execution time
+    const endTime = Date.now();
+    const executionTime = endTime - startTime;
+    console.log(`[Ping] Completed in ${executionTime}ms`);
+    
+    // Close Redis connection
+    await closeRedisConnection();
+    
+    return NextResponse.json({
+      status: 'success',
+      timestamp: now,
+      nextPing: nextPing,
+      refreshInterval: refreshInterval,
+      executionTime: executionTime,
+      pingLoopActive: pingLoopActive,
+      results: results
+    });
+  } catch (err) {
+    console.error('[Ping] Failed to check services:', err);
+    
+    // Close Redis connection even on error
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('[Ping] Error closing Redis connection:', closeError);
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to check services', message: (err as Error).message },
+      { status: 500 }
+    );
   }
 }
 
@@ -27,7 +167,7 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
  */
 async function checkService(service: { name: string; url: string; expectedStatus?: number }) {
   const startTime = Date.now();
-  let statusData: ServiceStatus;
+  let statusData: any;
   
   try {
     const response = await fetch(service.url, {
@@ -64,8 +204,12 @@ async function checkService(service: { name: string; url: string; expectedStatus
   
   // Store the service status and history
   try {
-    await setServiceStatus(service.name, statusData);
-    await appendServiceHistory(service.name, statusData);
+    const client = await getRedisClient();
+    await client.set(`status:${service.name}`, JSON.stringify(statusData));
+    
+    // Store history - limit to last 1000 entries
+    await client.lPush(`history:${service.name}`, JSON.stringify(statusData));
+    await client.lTrim(`history:${service.name}`, 0, 999);
   } catch (storageError) {
     console.error(`Failed to store status for ${service.name}:`, storageError);
   }
@@ -80,93 +224,18 @@ async function checkService(service: { name: string; url: string; expectedStatus
  * Check all services defined in Redis
  */
 async function checkAllServices() {
-  const services = await getServicesFromRedis();
-  return Promise.all(services.map(service => checkService(service)));
-}
-
-/**
- * API route handler for /api/ping
- */
-export async function GET(request: Request) {
-  const startTime = Date.now();
-  console.log(`[Ping] Started at ${new Date(startTime).toISOString()}`);
-  
   try {
-    // Store current timestamp as the last ping time
-    const now = Date.now();
     const client = await getRedisClient();
+    const services = await client.get('config:services');
     
-    // Get site config for refresh interval
-    const configStr = await client.get('config:site');
-    let refreshInterval = 60000; // Default to 60s
-    
-    if (configStr) {
-      const config = JSON.parse(configStr);
-      refreshInterval = config.refreshInterval || 60000;
+    if (!services) {
+      return [];
     }
     
-    console.log(`[Ping] Using refresh interval: ${refreshInterval}ms (${refreshInterval/1000}s)`);
-    
-    // Update ping statistics
-    await client.set('stats:last-ping', now.toString());
-    const nextPing = now + refreshInterval;
-    await client.set('stats:next-ping', nextPing.toString());
-    
-    // Track the cycle that triggered this ping
-    const url = new URL(request.url);
-    const cycleId = url.searchParams.get('cycleId');
-    if (cycleId) {
-      console.log(`[Ping] Triggered by cycle ID: ${cycleId}`);
-      await client.set('stats:last-cycle-id', cycleId);
-    }
-    
-    // Store a ping event record for tracking in the UI
-    const pingEvent = {
-      type: 'Service Ping',
-      timestamp: now,
-      cycleId: cycleId || 'unknown',
-      executionStart: startTime,
-      interval: refreshInterval / 1000
-    };
-    
-    // Store in a Redis list, limit to recent events
-    await client.lPush('stats:ping-events', JSON.stringify(pingEvent));
-    await client.lTrim('stats:ping-events', 0, 50); // Keep last 50 events
-    
-    // Check all services
-    console.log('[Ping] Checking all services...');
-    const results = await checkAllServices();
-    console.log(`[Ping] Checked ${results.length} services`);
-    
-    // Close Redis connection
-    await closeRedisConnection();
-    
-    // Calculate total execution time
-    const endTime = Date.now();
-    const executionTime = endTime - startTime;
-    console.log(`[Ping] Completed in ${executionTime}ms`);
-    
-    return NextResponse.json({
-      status: 'success',
-      timestamp: now,
-      nextPing: nextPing,
-      refreshInterval: refreshInterval,
-      executionTime: executionTime,
-      results: results
-    });
-  } catch (err) {
-    console.error('[Ping] Failed to check services:', err);
-    
-    // Close Redis connection even on error
-    try {
-      await closeRedisConnection();
-    } catch (closeError) {
-      console.error('[Ping] Error closing Redis connection:', closeError);
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to check services', message: (err as Error).message },
-      { status: 500 }
-    );
+    const parsedServices = JSON.parse(services);
+    return Promise.all(parsedServices.map((service: any) => checkService(service)));
+  } catch (error) {
+    console.error('Error reading services from Redis:', error);
+    throw error;
   }
 } 

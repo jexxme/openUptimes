@@ -1,14 +1,26 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Download, Filter, Calendar, Clock, ChevronDown } from "lucide-react";
+import { RefreshCw, Download } from "lucide-react";
 import { format } from "date-fns";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { cn } from "@/lib/utils";
-import React from "react";
+
+// Import extracted components
+import { 
+  ServiceSelect, 
+  StatusSelect, 
+  ResponseCodeSelect, 
+  TimeRangeSelect,
+  DateTimePicker 
+} from "@/app/components/admin/history/FilterComponents";
+import {
+  SortableColumnHeader,
+  HistoryTableRow,
+  formatTimestamp
+} from "@/app/components/admin/history/TableComponents";
 
 // Types from useStatus hook
 interface StatusHistoryItem {
@@ -88,11 +100,6 @@ export function HistoryContent({
     key: 'timestamp', 
     direction: 'desc' 
   });
-  
-  // Format timestamp to readable date/time
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
-  };
   
   // Function to sort data based on column and direction
   const sortData = useCallback((data: { service: string; item: StatusHistoryItem }[], config: { key: string; direction: 'asc' | 'desc' }) => {
@@ -405,383 +412,6 @@ export function HistoryContent({
     link.click();
     document.body.removeChild(link);
   };
-
-  // Get status color based on status
-  const getStatusBadgeClass = (status: 'up' | 'down' | 'unknown') => {
-    return cn(
-      "px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1",
-      status === 'up' ? 'bg-green-100 text-green-800' : 
-      status === 'down' ? 'bg-red-100 text-red-800' : 
-      'bg-gray-100 text-gray-800'
-    );
-  };
-  
-  const selectClass = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
-  
-  const TimeRangeSelect = () => (
-    <div className="flex-1 min-w-[180px]">
-      <div className="flex items-center gap-1 mb-1">
-        <Clock className="h-3 w-3 text-muted-foreground" />
-        <Label htmlFor="time-range" className="text-sm font-medium">Time Range</Label>
-      </div>
-      <div className="relative">
-        <select 
-          id="time-range"
-          className={selectClass}
-          value={isCustomRange ? 'custom' : timeRange}
-          onChange={(e) => handleTimeRangeChange(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="30m">Last 30 minutes</option>
-          <option value="1h">Last 1 hour</option>
-          <option value="2h">Last 2 hours</option>
-          <option value="24h">Last 24 hours</option>
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="all">All time</option>
-          <option value="custom">Custom range</option>
-        </select>
-      </div>
-    </div>
-  );
-
-  // Custom service select dropdown that shows status dots
-  const ServiceSelect = () => {
-    const [open, setOpen] = useState(false);
-    const [searchValue, setSearchValue] = useState('');
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    
-    // Process services right away to avoid waiting
-    const [processedServices, setProcessedServices] = useState<any[]>([]);
-    
-    // Store the displayed JSX directly to prevent flicker
-    const [displayView, setDisplayView] = useState<React.ReactNode>(null);
-    
-    // Get status dot class based on status
-    const getStatusDot = (status?: 'up' | 'down' | 'unknown' | null) => (
-      <span className={cn(
-        "h-2 w-2 rounded-full inline-block mr-2",
-        status === 'up' ? "bg-green-500" : 
-        status === 'down' ? "bg-red-500" : 
-        "bg-gray-400",
-        status === 'up' ? "animate-pulse" : ""
-      )}></span>
-    );
-    
-    // Get service name display
-    const getNameView = (name: string) => (
-      <span className="flex items-center">
-        {name}
-      </span>
-    );
-    
-    // Initialize the display view and update when selected service or services change
-    useEffect(() => {
-      // Get default view based on current selection
-      if (selectedService === 'all' || !selectedService) {
-        setDisplayView(
-          <>
-            {getStatusDot(null)}
-            All Services
-          </>
-        );
-      } else {
-        // Find the service in processed services
-        const service = processedServices.find(s => s.name === selectedService);
-        
-        if (service) {
-          setDisplayView(
-            <>
-              {getStatusDot(service.currentStatus?.status)}
-              {getNameView(selectedService)}
-            </>
-          );
-        } else {
-          // Fallback if service not found
-          setDisplayView(
-            <>
-              {getStatusDot(null)}
-              {selectedService}
-            </>
-          );
-        }
-      }
-    }, [selectedService, processedServices]);
-    
-    // Process services on mount and when they change
-    useEffect(() => {
-      if (services && Array.isArray(services)) {
-        // Filter out invalid service objects first
-        const validServices = services.filter(
-          service => service && typeof service === 'object' && service.name && typeof service.name === 'string'
-        );
-        
-        // Create a map to track unique service names
-        const uniqueMap = new Map();
-        
-        validServices.forEach(service => {
-          if (!uniqueMap.has(service.name)) {
-            uniqueMap.set(service.name, service);
-          }
-        });
-        
-        setProcessedServices(Array.from(uniqueMap.values()));
-      }
-    }, [services]);
-    
-    // Close dropdown when clicking outside
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-          setOpen(false);
-        }
-      };
-      
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }, [dropdownRef]);
-    
-    // Filter services by search input
-    const filteredServices = React.useMemo(() => {
-      return processedServices.filter(service => 
-        service.name.toLowerCase().includes(searchValue.toLowerCase())
-      );
-    }, [processedServices, searchValue]);
-    
-    const isServicesLoading = isLoading || (Array.isArray(services) && services.length > 0 && !processedServices.length);
-    
-    // Simple handler with one-step state update
-    const handleSelect = (serviceName: string) => {
-      // First close the dropdown
-      setOpen(false);
-      
-      // Only update parent state if actually changed
-      if (serviceName !== selectedService) {
-        // Wait a tiny bit to ensure dropdown closing animation completes first
-        setTimeout(() => {
-          setSelectedService(serviceName);
-        }, 10);
-      }
-    };
-    
-    return (
-      <div className="flex-1 min-w-[220px] relative" ref={dropdownRef}>
-        <div className="flex items-center gap-1 mb-1">
-          <Filter className="h-3 w-3 text-muted-foreground" />
-          <Label className="text-sm font-medium">Service</Label>
-        </div>
-        
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-          disabled={isServicesLoading}
-          onClick={() => setOpen(!open)}
-        >
-          {isServicesLoading ? (
-            <div className="flex items-center text-muted-foreground">
-              <div className="h-3 w-3 mr-2 rounded-full border-2 border-t-transparent border-muted-foreground/60 animate-spin"></div>
-              Loading services...
-            </div>
-          ) : displayView}
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-        
-        {open && (
-          <div className="absolute z-50 w-full mt-1 rounded-md border bg-background shadow-md max-h-[300px] overflow-auto">
-            <div className="p-2 border-b">
-              <Input
-                placeholder="Search service..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="h-8 text-sm"
-                autoFocus
-              />
-            </div>
-            
-            <div className="py-1">
-              <div
-                role="option"
-                className={cn(
-                  "flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground",
-                  selectedService === "all" && "bg-accent/50"
-                )}
-                onClick={() => handleSelect('all')}
-              >
-                {getStatusDot(null)}
-                All Services
-              </div>
-              
-              {isServicesLoading ? (
-                <div className="px-2 py-6 text-center">
-                  <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                  <p className="mt-2 text-sm text-muted-foreground">Loading services...</p>
-                </div>
-              ) : filteredServices.length === 0 ? (
-                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                  No service found.
-                </div>
-              ) : (
-                filteredServices.map((service) => (
-                  <div
-                    key={service.name}
-                    role="option"
-                    className={cn(
-                      "flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground",
-                      selectedService === service.name && "bg-accent/50"
-                    )}
-                    onClick={() => handleSelect(service.name)}
-                  >
-                    {getStatusDot(service?.currentStatus?.status)}
-                    {getNameView(service.name)}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-  
-  const StatusSelect = () => (
-    <div className="flex-1 min-w-[180px]">
-      <div className="flex items-center gap-1 mb-1">
-        <Filter className="h-3 w-3 text-muted-foreground" />
-        <Label htmlFor="status-select" className="text-sm font-medium">Status</Label>
-      </div>
-      <div className="relative">
-        <select 
-          id="status-select"
-          className={selectClass}
-          value={selectedStatus} 
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="all">All Statuses</option>
-          <option value="up">Up</option>
-          <option value="down">Down</option>
-          <option value="unknown">Unknown</option>
-        </select>
-      </div>
-    </div>
-  );
-  
-  const ResponseCodeSelect = () => (
-    <div className="flex-1 min-w-[180px]">
-      <div className="flex items-center gap-1 mb-1">
-        <Filter className="h-3 w-3 text-muted-foreground" />
-        <Label htmlFor="response-code-select" className="text-sm font-medium">Response Code</Label>
-      </div>
-      <div className="relative">
-        <select 
-          id="response-code-select"
-          className={selectClass}
-          value={selectedResponseCode} 
-          onChange={(e) => setSelectedResponseCode(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="all">All Codes</option>
-          <option value="2xx">2xx (Success)</option>
-          <option value="3xx">3xx (Redirection)</option>
-          <option value="4xx">4xx (Client Error)</option>
-          <option value="5xx">5xx (Server Error)</option>
-          <option value="none">No Code</option>
-        </select>
-      </div>
-    </div>
-  );
-  
-  const DateTimePicker = () => (
-    <div className="flex flex-col sm:flex-row gap-2 w-full mt-2 p-2 bg-muted/20 rounded-md border border-dashed">
-      {/* Start Date/Time Column */}
-      <div className="flex-1">
-        <Label htmlFor="start-date" className="text-xs font-medium inline-flex items-center mb-1">
-          <Calendar className="h-3 w-3 text-muted-foreground mr-1" />
-          Start
-        </Label>
-        <div className="relative flex items-center space-x-1">
-          <Input
-            id="start-date"
-            type="date"
-            value={startDateStr}
-            onChange={(e) => setStartDateStr(e.target.value)}
-            className="w-[130px] bg-background h-8 text-xs px-1 py-0"
-            disabled={isLoading}
-          />
-          <Input
-            id="start-time"
-            type="time"
-            value={startTimeStr}
-            onChange={(e) => setStartTimeStr(e.target.value)}
-            className="w-[85px] bg-background h-8 text-xs px-1 py-0"
-            disabled={isLoading}
-          />
-        </div>
-      </div>
-      
-      {/* End Date/Time Column */}
-      <div className="flex-1">
-        <Label htmlFor="end-date" className="text-xs font-medium inline-flex items-center mb-1">
-          <Calendar className="h-3 w-3 text-muted-foreground mr-1" />
-          End
-        </Label>
-        <div className="relative flex items-center space-x-1">
-          <Input
-            id="end-date"
-            type="date"
-            value={endDateStr}
-            onChange={(e) => setEndDateStr(e.target.value)}
-            className="w-[130px] bg-background h-8 text-xs px-1 py-0"
-            disabled={isLoading}
-          />
-          <Input
-            id="end-time"
-            type="time"
-            value={endTimeStr}
-            onChange={(e) => setEndTimeStr(e.target.value)}
-            className="w-[85px] bg-background h-8 text-xs px-1 py-0"
-            disabled={isLoading}
-          />
-        </div>
-      </div>
-      
-      {/* Apply Button */}
-      <div className="flex-none self-end">
-        <Button 
-          variant="secondary"
-          onClick={handleApplyCustomRange}
-          disabled={isLoading || !startDateStr || !endDateStr}
-          className="h-8 px-2 text-xs"
-          size="sm"
-        >
-          Apply
-        </Button>
-      </div>
-    </div>
-  );
-  
-  // Sortable column header component
-  const SortableColumnHeader = ({ columnKey, width, label }: { columnKey: string, width: number, label: string }) => {
-    const isActive = sortConfig.key === columnKey;
-    
-    return (
-      <div 
-        className={`col-span-${width} flex items-center gap-0.5 cursor-pointer hover:text-foreground transition-colors`}
-        onClick={() => handleSort(columnKey)}
-      >
-        {label}
-        {isActive && (
-          <span className="inline-block ml-0.5">
-            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
-      </div>
-    );
-  };
   
   if (statusLoading && services.length === 0) {
     return (
@@ -852,13 +482,44 @@ export function HistoryContent({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3 mb-3">
-            <ServiceSelect />
-            <StatusSelect />
-            <ResponseCodeSelect />
-            <TimeRangeSelect />
+            <ServiceSelect 
+              services={services} 
+              selectedService={selectedService} 
+              setSelectedService={setSelectedService} 
+              isLoading={isLoading} 
+            />
+            <StatusSelect 
+              selectedStatus={selectedStatus} 
+              setSelectedStatus={setSelectedStatus} 
+              isLoading={isLoading} 
+            />
+            <ResponseCodeSelect 
+              selectedResponseCode={selectedResponseCode} 
+              setSelectedResponseCode={setSelectedResponseCode} 
+              isLoading={isLoading} 
+            />
+            <TimeRangeSelect 
+              timeRange={timeRange} 
+              isCustomRange={isCustomRange} 
+              isLoading={isLoading} 
+              handleTimeRangeChange={handleTimeRangeChange} 
+            />
           </div>
           
-          {isCustomRange && <DateTimePicker />}
+          {isCustomRange && (
+            <DateTimePicker 
+              startDateStr={startDateStr}
+              setStartDateStr={setStartDateStr}
+              endDateStr={endDateStr}
+              setEndDateStr={setEndDateStr}
+              startTimeStr={startTimeStr}
+              setStartTimeStr={setStartTimeStr}
+              endTimeStr={endTimeStr}
+              setEndTimeStr={setEndTimeStr}
+              isLoading={isLoading}
+              handleApplyCustomRange={handleApplyCustomRange}
+            />
+          )}
           
           {isLoading ? (
             <div className="flex h-64 items-center justify-center mt-6">
@@ -872,40 +533,24 @@ export function HistoryContent({
           ) : (
             <div className="rounded-lg border overflow-hidden mt-6 shadow-sm">
               <div className="grid grid-cols-12 bg-muted/50 p-3 text-xs font-medium text-muted-foreground">
-                <SortableColumnHeader columnKey="service" width={2} label="Service" />
-                <SortableColumnHeader columnKey="status" width={2} label="Status" />
-                <SortableColumnHeader columnKey="timestamp" width={3} label="Timestamp" />
-                <SortableColumnHeader columnKey="responseTime" width={1} label="Response" />
-                <SortableColumnHeader columnKey="statusCode" width={1} label="Code" />
-                <SortableColumnHeader columnKey="error" width={3} label="Error" />
+                <SortableColumnHeader columnKey="service" width={2} label="Service" sortConfig={sortConfig} handleSort={handleSort} />
+                <SortableColumnHeader columnKey="status" width={2} label="Status" sortConfig={sortConfig} handleSort={handleSort} />
+                <SortableColumnHeader columnKey="timestamp" width={3} label="Timestamp" sortConfig={sortConfig} handleSort={handleSort} />
+                <SortableColumnHeader columnKey="responseTime" width={1} label="Response" sortConfig={sortConfig} handleSort={handleSort} />
+                <SortableColumnHeader columnKey="statusCode" width={1} label="Code" sortConfig={sortConfig} handleSort={handleSort} />
+                <SortableColumnHeader columnKey="error" width={3} label="Error" sortConfig={sortConfig} handleSort={handleSort} />
               </div>
               
               <div className="divide-y">
                 {filteredHistoryItems.length > 0 ? (
-                  filteredHistoryItems.map(({ service, item }, index) => {
-                    // Skip any items with invalid status or timestamp
-                    if (!item || !item.status || !item.timestamp) return null;
-                    
-                    return (
-                      <div key={`${service}-${item.timestamp}-${index}`} className="grid grid-cols-12 p-3 text-sm items-center hover:bg-muted/10">
-                        <div className="col-span-2 font-medium text-foreground flex items-center">
-                          {service}
-                        </div>
-                        <div className="col-span-2">
-                          <span className={getStatusBadgeClass(item.status)}>
-                            {item.status === 'up' && <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>}
-                            {item.status === 'down' && <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>}
-                            {item.status === 'unknown' && <span className="h-1.5 w-1.5 rounded-full bg-gray-500"></span>}
-                            {item.status.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="col-span-3 font-mono text-xs">{formatTimestamp(item.timestamp)}</div>
-                        <div className="col-span-1 font-mono text-xs">{item.responseTime ? `${item.responseTime}ms` : '-'}</div>
-                        <div className="col-span-1 font-mono text-xs">{item.statusCode || '-'}</div>
-                        <div className="col-span-3 text-xs truncate text-muted-foreground" title={item.error}>{item.error || '-'}</div>
-                      </div>
-                    );
-                  }).filter(Boolean)
+                  filteredHistoryItems.map(({ service, item }, index) => (
+                    <HistoryTableRow 
+                      key={`${service}-${item.timestamp}-${index}`}
+                      service={service} 
+                      item={item} 
+                      index={index} 
+                    />
+                  )).filter(Boolean)
                 ) : (
                   <div className="p-12 text-center text-muted-foreground">
                     <p className="mb-1 text-sm">No history data available</p>
