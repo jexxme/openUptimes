@@ -67,6 +67,9 @@ export default function AdminPage() {
   // Setup status check
   const { setupComplete, loading: setupLoading, error: setupError } = useSetupStatus();
 
+  // Determine if this is a development environment
+  const isDev = process.env.NODE_ENV === 'development';
+
   // Handle URL parameters on component mount
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -734,6 +737,23 @@ export default function AdminPage() {
               {renderContent()}
             </div>
           </main>
+          
+          {/* Development debug badge - only shown in development */}
+          {isDev && (
+            <div className="absolute bottom-4 right-4 z-50">
+              <a
+                href="/debug/ping"
+                target="_blank"
+                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs px-3 py-1.5 rounded-full shadow-sm transition-colors duration-200"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                </span>
+                Debug Ping System
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </SidebarProvider>

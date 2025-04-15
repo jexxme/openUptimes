@@ -23,7 +23,7 @@ function LoginForm() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const from = searchParams.get('from') || '/admin';
+  const from = searchParams?.get('from') || '/admin';
   
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

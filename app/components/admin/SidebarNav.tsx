@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity } from "lucide-react";
+import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug } from "lucide-react";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -74,6 +74,13 @@ const NavButton = ({
 export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut, preloadedLogoUrl }: SidebarNavProps) {
   const [logoUrl, setLogoUrl] = useState(preloadedLogoUrl || "");
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [isDev, setIsDev] = useState(false);
+  
+  // Detect development environment
+  useEffect(() => {
+    // Check if we're in development mode
+    setIsDev(process.env.NODE_ENV === 'development');
+  }, []);
   
   // Load logo if not preloaded
   useEffect(() => {
@@ -246,6 +253,35 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
             />
           </motion.div>
         </motion.div>
+        
+        {/* Only show debug section in development */}
+        {isDev && (
+          <motion.div 
+            variants={sectionVariants}
+            initial="hidden"
+            animate="visible"
+            transition={{ delay: 0.2 }}
+            className="mt-8 space-y-1"
+          >
+            <motion.div 
+              variants={itemVariants}
+              className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-3 ml-3 flex items-center"
+            >
+              <span className="pr-2 opacity-80">Development</span>
+              <div className="flex-grow h-px bg-sidebar-border/30"></div>
+            </motion.div>
+            
+            <motion.div variants={itemVariants}>
+              <Link href="/debug/ping" target="_blank">
+                <NavButton 
+                  icon={Bug} 
+                  label="Ping Debug" 
+                  onClick={() => {}} 
+                />
+              </Link>
+            </motion.div>
+          </motion.div>
+        )}
       </div>
       
       <div className="mt-auto border-t border-sidebar-border/80 p-4 space-y-3 bg-sidebar/95 relative">

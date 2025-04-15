@@ -43,6 +43,11 @@ Built with Next.js, Tailwind CSS, and Redis, OpenUptimes provides a seamless exp
 - 🎨 **Beautiful, responsive UI** - Works on all devices
 - 📱 **Mobile-first design** - Perfect experience on any screen size
 - 🔄 **Auto-refreshing data** - Always see the latest status
+- **Automated Service Monitoring**: Background ping mechanism regularly checks service availability
+- **Redis-based Storage**: Fast and reliable storage for service status and history
+- **Serverless-compatible**: Designed to work within Vercel's constraints
+- **Admin Dashboard**: Manage services, view status history, and configure settings
+- **Customizable**: Adjust ping intervals, theme colors, and more
 
 ## Motivation
 
@@ -245,3 +250,27 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <p align="center">
 Made on a healthy dose of ☕️
 </p>
+
+## Architecture
+
+### Automated Ping System
+
+OpenUptimes implements a self-sustaining ping mechanism that works reliably in serverless environments:
+
+1. **Edge Function**: Uses Next.js Edge Runtime for longer execution times
+2. **Self-scheduling**: The system schedules its own next ping using a combination of edge functions and redis locks
+3. **Bootstrap**: App initialization triggers the ping cycle on startup
+4. **Failsafe**: Multiple safety mechanisms ensure consistent pinging
+
+### Key Components
+
+- `/api/ping-scheduler`: Manages ping scheduling and Redis locking
+- `/api/edge-ping`: Edge runtime function that creates a self-sustaining ping cycle
+- `/api/ping`: Performs the actual service status checks
+- `/api/ping-stats`: Provides status information about the ping system
+
+## Getting Started
+
+1. Set up a Redis instance (e.g., Upstash Redis)
+2. Configure environment variables (see `.env.example`)
+3. Deploy to Vercel or run locally with `npm run dev`

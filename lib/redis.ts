@@ -392,4 +392,33 @@ export async function initializeRedisWithDefaults(): Promise<void> {
     console.error('Error initializing Redis with defaults:', error);
     throw error;
   }
+}
+
+/**
+ * Get ping statistics
+ */
+export async function getPingStats() {
+  try {
+    const client = await getRedisClient();
+    
+    // Get last ping and next scheduled ping
+    const [lastPing, nextPing] = await Promise.all([
+      client.get('stats:last-ping'),
+      client.get('stats:next-ping')
+    ]);
+    
+    return {
+      lastPing: lastPing ? parseInt(lastPing, 10) : null,
+      nextPing: nextPing ? parseInt(nextPing, 10) : null,
+      now: Date.now()
+    };
+  } catch (err) {
+    console.error('Error fetching ping stats:', err);
+    return {
+      lastPing: null,
+      nextPing: null,
+      now: Date.now(),
+      error: (err as Error).message
+    };
+  }
 } 
