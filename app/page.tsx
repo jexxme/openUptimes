@@ -20,8 +20,8 @@ interface ServiceConfig {
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isPreview = searchParams.get('preview') === 'true';
-  const forceShow = searchParams.get('forceShow') === 'true';
+  const isPreview = searchParams?.get('preview') === 'true';
+  const forceShow = searchParams?.get('forceShow') === 'true';
   
   const [showHistory, setShowHistory] = useState(false);
   const [siteConfig, setSiteConfig] = useState<any>({
