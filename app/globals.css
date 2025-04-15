@@ -119,6 +119,59 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Add cursor styles for interactive elements */
+  button, 
+  [role="button"],
+  a,
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"],
+  select,
+  summary,
+  .select-trigger,
+  [data-radix-select-trigger],
+  [data-radix-dropdown-menu-trigger],
+  [data-radix-popover-trigger],
+  [data-radix-dialog-trigger],
+  [data-radix-menu-trigger],
+  details,
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  
+  /* Cursor for disabled elements */
+  button:disabled,
+  [role="button"]:disabled,
+  a:disabled,
+  input[type="submit"]:disabled,
+  input[type="button"]:disabled,
+  input[type="reset"]:disabled,
+  select:disabled,
+  [aria-disabled="true"],
+  [data-disabled],
+  .disabled,
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
+  
+  /* Special cursors for specific interactive elements */
+  .resize-handle,
+  [data-resize-handle] {
+    cursor: ew-resize;
+  }
+  
+  /* Ensure form controls have appropriate cursors */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea {
+    cursor: text;
+  }
 }
 
 /* Calendar styles */
@@ -131,4 +184,36 @@
   --rdp-outline: 2px solid var(--rdp-accent-color);
   --rdp-outline-offset: 2px;
   margin: 0;
+}
+
+/* Animation delay utilities */
+.animation-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+/* Scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--sidebar-border);
+  border-radius: 20px;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-border) transparent;
 }

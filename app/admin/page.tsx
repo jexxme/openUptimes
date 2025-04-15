@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, Settings as SettingsIcon } from "lucide-react";
+import { Menu } from "lucide-react";
 
 // Import data hooks
 import { useStatus } from "../hooks/useStatus";
 import { useSetupStatus } from "../hooks/useSetupStatus";
 import { useServicesConfig } from "../hooks/useServicesConfig";
-import { ServiceConfig } from "@/lib/config";
 
 // Import ShadCN UI components
 import { Button } from "@/components/ui/button";
@@ -19,104 +18,59 @@ import { Progress } from "@/components/ui/progress";
 
 // Import custom components
 import { SidebarNav } from "../components/admin/SidebarNav";
-import { ServicesStats } from "../components/admin/ServicesStats";
-import { ServicesList } from "../components/admin/ServicesList";
 
-// Dashboard content components
-import { DashboardContent } from "@/app/components/admin/DashboardContent";
-import { SettingsContent } from "@/app/components/admin/SettingsContent";
-import { HistoryContent } from "@/app/components/admin/HistoryContent";
-import { StatusPageContent } from "@/app/components/admin/StatusPageContent";
+// Admin content pages
+import { AdminDashboard } from "../components/admin/pages/Dashboard";
+import { AdminServices } from "../components/admin/pages/Services";
+import { AdminStatusPage } from "../components/admin/pages/StatusPage";
+import { AdminHistory } from "../components/admin/pages/History";
+import { AdminSettings } from "../components/admin/pages/Settings";
 
 export default function AdminPage() {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [settingsSection, setSettingsSection] = useState("general");
-  const [statusPageSection, setStatusPageSection] = useState("general");
-  const [showHistory, setShowHistory] = useState(false);
-  const [selectedHistoryService, setSelectedHistoryService] = useState<string | null>(null);
   const [isValidatingSession, setIsValidatingSession] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(10);
   const [loadingState, setLoadingState] = useState("Initializing...");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPreloaded, setLogoPreloaded] = useState(false);
   
-  // Preloaded Status Page data
+  // Preloaded data states for different sections
   const [statusPageData, setStatusPageData] = useState<any>(null);
   const [appearanceData, setAppearanceData] = useState<any>(null);
   const [statusPageDataLoaded, setStatusPageDataLoaded] = useState(false);
-  
-  // Preloaded history data
   const [historyData, setHistoryData] = useState<any>(null);
   const [historyDataLoaded, setHistoryDataLoaded] = useState(false);
+  const [servicesData, setServicesData] = useState<any>(null);
+  const [servicesConfigData, setServicesConfigData] = useState<any>(null);
+  const [servicesDataLoaded, setServicesDataLoaded] = useState(false);
   
-  // Get real data using the hooks
-  const { services, loading: statusLoading, error: statusError, lastUpdated, refresh } = useStatus(showHistory, 60);
+  // Setup status check
   const { setupComplete, loading: setupLoading, error: setupError } = useSetupStatus();
-  
-  // Get services configuration data (for editing)
-  const { 
-    services: servicesConfig, 
-    loading: servicesConfigLoading, 
-    error: servicesConfigError, 
-    isUpdating,
-    addService,
-    updateService,
-    deleteService,
-    fetchServices: refreshServicesConfig
-  } = useServicesConfig();
 
-  // Handle viewing history for a specific service
-  const handleViewHistory = (serviceName: string) => {
-    setSelectedHistoryService(serviceName);
-    setActiveTab("history");
-  };
-
-  // Reset selected service when leaving history tab
+  // Handle URL parameters on component mount
   useEffect(() => {
-    if (activeTab !== "history") {
-      setSelectedHistoryService(null);
-    }
-  }, [activeTab]);
-
-  // Preload Status Page and Appearance data
-  useEffect(() => {
-    async function preloadStatusPageData() {
-      try {
-        setLoadingState("Loading status page data...");
-        setLoadingProgress(50);
-        
-        // Fetch Status Page data
-        const statusPageResponse = await fetch('/api/settings/statuspage');
-        if (statusPageResponse.ok) {
-          const statusData = await statusPageResponse.json();
-          setStatusPageData(statusData);
-        }
-        
-        // Fetch Appearance data
-        const appearanceResponse = await fetch('/api/settings/appearance');
-        if (appearanceResponse.ok) {
-          const appearanceData = await appearanceResponse.json();
-          setAppearanceData(appearanceData);
-        }
-        
-        setStatusPageDataLoaded(true);
-        setLoadingProgress(80);
-        setLoadingState("Almost ready...");
-      } catch (error) {
-        console.error("Failed to preload status page data:", error);
-        // Continue even if there's an error
-        setStatusPageDataLoaded(true);
-        setLoadingProgress(80);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      
+      // Set the active tab based on URL parameter
+      if (tabParam) {
+        setActiveTab(tabParam);
       }
     }
-    
-    if (logoPreloaded && !statusPageDataLoaded && !isLoaded) {
-      preloadStatusPageData();
+  }, []);
+  
+  // Update URL when active tab changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && isLoaded) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', activeTab);
+      window.history.pushState({}, '', url.toString());
     }
-  }, [logoPreloaded, statusPageDataLoaded, isLoaded]);
+  }, [activeTab, isLoaded]);
 
   // Preload logo during loading phase
   useEffect(() => {
@@ -163,12 +117,121 @@ export default function AdminPage() {
     }
   }, [isValidatingSession, isLoaded]);
 
+  // Preload Status Page and Appearance data
+  useEffect(() => {
+    async function preloadStatusPageData() {
+      try {
+        setLoadingState("Loading status page data...");
+        setLoadingProgress(50);
+        
+        // Fetch Status Page data
+        const statusPageResponse = await fetch('/api/settings/statuspage');
+        if (statusPageResponse.ok) {
+          const statusData = await statusPageResponse.json();
+          setStatusPageData(statusData);
+        }
+        
+        // Fetch Appearance data
+        const appearanceResponse = await fetch('/api/settings/appearance');
+        if (appearanceResponse.ok) {
+          const appearanceData = await appearanceResponse.json();
+          setAppearanceData(appearanceData);
+        }
+        
+        setStatusPageDataLoaded(true);
+        setLoadingProgress(60);
+        setLoadingState("Almost ready...");
+      } catch (error) {
+        console.error("Failed to preload status page data:", error);
+        // Continue even if there's an error
+        setStatusPageDataLoaded(true);
+        setLoadingProgress(60);
+      }
+    }
+    
+    if (logoPreloaded && !statusPageDataLoaded && !isLoaded) {
+      preloadStatusPageData();
+    }
+  }, [logoPreloaded, statusPageDataLoaded, isLoaded]);
+
+  // Preload services data
+  useEffect(() => {
+    async function preloadServicesData() {
+      try {
+        setLoadingState("Loading services data...");
+        setLoadingProgress(70);
+        
+        // Fetch services status data with basic error handling
+        try {
+          const servicesResponse = await fetch('/api/status');
+          if (servicesResponse.ok) {
+            const servicesData = await servicesResponse.json();
+            setServicesData(servicesData);
+          } else {
+            console.error(`Failed to preload services status: ${servicesResponse.status}`);
+          }
+        } catch (error) {
+          console.error("Error preloading services status:", error);
+        }
+        
+        // Fetch services configuration with retry logic
+        let retries = 0;
+        const maxRetries = 3;
+        
+        while (retries < maxRetries) {
+          try {
+            const servicesConfigResponse = await fetch('/api/services', {
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            if (servicesConfigResponse.ok) {
+              const configData = await servicesConfigResponse.json();
+              setServicesConfigData(configData);
+              break; // Success, exit the retry loop
+            } else if (servicesConfigResponse.status >= 500) {
+              // Server error, retry
+              console.warn(`Server error (${servicesConfigResponse.status}) when fetching service config. Retrying...`);
+              retries++;
+              // Exponential backoff
+              await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retries), 5000)));
+            } else {
+              // Client error, don't retry
+              console.error(`Failed to preload services config: ${servicesConfigResponse.status}`);
+              break;
+            }
+          } catch (error) {
+            console.error("Error preloading services config:", error);
+            retries++;
+            if (retries >= maxRetries) break;
+            // Exponential backoff for network errors
+            await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retries), 5000)));
+          }
+        }
+        
+        setServicesDataLoaded(true);
+        setLoadingProgress(80);
+      } catch (error) {
+        console.error("Failed to preload services data:", error);
+        // Continue even if there's an error
+        setServicesDataLoaded(true);
+        setLoadingProgress(80);
+      }
+    }
+    
+    if (statusPageDataLoaded && !servicesDataLoaded && !isLoaded) {
+      preloadServicesData();
+    }
+  }, [statusPageDataLoaded, servicesDataLoaded, isLoaded]);
+
   // Preload history data during loading phase
   useEffect(() => {
     async function preloadHistoryData() {
       try {
         setLoadingState("Loading history data...");
-        setLoadingProgress(70);
+        setLoadingProgress(90);
         
         // Fetch history with default settings (30m time range, 50 entries)
         const url = new URL('/api/history', window.location.origin);
@@ -198,19 +261,19 @@ export default function AdminPage() {
         }
         
         setHistoryDataLoaded(true);
-        setLoadingProgress(75);
+        setLoadingProgress(95);
       } catch (error) {
         console.error("Failed to preload history data:", error);
         // Continue even if there's an error
         setHistoryDataLoaded(true);
-        setLoadingProgress(75);
+        setLoadingProgress(95);
       }
     }
     
-    if (statusPageDataLoaded && !historyDataLoaded && !isLoaded) {
+    if (servicesDataLoaded && !historyDataLoaded && !isLoaded) {
       preloadHistoryData();
     }
-  }, [statusPageDataLoaded, historyDataLoaded, isLoaded]);
+  }, [servicesDataLoaded, historyDataLoaded, isLoaded]);
 
   // Enhanced loading logic with progress tracking
   useEffect(() => {
@@ -224,14 +287,13 @@ export default function AdminPage() {
       // Wait for logo to preload (handled in the other effect)
     } else if (!statusPageDataLoaded) {
       // Wait for status page data to load (handled in the preloadStatusPageData effect)
+    } else if (!servicesDataLoaded) {
+      // Wait for services data to load (handled in the preloadServicesData effect)
     } else if (!historyDataLoaded) {
       // Wait for history data to load (handled in the preloadHistoryData effect)
     } else if (setupLoading) {
       setLoadingState("Checking setup status...");
-      setLoadingProgress(90);
-    } else if (statusLoading) {
-      setLoadingState("Loading services data...");
-      setLoadingProgress(95);
+      setLoadingProgress(98);
     } else {
       setLoadingProgress(100);
       // Small delay before showing content to ensure smooth transition
@@ -240,7 +302,7 @@ export default function AdminPage() {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isLoaded, isValidatingSession, logoPreloaded, statusPageDataLoaded, historyDataLoaded, setupLoading, statusLoading]);
+  }, [isLoaded, isValidatingSession, logoPreloaded, statusPageDataLoaded, servicesDataLoaded, historyDataLoaded, setupLoading]);
 
   // Ensure the session is valid on page load
   useEffect(() => {
@@ -307,8 +369,6 @@ export default function AdminPage() {
 
   // Pass preloaded data to components
   const logoProps = logoUrl ? { preloadedLogoUrl: logoUrl } : {};
-  const statusPageProps = statusPageData ? { preloadedStatusPageData: statusPageData } : {};
-  const appearanceProps = appearanceData ? { preloadedAppearanceData: appearanceData } : {};
 
   if (!isLoaded || setupLoading || isValidatingSession) {
     return (
@@ -341,176 +401,35 @@ export default function AdminPage() {
     );
   }
 
-  // If active tab is statuspage, show the StatusPageContent with appropriate section
-  if (activeTab === "statuspage") {
-    return (
-      <SidebarProvider>
-        <div className="flex h-screen bg-background">
-          {/* Sidebar for larger screens */}
-          <UISidebar className="hidden md:block">
-            <SidebarNav 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} 
-              handleLogout={handleLogout} 
-              isLoggingOut={isLoggingOut}
-              {...logoProps}
-            />
-          </UISidebar>
-          
-          {/* Main content area */}
-          <div className="flex w-full flex-col md:pl-0">
-            <header className="h-16 border-b">
-              <div className="flex h-16 items-center px-4">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="mr-2 md:hidden">
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-64 p-0">
-                    <SidebarNav 
-                      activeTab={activeTab} 
-                      setActiveTab={setActiveTab} 
-                      handleLogout={handleLogout} 
-                      isLoggingOut={isLoggingOut}
-                      {...logoProps}
-                    />
-                  </SheetContent>
-                </Sheet>
-                <h1 className="text-lg font-semibold">OpenUptimes Admin</h1>
-              </div>
-            </header>
-            
-            <main className="flex-1 overflow-y-auto p-6">
-              <div className="mx-auto max-w-6xl">
-                <div className="mb-6">
-                  <h1 className="text-2xl font-bold tracking-tight">Status Page</h1>
-                  <p className="text-muted-foreground">Configure your public status page</p>
-                </div>
-                <StatusPageContent 
-                  activeSection={statusPageSection} 
-                  {...statusPageProps}
-                  {...appearanceProps}
-                />
-              </div>
-            </main>
-          </div>
-        </div>
-      </SidebarProvider>
-    );
-  }
-  
-  // If active tab is settings, show the SettingsContent with appropriate section
-  if (activeTab === "settings") {
-    return (
-      <SidebarProvider>
-        <div className="flex h-screen bg-background">
-          {/* Sidebar for larger screens */}
-          <UISidebar className="hidden md:block">
-            <SidebarNav 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} 
-              handleLogout={handleLogout} 
-              isLoggingOut={isLoggingOut} 
-              {...logoProps}
-            />
-          </UISidebar>
-          
-          {/* Main content area */}
-          <div className="flex w-full flex-col md:pl-0">
-            <header className="h-16 border-b">
-              <div className="flex h-16 items-center px-4">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="mr-2 md:hidden">
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-64 p-0">
-                    <SidebarNav 
-                      activeTab={activeTab} 
-                      setActiveTab={setActiveTab} 
-                      handleLogout={handleLogout} 
-                      isLoggingOut={isLoggingOut} 
-                      {...logoProps}
-                    />
-                  </SheetContent>
-                </Sheet>
-                <h1 className="text-lg font-semibold">OpenUptimes Admin</h1>
-              </div>
-            </header>
-            
-            <main className="flex-1 overflow-y-auto p-6">
-              <div className="mx-auto max-w-6xl">
-                <div className="mb-6">
-                  <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-                  <p className="text-muted-foreground">Configure application settings</p>
-                </div>
-                <SettingsContent activeSection={settingsSection} />
-              </div>
-            </main>
-          </div>
-        </div>
-      </SidebarProvider>
-    );
-  }
-
+  // Render the appropriate content based on active tab
   const renderContent = () => {
+    // Only pass preloaded data on first render to avoid unnecessary API calls
+    // when switching between tabs
     switch(activeTab) {
       case "dashboard":
-        return <DashboardContent 
-          services={services} 
-          statusLoading={statusLoading} 
-          statusError={statusError} 
-          lastUpdated={lastUpdated} 
-          refresh={refresh} 
+        return <AdminDashboard 
+          preloadedServices={isLoaded ? servicesData : null} 
         />;
-      
       case "services":
-        return (
-          <div className="space-y-8">
-            {/* Services stats */}
-            <ServicesStats 
-              servicesConfig={servicesConfig} 
-              servicesStatus={services} 
-            />
-            
-            {/* Services management */}
-            <ServicesList
-              services={services}
-              servicesConfig={servicesConfig}
-              statusLoading={statusLoading}
-              servicesConfigLoading={servicesConfigLoading}
-              statusError={statusError}
-              servicesConfigError={servicesConfigError}
-              isUpdating={isUpdating}
-              lastUpdated={lastUpdated}
-              refreshServicesConfig={refreshServicesConfig}
-              refresh={refresh}
-              addService={addService}
-              updateService={updateService}
-              deleteService={deleteService}
-              onViewHistory={handleViewHistory}
-            />
-          </div>
-        );
-      
-      case "statuspage":
-        return <StatusPageContent activeSection={statusPageSection} />;
-      
-      case "history":
-        return <HistoryContent
-          services={services}
-          statusLoading={statusLoading} 
-          statusError={statusError} 
-          lastUpdated={lastUpdated} 
-          refresh={refresh}
-          initialService={selectedHistoryService}
-          preloadedHistory={historyData}
+        return <AdminServices 
+          preloadedServices={isLoaded ? servicesData : null}
+          preloadedServicesConfig={isLoaded ? servicesConfigData : null}
         />;
-        
+      case "statuspage":
+        return <AdminStatusPage 
+          preloadedStatusPageData={isLoaded ? statusPageData : null}
+          preloadedAppearanceData={isLoaded ? appearanceData : null}
+        />;
+      case "history":
+        return <AdminHistory 
+          preloadedHistory={isLoaded ? historyData : null}
+        />;
+      case "settings":
+        return <AdminSettings />;
       default:
-        return <div>Select a tab</div>;
+        return <AdminDashboard 
+          preloadedServices={isLoaded ? servicesData : null}
+        />;
     }
   };
 
@@ -519,10 +438,14 @@ export default function AdminPage() {
     switch(activeTab) {
       case "dashboard":
         return "Overview";
+      case "services":
+        return "Services";
       case "statuspage":
         return "Status Page";
       case "history":
         return "Uptime History";
+      case "settings":
+        return "Settings";
       default:
         return activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     }

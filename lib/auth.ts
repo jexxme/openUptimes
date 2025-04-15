@@ -1,4 +1,4 @@
-import { getAdminPassword } from './redis';
+import { getAdminPassword, isSessionValid } from './redis';
 
 /**
  * Generate a secure password hash with salt
@@ -114,4 +114,33 @@ async function sha256(message: string): Promise<string> {
     .join('');
     
   return hashHex;
+}
+
+/**
+ * Authenticate admin user from request
+ * Validates the session token from cookies
+ */
+export async function authenticateAdmin(request: Request): Promise<boolean> {
+  try {
+    const cookieHeader = request.headers.get('cookie') || '';
+    const token = parseTokenFromCookie(cookieHeader);
+    
+    if (!token) {
+      console.log('No auth token found in cookies');
+      return false;
+    }
+    
+    // Check if session exists in Redis
+    const valid = await isSessionValid(token);
+    
+    if (!valid) {
+      console.log('Invalid or expired session token');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Admin authentication error:', error);
+    return false;
+  }
 } 

@@ -29,19 +29,63 @@ interface StatusData {
   history?: StatusHistoryItem[];
 }
 
+// Global state to prevent duplicate requests
+type CacheEntry = {
+  data: StatusData[];
+  timestamp: number;
+  lastUpdated: string;
+};
+
+const CACHE_DURATION = 5000; // 5 seconds cache
+let globalCache: CacheEntry | null = null;
+let activeRequest: Promise<StatusData[]> | null = null;
+let pingRequestTimestamp = 0;
+let hookInstanceCount = 0;
+
 /**
  * Custom hook to fetch and manage service status data
  */
-export function useStatus(includeHistory = false, historyLimit = 60) {
-  const [services, setServices] = useState<StatusData[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useStatus(includeHistory = false, historyLimit = 60, initialData?: StatusData[]) {
+  const [services, setServices] = useState<StatusData[]>(initialData || []);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
   const [retryCount, setRetryCount] = useState(0);
+  const [instanceId] = useState(() => ++hookInstanceCount);
   const maxRetries = 3;
 
+  // Function to check if cached data is valid
+  const isCacheValid = () => {
+    return globalCache && (Date.now() - globalCache.timestamp < CACHE_DURATION);
+  };
+
   // Wrap fetchStatus in useCallback to prevent infinite useEffect loop
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (force = false) => {
+    // Skip if we're already fetching and it's not a forced refresh
+    if (activeRequest && !force) {
+      console.log(`[useStatus:${instanceId}] Request already in progress, waiting...`);
+      try {
+        const data = await activeRequest;
+        setServices(data);
+        setLastUpdated(globalCache?.lastUpdated || new Date().toLocaleString());
+        setLoading(false);
+        return;
+      } catch (err) {
+        // Will be handled by the active request
+        return;
+      }
+    }
+
+    // Use cache if available and not forcing refresh
+    if (!force && isCacheValid()) {
+      console.log(`[useStatus:${instanceId}] Using cached data, age: ${Date.now() - globalCache!.timestamp}ms`);
+      setServices(globalCache!.data);
+      setLastUpdated(globalCache!.lastUpdated);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -54,80 +98,157 @@ export function useStatus(includeHistory = false, historyLimit = 60) {
         url.searchParams.append('limit', historyLimit.toString());
       }
       
-      console.log(`Fetching status data from: ${url.toString()}`);
+      // Add timestamp to prevent browser caching
+      url.searchParams.append('_t', Date.now().toString());
       
-      const response = await fetch(url.toString());
+      console.log(`[useStatus:${instanceId}] Fetching status data from: ${url.toString()}`);
+
+      // Store the promise to prevent duplicate requests
+      const fetchPromise = fetch(url.toString(), {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch status: ${response.status}`);
+        }
+        return response.json();
+      });
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch status: ${response.status}`);
-      }
+      activeRequest = fetchPromise;
       
-      const data = await response.json();
-      console.log('Received status data:', data);
+      const data = await fetchPromise;
+      console.log(`[useStatus:${instanceId}] Received status data:`, data);
       
+      // Update local state and global cache
+      const now = new Date().toLocaleString();
       setServices(data);
-      setLastUpdated(new Date().toLocaleString());
+      setLastUpdated(now);
       setError(null);
       setRetryCount(0); // Reset retry count on success
+      
+      // Update global cache
+      globalCache = {
+        data,
+        timestamp: Date.now(),
+        lastUpdated: now
+      };
     } catch (err) {
-      console.error('Error fetching status:', err);
+      console.error(`[useStatus:${instanceId}] Error fetching status:`, err);
       setError((err as Error).message);
       
       // If we haven't exceeded max retries, try again
       if (retryCount < maxRetries) {
-        console.log(`Retry attempt ${retryCount + 1} of ${maxRetries}`);
+        console.log(`[useStatus:${instanceId}] Retry attempt ${retryCount + 1} of ${maxRetries}`);
         setRetryCount(prev => prev + 1);
         
-        // Try ping endpoint first to trigger data collection
-        try {
-          await fetch('/api/ping');
-          console.log('Ping successful, data should be available on next status check');
-        } catch (pingErr) {
-          console.error('Ping attempt failed:', pingErr);
+        // Only ping if we haven't pinged recently
+        if (Date.now() - pingRequestTimestamp > 5000) {
+          pingRequestTimestamp = Date.now();
+          try {
+            await fetch('/api/ping');
+            console.log(`[useStatus:${instanceId}] Ping successful, fetching status data`);
+          } catch (pingErr) {
+            console.error(`[useStatus:${instanceId}] Ping attempt failed:`, pingErr);
+          }
         }
       }
     } finally {
       setLoading(false);
+      activeRequest = null;  // Clear active request flag
     }
-  }, [includeHistory, historyLimit, retryCount]);
+  }, [includeHistory, historyLimit, retryCount, instanceId]);
 
   // Retry logic for initial load
   useEffect(() => {
     if (retryCount > 0 && retryCount <= maxRetries) {
       const retryTimer = setTimeout(() => {
-        console.log(`Executing retry ${retryCount} of ${maxRetries}`);
-        fetchStatus();
-      }, 2000); // Wait 2 seconds between retries
+        console.log(`[useStatus:${instanceId}] Executing retry ${retryCount} of ${maxRetries}`);
+        fetchStatus(true); // Force refresh on retry
+      }, 2000 * retryCount); // Increase wait time for subsequent retries
       
       return () => clearTimeout(retryTimer);
     }
-  }, [retryCount, fetchStatus]);
+  }, [retryCount, fetchStatus, instanceId]);
 
   // Initial fetch
   useEffect(() => {
-    // First call the ping endpoint to ensure we have fresh data
-    fetch('/api/ping')
-      .then(() => {
-        console.log('Ping successful, fetching status data');
+    console.log(`[useStatus:${instanceId}] Hook instance mounted, initialData:`, !!initialData);
+    
+    // If we have initial data, don't fetch immediately
+    if (initialData && initialData.length > 0) {
+      setServices(initialData);
+      setLoading(false);
+      setLastUpdated("Using preloaded data");
+      
+      // Only update the cache if it's empty
+      if (!globalCache) {
+        globalCache = {
+          data: initialData,
+          timestamp: Date.now(),
+          lastUpdated: "Using preloaded data"
+        };
+      }
+      
+      // Schedule a delayed fetch to get fresh data
+      const timer = setTimeout(() => {
+        console.log(`[useStatus:${instanceId}] Fetching fresh data after using initialData`);
         fetchStatus();
-      })
-      .catch(err => {
-        console.error('Initial ping failed:', err);
-        fetchStatus(); // Try to fetch status anyway
-      });
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      // Check cache first
+      if (isCacheValid()) {
+        console.log(`[useStatus:${instanceId}] Using cached data on mount`);
+        setServices(globalCache!.data);
+        setLastUpdated(globalCache!.lastUpdated);
+        setLoading(false);
+        
+        // Still schedule a refresh but with a delay
+        const refreshTimer = setTimeout(() => {
+          fetchStatus();
+        }, 5000);
+        
+        return () => clearTimeout(refreshTimer);
+      }
+      
+      // If we need a fresh ping, do it only if one hasn't been done recently
+      if (Date.now() - pingRequestTimestamp > 5000) {
+        pingRequestTimestamp = Date.now();
+        fetch('/api/ping')
+          .then(() => {
+            console.log(`[useStatus:${instanceId}] Ping successful, fetching status data`);
+            fetchStatus();
+          })
+          .catch(err => {
+            console.error(`[useStatus:${instanceId}] Initial ping failed:`, err);
+            fetchStatus(); // Try to fetch status anyway
+          });
+      } else {
+        // Recent ping happened, just fetch the data
+        fetchStatus();
+      }
+    }
     
     // Set up polling interval for subsequent updates
-    const interval = setInterval(fetchStatus, config.refreshInterval);
+    const interval = setInterval(() => {
+      fetchStatus();
+    }, config.refreshInterval);
     
     // Clean up interval on unmount
-    return () => clearInterval(interval);
-  }, [fetchStatus]);
+    return () => {
+      console.log(`[useStatus:${instanceId}] Hook instance unmounted`);
+      clearInterval(interval);
+    };
+  }, [fetchStatus, initialData, instanceId]);
 
   return {
     services,
     loading,
     error,
     lastUpdated,
-    refresh: fetchStatus
+    refresh: () => fetchStatus(true) // Force refresh when manually called
   };
 } 

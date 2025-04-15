@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
@@ -34,10 +34,16 @@ export function StatusPageContent({
 }: StatusPageContentProps) {
   const { toast } = useToast();
   
-  // Status page settings state
+  // Status page settings state - actual saved status from server
   const [statusPageEnabled, setStatusPageEnabled] = useState<boolean | null>(
     preloadedStatusPageData?.settings?.enabled !== false ? true : false
   );
+  
+  // UI state for the toggle - can be different from actual saved state
+  const [statusPageEnabledUI, setStatusPageEnabledUI] = useState<boolean | null>(
+    preloadedStatusPageData?.settings?.enabled !== false ? true : false
+  );
+  
   const [statusPageTitle, setStatusPageTitle] = useState(
     preloadedStatusPageData?.settings?.title || "Service Status"
   );
@@ -47,11 +53,11 @@ export function StatusPageContent({
   const [serviceVisibility, setServiceVisibility] = useState<{name: string, visible: boolean}[]>(
     preloadedStatusPageData?.services || []
   );
-  const [isLoadingStatusPage, setIsLoadingStatusPage] = useState(!preloadedStatusPageData);
+  const [isLoadingStatusPage, setIsLoadingStatusPage] = useState(false);
   const [isSavingStatusPage, setIsSavingStatusPage] = useState(false);
   
-  // Overall loading state for the entire component
-  const [initialLoadComplete, setInitialLoadComplete] = useState(!!preloadedStatusPageData);
+  // Overall loading state for the entire component - always start as loaded with preloaded data
+  const [initialLoadComplete, setInitialLoadComplete] = useState(true);
   
   // Appearance settings state
   const [primaryColor, setPrimaryColor] = useState(
@@ -64,13 +70,13 @@ export function StatusPageContent({
     preloadedAppearanceData?.logoUrl || ""
   );
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
-  const [isLoadingAppearance, setIsLoadingAppearance] = useState(!preloadedAppearanceData);
+  const [isLoadingAppearance, setIsLoadingAppearance] = useState(false);
   
   // Advanced settings state
   const [customCss, setCustomCss] = useState("");
   const [customHeader, setCustomHeader] = useState("");
   const [isSavingAdvanced, setIsSavingAdvanced] = useState(false);
-  const [isLoadingAdvanced, setIsLoadingAdvanced] = useState(true);
+  const [isLoadingAdvanced, setIsLoadingAdvanced] = useState(false);
   
   // Preview dialog state
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
@@ -89,21 +95,22 @@ export function StatusPageContent({
         return "general";
     }
   };
+  
+  // Memoize section tab value to prevent unnecessary recalculations
+  const sectionTabValue = useMemo(() => getSectionTabValue(activeSection), [activeSection]);
+  
+  // Current selected tab - use memoized value
+  const [currentTab, setCurrentTab] = useState(sectionTabValue);
 
-  // Current selected tab
-  const [currentTab, setCurrentTab] = useState(getSectionTabValue(activeSection));
-
-  // Update current tab when activeSection changes
+  // Update current tab when activeSection changes - simplified with the memoized value
   useEffect(() => {
-    setCurrentTab(getSectionTabValue(activeSection));
-  }, [activeSection]);
+    setCurrentTab(sectionTabValue);
+  }, [sectionTabValue]);
 
   // Fetch status page settings only if not preloaded
   useEffect(() => {
-    // Skip fetch if preloaded data is available
+    // Skip fetch completely if preloaded data is available
     if (preloadedStatusPageData) {
-      setIsLoadingStatusPage(false);
-      setInitialLoadComplete(true);
       return;
     }
     
@@ -119,7 +126,9 @@ export function StatusPageContent({
         const data = await response.json();
         
         // Update state with fetched settings
-        setStatusPageEnabled(data.settings?.enabled !== false);
+        const enabled = data.settings?.enabled !== false;
+        setStatusPageEnabled(enabled);
+        setStatusPageEnabledUI(enabled); // Keep UI in sync with server state
         setStatusPageTitle(data.settings?.title || "Service Status");
         setStatusPageDescription(data.settings?.description || "Current status of our services");
         
@@ -139,7 +148,6 @@ export function StatusPageContent({
         });
       } finally {
         setIsLoadingStatusPage(false);
-        setInitialLoadComplete(true);
       }
     }
     
@@ -148,9 +156,8 @@ export function StatusPageContent({
 
   // Fetch appearance settings only if not preloaded
   useEffect(() => {
-    // Skip fetch if preloaded data is available
+    // Skip fetch completely if preloaded data is available
     if (preloadedAppearanceData) {
-      setIsLoadingAppearance(false);
       return;
     }
     
@@ -185,9 +192,17 @@ export function StatusPageContent({
     fetchAppearanceSettings();
   }, [preloadedAppearanceData, toast]);
   
-  // Fetch advanced settings
+  // Fetch advanced settings - only if needed
   useEffect(() => {
+    // Advanced data is optional, so we avoid loading it on initial render
+    // It will be loaded only when the user navigates to the advanced tab
+    if (currentTab !== "advanced") {
+      return;
+    }
+    
     async function fetchAdvancedSettings() {
+      if (isLoadingAdvanced) return; // Prevent duplicate fetches
+      
       setIsLoadingAdvanced(true);
       try {
         // Mock implementation until the actual API endpoint is created
@@ -225,7 +240,7 @@ export function StatusPageContent({
     }
     
     fetchAdvancedSettings();
-  }, [toast]);
+  }, [currentTab, toast, isLoadingAdvanced]);
 
   const handleSaveStatusPageSettings = async () => {
     setIsSavingStatusPage(true);
@@ -234,7 +249,7 @@ export function StatusPageContent({
       // Prepare data for API
       const updatedSettings = {
         settings: {
-          enabled: statusPageEnabled,
+          enabled: statusPageEnabledUI, // Use the UI state for saving
           title: statusPageTitle,
           description: statusPageDescription
         },
@@ -253,6 +268,9 @@ export function StatusPageContent({
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
       }
+      
+      // Update the actual saved state after successful save
+      setStatusPageEnabled(statusPageEnabledUI);
       
       // Show success notification
       toast({
@@ -398,10 +416,17 @@ export function StatusPageContent({
   }
 
   return (
-    <Card className="h-full">
+    <Card className="h-full w-full max-w-full">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle>Status Page</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Status Page</CardTitle>
+            {statusPageEnabled !== statusPageEnabledUI && (
+              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full font-medium">
+                Unsaved Changes
+              </span>
+            )}
+          </div>
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusPageEnabled ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
             <div className={`w-1.5 h-1.5 rounded-full ${statusPageEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
             {statusPageEnabled ? 'Active' : 'Disabled'}
@@ -409,19 +434,19 @@ export function StatusPageContent({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between mb-6 border-b pb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 border-b pb-4 gap-4">
           <div className="flex items-center space-x-3">
             <Switch 
               id="status-page-enabled" 
-              checked={statusPageEnabled === null ? false : statusPageEnabled}
-              onCheckedChange={setStatusPageEnabled}
+              checked={statusPageEnabledUI === null ? false : statusPageEnabledUI}
+              onCheckedChange={setStatusPageEnabledUI}
             />
             <Label htmlFor="status-page-enabled" className="font-medium">
-              {statusPageEnabled ? 'Public status page is visible' : 'Public status page is hidden'}
+              {statusPageEnabledUI ? 'Public status page is visible' : 'Public status page is hidden'}
             </Label>
           </div>
           
-          <div className="flex space-x-2">
+          <div className="flex space-x-3">
             <Button 
               variant="outline" 
               size="sm"
@@ -445,7 +470,7 @@ export function StatusPageContent({
           </div>
         </div>
         
-        <Tabs value={currentTab} onValueChange={setCurrentTab}>
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
@@ -465,7 +490,7 @@ export function StatusPageContent({
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="general">
+          <TabsContent value="general" className="w-full">
             <p className="mb-4 text-sm text-muted-foreground">
               Configure your public status page settings.
             </p>
@@ -489,7 +514,7 @@ export function StatusPageContent({
                           type="text" 
                           value={statusPageTitle}
                           onChange={(e) => setStatusPageTitle(e.target.value)}
-                          disabled={statusPageEnabled !== true}
+                          disabled={statusPageEnabledUI !== true}
                           placeholder="Service Status" 
                         />
                       </div>
@@ -499,7 +524,7 @@ export function StatusPageContent({
                           type="text" 
                           value={statusPageDescription}
                           onChange={(e) => setStatusPageDescription(e.target.value)}
-                          disabled={statusPageEnabled !== true}
+                          disabled={statusPageEnabledUI !== true}
                           placeholder="Current status of our services" 
                         />
                       </div>
@@ -521,7 +546,7 @@ export function StatusPageContent({
             )}
           </TabsContent>
           
-          <TabsContent value="services">
+          <TabsContent value="services" className="w-full">
             <p className="mb-4 text-sm text-muted-foreground">Configure which services are visible on the public status page</p>
             
             {isLoadingStatusPage ? (
@@ -544,7 +569,7 @@ export function StatusPageContent({
                       <p className="text-sm text-muted-foreground">Add services from the Services tab first.</p>
                     </div>
                   ) : (
-                    <div className="space-y-1 mt-2">
+                    <div className="space-y-1 mt-2 w-full">
                       {serviceVisibility.map((service) => (
                         <div key={service.name} className="flex items-center justify-between p-3 border rounded-md bg-background">
                           <span className="font-medium">{service.name}</span>
@@ -556,7 +581,7 @@ export function StatusPageContent({
                               id={`service-${service.name}`}
                               checked={service.visible}
                               onCheckedChange={() => handleToggleServiceVisibility(service.name)}
-                              disabled={statusPageEnabled !== true}
+                              disabled={statusPageEnabledUI !== true}
                             />
                           </div>
                         </div>
@@ -579,7 +604,7 @@ export function StatusPageContent({
             )}
           </TabsContent>
           
-          <TabsContent value="appearance">
+          <TabsContent value="appearance" className="w-full">
             <p className="mb-4 text-sm text-muted-foreground">
               Customize the appearance of your public status page
             </p>
@@ -600,7 +625,7 @@ export function StatusPageContent({
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Primary Color</label>
                       <div className="flex items-center">
-                        <div className="relative flex-1">
+                        <div className="relative flex-1 max-w-md">
                           <Input
                             type="text"
                             value={primaryColor}
@@ -626,7 +651,7 @@ export function StatusPageContent({
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Accent Color</label>
                       <div className="flex items-center">
-                        <div className="relative flex-1">
+                        <div className="relative flex-1 max-w-md">
                           <Input
                             type="text"
                             value={accentColor}
@@ -658,6 +683,9 @@ export function StatusPageContent({
                   </h3>
                   
                   <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      The logo appears at the top of your status page. If no URL is set, no logo will be displayed.
+                    </p>
                     <div className="flex gap-4 items-start">
                       <div className="flex-1 space-y-2">
                         <label className="text-sm font-medium">Logo URL</label>
@@ -705,32 +733,6 @@ export function StatusPageContent({
                   </div>
                 </div>
                 
-                <div className="rounded-lg border bg-card p-6 mt-6">
-                  <h3 className="font-medium mb-3 flex items-center gap-2">
-                    <Image className="h-4 w-4 text-muted-foreground" />
-                    <span>Favicon</span>
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      The favicon is set to the OpenUptimes logo.
-                    </p>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 border rounded-md bg-background flex flex-col items-center justify-center p-1">
-                        <img
-                          src="/default-favicon.svg"
-                          alt="Default favicon"
-                          className="max-h-10 max-w-full object-contain"
-                        />
-                      </div>
-                      <div className="text-sm">
-                        <p>The default OpenUptimes favicon is being used.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
                 <div className="flex justify-end">
                   <Button
                     onClick={handleSaveAppearanceSettings}
@@ -745,7 +747,7 @@ export function StatusPageContent({
             )}
           </TabsContent>
           
-          <TabsContent value="advanced">
+          <TabsContent value="advanced" className="w-full">
             <p className="mb-4 text-sm text-muted-foreground">
               Advanced customization options for your status page
             </p>
@@ -760,7 +762,7 @@ export function StatusPageContent({
                   <h3 className="font-medium mb-3">Custom CSS</h3>
                   <p className="text-sm text-muted-foreground mb-4">Add custom CSS to customize the appearance of your status page</p>
                   
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 max-w-full">
                     <div className="relative">
                       <textarea
                         value={customCss}
@@ -776,7 +778,7 @@ export function StatusPageContent({
                   <h3 className="font-medium mb-3">Custom Header</h3>
                   <p className="text-sm text-muted-foreground mb-4">Add custom HTML to the header of your status page</p>
                   
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 max-w-full">
                     <div className="relative">
                       <textarea
                         value={customHeader}
