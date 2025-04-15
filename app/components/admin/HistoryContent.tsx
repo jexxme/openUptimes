@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Download, Filter, Calendar, Clock } from "lucide-react";
+import { RefreshCw, Download, Filter, Calendar, Clock, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { cn } from "@/lib/utils";
+import React from "react";
 
 // Types from useStatus hook
 interface StatusHistoryItem {
@@ -36,7 +37,6 @@ interface HistoryContentProps {
   services: StatusData[];
   statusLoading: boolean;
   statusError: string | null;
-  lastUpdated: string;
   refresh: () => void;
   initialService?: string | null;
   preloadedHistory?: { service: string; item: StatusHistoryItem }[];
@@ -46,157 +46,56 @@ export function HistoryContent({
   services, 
   statusLoading, 
   statusError, 
-  lastUpdated, 
   refresh,
   initialService = null,
   preloadedHistory = undefined
 }: HistoryContentProps) {
+  // Base state
   const [timeRange, setTimeRange] = useState<string>("30m");
   const [selectedService, setSelectedService] = useState<string>(initialService || "all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedResponseCode, setSelectedResponseCode] = useState<string>("all");
   const [entriesLimit, setEntriesLimit] = useState<string>("10");
-  const [historyItems, setHistoryItems] = useState<{ service: string; item: StatusHistoryItem }[]>(preloadedHistory || []);
-  const [isLoading, setIsLoading] = useState<boolean>(!preloadedHistory);
-  const [error, setError] = useState<string | null>(null);
   const [isCustomRange, setIsCustomRange] = useState<boolean>(false);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ 
-    key: 'timestamp', 
-    direction: 'desc' 
-  });
-  
-  // Simple date strings in YYYY-MM-DD format for input type="date"
   const [startDateStr, setStartDateStr] = useState<string>(
     format(new Date(Date.now() - 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
   );
   const [endDateStr, setEndDateStr] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
-  
-  // Time strings in HH:MM format for input type="time"
   const [startTimeStr, setStartTimeStr] = useState<string>("00:00");
   const [endTimeStr, setEndTimeStr] = useState<string>("23:59");
   
-  // Use initialService when it changes
-  useEffect(() => {
-    if (initialService) {
-      setSelectedService(initialService);
-    }
-  }, [initialService]);
+  // Data state
+  const [rawHistoryData, setRawHistoryData] = useState<{ service: string; item: StatusHistoryItem }[]>(
+    preloadedHistory ? [...preloadedHistory] : []
+  );
+  const [filteredHistoryItems, setFilteredHistoryItems] = useState<{ service: string; item: StatusHistoryItem }[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(!preloadedHistory);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetchParams, setLastFetchParams] = useState<{
+    service: string;
+    timeRange: string;
+    isCustomRange: boolean;
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+  } | null>(null);
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ 
+    key: 'timestamp', 
+    direction: 'desc' 
+  });
   
   // Format timestamp to readable date/time
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp).toLocaleString();
   };
   
-  // Fetch history data from the API
-  const fetchHistoryData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Build API URL with filters
-      const url = new URL('/api/history', window.location.origin);
-      if (selectedService !== 'all') {
-        url.searchParams.append('service', selectedService);
-      }
-      
-      // Handle different time ranges
-      if (isCustomRange && startDateStr && endDateStr) {
-        // Convert date and time strings to timestamps
-        const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
-        const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
-        
-        const startDate = new Date(startDateStr);
-        startDate.setHours(startHours, startMinutes, 0, 0);
-        
-        const endDate = new Date(endDateStr);
-        endDate.setHours(endHours, endMinutes, 59, 999);
-        
-        url.searchParams.append('startTime', startDate.getTime().toString());
-        url.searchParams.append('endTime', endDate.getTime().toString());
-      } else {
-        url.searchParams.append('timeRange', timeRange);
-      }
-      
-      // Fetch data
-      const response = await fetch(url.toString());
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch history: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Process data into a flat array for display
-      let allHistory: { service: string; item: StatusHistoryItem }[] = [];
-      
-      data.forEach((service: { name: string; history: StatusHistoryItem[] }) => {
-        service.history.forEach(item => {
-          allHistory.push({ service: service.name, item });
-        });
-      });
-      
-      // Apply client-side filtering for status and response code
-      if (selectedStatus !== 'all') {
-        allHistory = allHistory.filter(item => item.item.status === selectedStatus);
-      }
-      
-      if (selectedResponseCode !== 'all') {
-        allHistory = allHistory.filter(item => {
-          if (selectedResponseCode === '2xx') {
-            return item.item.statusCode && item.item.statusCode >= 200 && item.item.statusCode < 300;
-          } else if (selectedResponseCode === '3xx') {
-            return item.item.statusCode && item.item.statusCode >= 300 && item.item.statusCode < 400;
-          } else if (selectedResponseCode === '4xx') {
-            return item.item.statusCode && item.item.statusCode >= 400 && item.item.statusCode < 500;
-          } else if (selectedResponseCode === '5xx') {
-            return item.item.statusCode && item.item.statusCode >= 500 && item.item.statusCode < 600;
-          } else if (selectedResponseCode === 'none') {
-            return !item.item.statusCode;
-          }
-          return false;
-        });
-      }
-      
-      // Sort the data based on sort configuration
-      allHistory = sortData(allHistory, sortConfig);
-      
-      // Apply entries limit if not unlimited
-      if (entriesLimit !== 'unlimited') {
-        allHistory = allHistory.slice(0, parseInt(entriesLimit));
-      }
-      
-      setHistoryItems(allHistory);
-    } catch (err) {
-      console.error('Error fetching history:', err);
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedService, timeRange, isCustomRange, startDateStr, endDateStr, startTimeStr, endTimeStr, selectedStatus, selectedResponseCode, entriesLimit, sortConfig]);
-  
-  // Function to handle column sorting
-  const handleSort = (key: string) => {
-    setSortConfig(prevConfig => {
-      if (prevConfig.key === key) {
-        // If same column, toggle direction
-        return {
-          key,
-          direction: prevConfig.direction === 'asc' ? 'desc' : 'asc'
-        };
-      } else {
-        // If new column, default to descending
-        return {
-          key,
-          direction: 'desc'
-        };
-      }
-    });
-  };
-  
   // Function to sort data based on column and direction
-  const sortData = (data: { service: string; item: StatusHistoryItem }[], config: { key: string; direction: 'asc' | 'desc' }) => {
+  const sortData = useCallback((data: { service: string; item: StatusHistoryItem }[], config: { key: string; direction: 'asc' | 'desc' }) => {
     return [...data].sort((a, b) => {
       let aValue, bValue;
       
@@ -230,7 +129,224 @@ export function HistoryContent({
         return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
       }
     });
-  };
+  }, []);
+  
+  // Apply all filters to raw data
+  const applyFilters = useCallback(() => {
+    if (!rawHistoryData.length) {
+      setFilteredHistoryItems([]);
+      return;
+    }
+    
+    let filtered = [...rawHistoryData];
+    
+    // Filter by service if specified
+    if (selectedService !== 'all') {
+      filtered = filtered.filter(item => item.service === selectedService);
+    }
+    
+    // Filter by status if specified
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(item => item.item.status === selectedStatus);
+    }
+    
+    // Filter by response code if specified
+    if (selectedResponseCode !== 'all') {
+      filtered = filtered.filter(item => {
+        if (selectedResponseCode === '2xx') {
+          return item.item.statusCode && item.item.statusCode >= 200 && item.item.statusCode < 300;
+        } else if (selectedResponseCode === '3xx') {
+          return item.item.statusCode && item.item.statusCode >= 300 && item.item.statusCode < 400;
+        } else if (selectedResponseCode === '4xx') {
+          return item.item.statusCode && item.item.statusCode >= 400 && item.item.statusCode < 500;
+        } else if (selectedResponseCode === '5xx') {
+          return item.item.statusCode && item.item.statusCode >= 500 && item.item.statusCode < 600;
+        } else if (selectedResponseCode === 'none') {
+          return !item.item.statusCode;
+        }
+        return false;
+      });
+    }
+    
+    // Sort the data
+    filtered = sortData(filtered, sortConfig);
+    
+    // Apply limit if not unlimited
+    if (entriesLimit !== 'unlimited') {
+      filtered = filtered.slice(0, parseInt(entriesLimit));
+    }
+    
+    setFilteredHistoryItems(filtered);
+  }, [rawHistoryData, selectedService, selectedStatus, selectedResponseCode, entriesLimit, sortConfig, sortData]);
+  
+  // Fetch history data from the API (only concerned with getting data)
+  const fetchHistoryData = useCallback(async (forceFetch = false) => {
+    // Should we fetch new data?
+    const shouldFetch = forceFetch || !lastFetchParams || 
+      lastFetchParams.service !== selectedService ||
+      lastFetchParams.timeRange !== timeRange ||
+      lastFetchParams.isCustomRange !== isCustomRange ||
+      (isCustomRange && (
+        lastFetchParams.startDate !== startDateStr ||
+        lastFetchParams.endDate !== endDateStr ||
+        lastFetchParams.startTime !== startTimeStr ||
+        lastFetchParams.endTime !== endTimeStr
+      ));
+    
+    // If nothing has changed that would require a new fetch, just reapply filters
+    if (!shouldFetch) {
+      applyFilters();
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Build API URL with filters
+      const url = new URL('/api/history', window.location.origin);
+      if (selectedService !== 'all') {
+        url.searchParams.append('service', selectedService);
+      }
+      
+      // Add the includeDeleted parameter
+      url.searchParams.append('includeDeleted', 'true');
+      
+      // Handle different time ranges
+      if (isCustomRange && startDateStr && endDateStr) {
+        // Convert date and time strings to timestamps
+        const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
+        const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
+        
+        const startDate = new Date(startDateStr);
+        startDate.setHours(startHours, startMinutes, 0, 0);
+        
+        const endDate = new Date(endDateStr);
+        endDate.setHours(endHours, endMinutes, 59, 999);
+        
+        url.searchParams.append('startTime', startDate.getTime().toString());
+        url.searchParams.append('endTime', endDate.getTime().toString());
+      } else {
+        url.searchParams.append('timeRange', timeRange);
+      }
+      
+      // Fetch data with timeout to avoid hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
+      const response = await fetch(url.toString(), {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        // Try to parse error response
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || `Failed to fetch history: ${response.status}`;
+        } catch (e) {
+          errorMessage = `Failed to fetch history: ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      
+      // Process data into a flat array for display
+      let allHistory: { service: string; item: StatusHistoryItem }[] = [];
+      
+      data.forEach((service: { name: string; history: StatusHistoryItem[] }) => {
+        if (service && service.name && Array.isArray(service.history)) {
+          service.history.forEach(item => {
+            if (item && typeof item === 'object' && item.status && item.timestamp) {
+              allHistory.push({ 
+                service: service.name, 
+                item
+              });
+            }
+          });
+        }
+      });
+      
+      // Update the raw history data
+      setRawHistoryData(allHistory);
+      
+      // Save what we just fetched to avoid redundant fetches
+      setLastFetchParams({
+        service: selectedService,
+        timeRange: timeRange,
+        isCustomRange: isCustomRange,
+        startDate: startDateStr,
+        endDate: endDateStr,
+        startTime: startTimeStr,
+        endTime: endTimeStr
+      });
+      
+    } catch (err) {
+      console.error('Error fetching history:', err);
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedService, timeRange, isCustomRange, startDateStr, endDateStr, startTimeStr, endTimeStr, lastFetchParams, applyFilters]);
+  
+  // Whenever raw data or filter/sort criteria change, reapply filters
+  useEffect(() => {
+    applyFilters();
+  }, [rawHistoryData, selectedService, selectedStatus, selectedResponseCode, entriesLimit, sortConfig, applyFilters]);
+  
+  // Handle button click events (without parameter collision)
+  const handleRefresh = useCallback(() => {
+    fetchHistoryData(true);
+  }, [fetchHistoryData]);
+
+  // Apply custom date range
+  const handleApplyCustomRange = useCallback(() => {
+    fetchHistoryData(true);
+  }, [fetchHistoryData]);
+
+  // Handle try again after error
+  const handleTryAgain = useCallback(() => {
+    fetchHistoryData(true);
+  }, [fetchHistoryData]);
+  
+  // Initialize data on component mount
+  useEffect(() => {
+    // If we have preloaded history, use it
+    if (preloadedHistory && !lastFetchParams) {
+      console.log("Using preloaded history data on initial load");
+      setRawHistoryData(preloadedHistory);
+      setLastFetchParams({
+        service: selectedService,
+        timeRange: timeRange,
+        isCustomRange: isCustomRange,
+        startDate: startDateStr,
+        endDate: endDateStr,
+        startTime: startTimeStr,
+        endTime: endTimeStr
+      });
+      
+      // If there's a specific service selected, fetch fresh data for that service
+      if (selectedService !== 'all') {
+        const timer = setTimeout(() => {
+          console.log("Fetching fresh data for selected service:", selectedService);
+          fetchHistoryData(true);
+        }, 1000);
+        
+        return () => clearTimeout(timer);
+      }
+    } else if (!preloadedHistory && !lastFetchParams) {
+      // No preloaded data, fetch on first mount
+      fetchHistoryData(true);
+    }
+  }, [preloadedHistory, selectedService, timeRange, isCustomRange, startDateStr, endDateStr, 
+      startTimeStr, endTimeStr, lastFetchParams, fetchHistoryData]);
   
   // Handle time range changes
   const handleTimeRangeChange = (value: string) => {
@@ -242,56 +358,37 @@ export function HistoryContent({
     }
   };
   
-  // Fetch history data when filters change
+  // Function to handle column sorting
+  const handleSort = (key: string) => {
+    setSortConfig(prevConfig => {
+      if (prevConfig.key === key) {
+        // If same column, toggle direction
+        return {
+          key,
+          direction: prevConfig.direction === 'asc' ? 'desc' : 'asc'
+        };
+      } else {
+        // If new column, default to descending
+        return {
+          key,
+          direction: 'desc'
+        };
+      }
+    });
+  };
+  
+  // Use initialService when it changes
   useEffect(() => {
-    // Skip initial fetch if we have preloaded data
-    if (preloadedHistory && historyItems === preloadedHistory) {
-      // Apply filters to preloaded data
-      let filteredHistory = [...preloadedHistory];
-      
-      if (selectedStatus !== 'all') {
-        filteredHistory = filteredHistory.filter(item => item.item.status === selectedStatus);
-      }
-      
-      if (selectedResponseCode !== 'all') {
-        filteredHistory = filteredHistory.filter(item => {
-          if (selectedResponseCode === '2xx') {
-            return item.item.statusCode && item.item.statusCode >= 200 && item.item.statusCode < 300;
-          } else if (selectedResponseCode === '3xx') {
-            return item.item.statusCode && item.item.statusCode >= 300 && item.item.statusCode < 400;
-          } else if (selectedResponseCode === '4xx') {
-            return item.item.statusCode && item.item.statusCode >= 400 && item.item.statusCode < 500;
-          } else if (selectedResponseCode === '5xx') {
-            return item.item.statusCode && item.item.statusCode >= 500 && item.item.statusCode < 600;
-          } else if (selectedResponseCode === 'none') {
-            return !item.item.statusCode;
-          }
-          return false;
-        });
-      }
-      
-      // Sort the data
-      filteredHistory = sortData(filteredHistory, sortConfig);
-      
-      // Apply limit
-      if (entriesLimit !== 'unlimited') {
-        filteredHistory = filteredHistory.slice(0, parseInt(entriesLimit));
-      }
-      
-      setHistoryItems(filteredHistory);
-      setIsLoading(false);
-      return;
+    if (initialService && initialService !== selectedService) {
+      setSelectedService(initialService);
     }
-    
-    // Otherwise fetch data normally
-    fetchHistoryData();
-  }, [fetchHistoryData, preloadedHistory, selectedStatus, selectedResponseCode, entriesLimit, sortConfig]);
+  }, [initialService, selectedService]);
   
   // Export history data as CSV
   const exportCSV = () => {
     // Create CSV header and data rows
     const csvHeader = "Service,Status,Timestamp,Response Time (ms),Status Code,Error\n";
-    const csvRows = historyItems.map(({ service, item }) => {
+    const csvRows = filteredHistoryItems.map(({ service, item }) => {
       return `"${service}","${item.status}","${formatTimestamp(item.timestamp)}","${item.responseTime || ''}","${item.statusCode || ''}","${(item.error || '').replace(/"/g, '""')}"`;
     }).join("\n");
     
@@ -310,12 +407,6 @@ export function HistoryContent({
   };
 
   // Get status color based on status
-  const getStatusColor = (status: 'up' | 'down' | 'unknown') => {
-    if (status === 'up') return 'bg-green-100 text-green-800';
-    if (status === 'down') return 'bg-red-100 text-red-800';
-    return 'bg-gray-100 text-gray-800';
-  };
-  
   const getStatusBadgeClass = (status: 'up' | 'down' | 'unknown') => {
     return cn(
       "px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1",
@@ -354,28 +445,207 @@ export function HistoryContent({
     </div>
   );
 
-  const ServiceSelect = () => (
-    <div className="flex-1 min-w-[180px]">
-      <div className="flex items-center gap-1 mb-1">
-        <Filter className="h-3 w-3 text-muted-foreground" />
-        <Label htmlFor="service-select" className="text-sm font-medium">Service</Label>
-      </div>
-      <div className="relative">
-        <select 
-          id="service-select"
-          className={selectClass}
-          value={selectedService} 
-          onChange={(e) => setSelectedService(e.target.value)}
-          disabled={isLoading}
+  // Custom service select dropdown that shows status dots
+  const ServiceSelect = () => {
+    const [open, setOpen] = useState(false);
+    const [searchValue, setSearchValue] = useState('');
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    
+    // Process services right away to avoid waiting
+    const [processedServices, setProcessedServices] = useState<any[]>([]);
+    
+    // Store the displayed JSX directly to prevent flicker
+    const [displayView, setDisplayView] = useState<React.ReactNode>(null);
+    
+    // Get status dot class based on status
+    const getStatusDot = (status?: 'up' | 'down' | 'unknown' | null) => (
+      <span className={cn(
+        "h-2 w-2 rounded-full inline-block mr-2",
+        status === 'up' ? "bg-green-500" : 
+        status === 'down' ? "bg-red-500" : 
+        "bg-gray-400",
+        status === 'up' ? "animate-pulse" : ""
+      )}></span>
+    );
+    
+    // Get service name display
+    const getNameView = (name: string) => (
+      <span className="flex items-center">
+        {name}
+      </span>
+    );
+    
+    // Initialize the display view and update when selected service or services change
+    useEffect(() => {
+      // Get default view based on current selection
+      if (selectedService === 'all' || !selectedService) {
+        setDisplayView(
+          <>
+            {getStatusDot(null)}
+            All Services
+          </>
+        );
+      } else {
+        // Find the service in processed services
+        const service = processedServices.find(s => s.name === selectedService);
+        
+        if (service) {
+          setDisplayView(
+            <>
+              {getStatusDot(service.currentStatus?.status)}
+              {getNameView(selectedService)}
+            </>
+          );
+        } else {
+          // Fallback if service not found
+          setDisplayView(
+            <>
+              {getStatusDot(null)}
+              {selectedService}
+            </>
+          );
+        }
+      }
+    }, [selectedService, processedServices]);
+    
+    // Process services on mount and when they change
+    useEffect(() => {
+      if (services && Array.isArray(services)) {
+        // Filter out invalid service objects first
+        const validServices = services.filter(
+          service => service && typeof service === 'object' && service.name && typeof service.name === 'string'
+        );
+        
+        // Create a map to track unique service names
+        const uniqueMap = new Map();
+        
+        validServices.forEach(service => {
+          if (!uniqueMap.has(service.name)) {
+            uniqueMap.set(service.name, service);
+          }
+        });
+        
+        setProcessedServices(Array.from(uniqueMap.values()));
+      }
+    }, [services]);
+    
+    // Close dropdown when clicking outside
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setOpen(false);
+        }
+      };
+      
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [dropdownRef]);
+    
+    // Filter services by search input
+    const filteredServices = React.useMemo(() => {
+      return processedServices.filter(service => 
+        service.name.toLowerCase().includes(searchValue.toLowerCase())
+      );
+    }, [processedServices, searchValue]);
+    
+    const isServicesLoading = isLoading || (Array.isArray(services) && services.length > 0 && !processedServices.length);
+    
+    // Simple handler with one-step state update
+    const handleSelect = (serviceName: string) => {
+      // First close the dropdown
+      setOpen(false);
+      
+      // Only update parent state if actually changed
+      if (serviceName !== selectedService) {
+        // Wait a tiny bit to ensure dropdown closing animation completes first
+        setTimeout(() => {
+          setSelectedService(serviceName);
+        }, 10);
+      }
+    };
+    
+    return (
+      <div className="flex-1 min-w-[220px] relative" ref={dropdownRef}>
+        <div className="flex items-center gap-1 mb-1">
+          <Filter className="h-3 w-3 text-muted-foreground" />
+          <Label className="text-sm font-medium">Service</Label>
+        </div>
+        
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+          disabled={isServicesLoading}
+          onClick={() => setOpen(!open)}
         >
-          <option value="all">All Services</option>
-          {services.map(service => (
-            <option key={service.name} value={service.name}>{service.name}</option>
-          ))}
-        </select>
+          {isServicesLoading ? (
+            <div className="flex items-center text-muted-foreground">
+              <div className="h-3 w-3 mr-2 rounded-full border-2 border-t-transparent border-muted-foreground/60 animate-spin"></div>
+              Loading services...
+            </div>
+          ) : displayView}
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+        
+        {open && (
+          <div className="absolute z-50 w-full mt-1 rounded-md border bg-background shadow-md max-h-[300px] overflow-auto">
+            <div className="p-2 border-b">
+              <Input
+                placeholder="Search service..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="h-8 text-sm"
+                autoFocus
+              />
+            </div>
+            
+            <div className="py-1">
+              <div
+                role="option"
+                className={cn(
+                  "flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground",
+                  selectedService === "all" && "bg-accent/50"
+                )}
+                onClick={() => handleSelect('all')}
+              >
+                {getStatusDot(null)}
+                All Services
+              </div>
+              
+              {isServicesLoading ? (
+                <div className="px-2 py-6 text-center">
+                  <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Loading services...</p>
+                </div>
+              ) : filteredServices.length === 0 ? (
+                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                  No service found.
+                </div>
+              ) : (
+                filteredServices.map((service) => (
+                  <div
+                    key={service.name}
+                    role="option"
+                    className={cn(
+                      "flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground",
+                      selectedService === service.name && "bg-accent/50"
+                    )}
+                    onClick={() => handleSelect(service.name)}
+                  >
+                    {getStatusDot(service?.currentStatus?.status)}
+                    {getNameView(service.name)}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
   
   const StatusSelect = () => (
     <div className="flex-1 min-w-[180px]">
@@ -420,32 +690,6 @@ export function HistoryContent({
           <option value="4xx">4xx (Client Error)</option>
           <option value="5xx">5xx (Server Error)</option>
           <option value="none">No Code</option>
-        </select>
-      </div>
-    </div>
-  );
-  
-  const EntriesLimitSelect = () => (
-    <div className="flex-1 min-w-[140px]">
-      <div className="flex items-center gap-1 mb-1">
-        <Filter className="h-3 w-3 text-muted-foreground" />
-        <Label htmlFor="entries-limit-select" className="text-sm font-medium">Entries</Label>
-      </div>
-      <div className="relative">
-        <select 
-          id="entries-limit-select"
-          className={selectClass}
-          value={entriesLimit} 
-          onChange={(e) => setEntriesLimit(e.target.value)}
-          disabled={isLoading}
-        >
-          <option value="10">10</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="250">250</option>
-          <option value="500">500</option>
-          <option value="1000">1000</option>
-          <option value="unlimited">Unlimited</option>
         </select>
       </div>
     </div>
@@ -509,7 +753,7 @@ export function HistoryContent({
       <div className="flex-none self-end">
         <Button 
           variant="secondary"
-          onClick={fetchHistoryData}
+          onClick={handleApplyCustomRange}
           disabled={isLoading || !startDateStr || !endDateStr}
           className="h-8 px-2 text-xs"
           size="sm"
@@ -574,12 +818,32 @@ export function HistoryContent({
               <CardTitle>Data Insights</CardTitle>
               <CardDescription>Analyze status changes and response times over time</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={fetchHistoryData} disabled={isLoading}>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center px-3 py-1 rounded-md bg-muted/40 border">
+                <div className="flex flex-col">
+                  <Label htmlFor="entries-limit-select" className="text-xs text-muted-foreground mb-1">Display rows</Label>
+                  <select 
+                    id="entries-limit-select"
+                    className="bg-transparent border-0 h-6 px-0 py-0 text-sm font-medium focus:ring-0 focus-visible:outline-none"
+                    value={entriesLimit} 
+                    onChange={(e) => setEntriesLimit(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option value="10">10 entries</option>
+                    <option value="50">50 entries</option>
+                    <option value="100">100 entries</option>
+                    <option value="250">250 entries</option>
+                    <option value="500">500 entries</option>
+                    <option value="1000">1000 entries</option>
+                    <option value="unlimited">All entries</option>
+                  </select>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
                 <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button variant="outline" size="sm" onClick={exportCSV} disabled={isLoading || historyItems.length === 0}>
+              <Button variant="outline" size="sm" onClick={exportCSV} disabled={isLoading || filteredHistoryItems.length === 0}>
                 <Download className="h-4 w-4 mr-1" />
                 Export
               </Button>
@@ -592,7 +856,6 @@ export function HistoryContent({
             <StatusSelect />
             <ResponseCodeSelect />
             <TimeRangeSelect />
-            <EntriesLimitSelect />
           </div>
           
           {isCustomRange && <DateTimePicker />}
@@ -604,7 +867,7 @@ export function HistoryContent({
           ) : error ? (
             <div className="p-6 text-center text-red-500 mt-6 bg-red-50 rounded-md">
               <p className="mb-4 font-medium">{error}</p>
-              <Button onClick={fetchHistoryData} variant="secondary">Try Again</Button>
+              <Button onClick={handleTryAgain} variant="secondary">Try Again</Button>
             </div>
           ) : (
             <div className="rounded-lg border overflow-hidden mt-6 shadow-sm">
@@ -618,24 +881,31 @@ export function HistoryContent({
               </div>
               
               <div className="divide-y">
-                {historyItems.length > 0 ? (
-                  historyItems.map(({ service, item }, index) => (
-                    <div key={index} className="grid grid-cols-12 p-3 text-sm items-center hover:bg-muted/10">
-                      <div className="col-span-2 font-medium text-foreground">{service}</div>
-                      <div className="col-span-2">
-                        <span className={getStatusBadgeClass(item.status)}>
-                          {item.status === 'up' && <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>}
-                          {item.status === 'down' && <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>}
-                          {item.status === 'unknown' && <span className="h-1.5 w-1.5 rounded-full bg-gray-500"></span>}
-                          {item.status.toUpperCase()}
-                        </span>
+                {filteredHistoryItems.length > 0 ? (
+                  filteredHistoryItems.map(({ service, item }, index) => {
+                    // Skip any items with invalid status or timestamp
+                    if (!item || !item.status || !item.timestamp) return null;
+                    
+                    return (
+                      <div key={`${service}-${item.timestamp}-${index}`} className="grid grid-cols-12 p-3 text-sm items-center hover:bg-muted/10">
+                        <div className="col-span-2 font-medium text-foreground flex items-center">
+                          {service}
+                        </div>
+                        <div className="col-span-2">
+                          <span className={getStatusBadgeClass(item.status)}>
+                            {item.status === 'up' && <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>}
+                            {item.status === 'down' && <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>}
+                            {item.status === 'unknown' && <span className="h-1.5 w-1.5 rounded-full bg-gray-500"></span>}
+                            {item.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="col-span-3 font-mono text-xs">{formatTimestamp(item.timestamp)}</div>
+                        <div className="col-span-1 font-mono text-xs">{item.responseTime ? `${item.responseTime}ms` : '-'}</div>
+                        <div className="col-span-1 font-mono text-xs">{item.statusCode || '-'}</div>
+                        <div className="col-span-3 text-xs truncate text-muted-foreground" title={item.error}>{item.error || '-'}</div>
                       </div>
-                      <div className="col-span-3 font-mono text-xs">{formatTimestamp(item.timestamp)}</div>
-                      <div className="col-span-1 font-mono text-xs">{item.responseTime ? `${item.responseTime}ms` : '-'}</div>
-                      <div className="col-span-1 font-mono text-xs">{item.statusCode || '-'}</div>
-                      <div className="col-span-3 text-xs truncate text-muted-foreground" title={item.error}>{item.error || '-'}</div>
-                    </div>
-                  ))
+                    );
+                  }).filter(Boolean)
                 ) : (
                   <div className="p-12 text-center text-muted-foreground">
                     <p className="mb-1 text-sm">No history data available</p>
@@ -648,7 +918,7 @@ export function HistoryContent({
           
           <div className="mt-3 text-xs text-muted-foreground flex items-center justify-between">
             <span>Last updated: {new Date().toLocaleString()}</span>
-            <span>{historyItems.length} records found</span>
+            <span>{filteredHistoryItems.length} records found</span>
           </div>
         </CardContent>
       </Card>

@@ -442,7 +442,7 @@ export function DashboardContent({
       <div className="grid grid-cols-12 gap-4">
         {/* Services & Quick Metrics section - takes 5/12 of space */}
         <Card className="overflow-hidden border col-span-12 lg:col-span-5 flex flex-col">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4 border-b">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4 border-b h-[72px]">
             <div>
               <CardTitle className="text-base font-semibold">Service Status</CardTitle>
               <CardDescription>
@@ -496,7 +496,20 @@ export function DashboardContent({
           ) : (
             <div className="px-3 pt-2 pb-0">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-700">Services Overview</h3>
+                <div>
+                  <h3 className="text-sm font-medium text-slate-700">Services Overview</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-slate-500">Total: {services.length}</span>
+                    <div className="h-3 border-r border-slate-200"></div>
+                    <span className="text-xs text-emerald-600">{upServices} online</span>
+                    {downServices > 0 && (
+                      <>
+                        <div className="h-3 border-r border-slate-200"></div>
+                        <span className="text-xs text-red-600">{downServices} offline</span>
+                      </>
+                    )}
+                  </div>
+                </div>
                 {services.length > 5 && (
                   <Button
                     variant="default"
@@ -508,7 +521,7 @@ export function DashboardContent({
                   </Button>
                 )}
               </div>
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border overflow-hidden mt-3">
                 <div className="divide-y max-h-[250px] overflow-auto">
                   {services.slice(0, 5).map((service, index) => (
                     <ServiceStatusItem key={service.id || index} service={service} />
@@ -521,9 +534,9 @@ export function DashboardContent({
 
         {/* Status Page Card - takes 3/12 of space */}
         <Card className="overflow-hidden border col-span-6 lg:col-span-3">
-          <CardHeader className="border-b pb-3 pt-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">Status Page</CardTitle>
+          <CardHeader className="border-b pb-2 pt-3 px-4 h-[72px] flex items-center">
+            <div className="flex items-center justify-between w-full">
+              <CardTitle className="text-base font-semibold">Status Page</CardTitle>
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusPageEnabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                 <div className={`w-1.5 h-1.5 rounded-full ${statusPageEnabled ? 'bg-green-500' : 'bg-slate-400'}`}></div>
                 {statusPageEnabled ? 'Active' : 'Disabled'}
@@ -532,11 +545,11 @@ export function DashboardContent({
           </CardHeader>
           <CardContent className="p-5">
             {statusPageData ? (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-sm font-medium text-slate-700">Public Access</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{statusPageData?.settings?.title || "Service Status"}</p>
+                    <p className="text-xs text-slate-500 mt-1">{statusPageData?.settings?.title || "Service Status"}</p>
                   </div>
                   <div className="relative">
                     {isTogglingStatusPage && (
@@ -553,7 +566,41 @@ export function DashboardContent({
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
+                {/* Service visibility stats */}
+                <div className="bg-slate-50 rounded-md p-3 mt-4">
+                  <h4 className="text-xs font-medium text-slate-700 mb-2">Status Page Services</h4>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center">
+                        <Eye className="h-3.5 w-3.5 text-slate-600 mr-1.5" />
+                        <span className="text-xs whitespace-nowrap">
+                          <span className="font-medium mr-1">{statusPageData?.services?.filter((s: {name: string, visible: boolean}) => s.visible).length || 0}</span>
+                          <span>visible</span>
+                        </span>
+                      </div>
+                      <div className="h-3 border-r border-slate-300"></div>
+                      <div className="flex items-center">
+                        <EyeOff className="h-3.5 w-3.5 text-slate-500 mr-1.5" />
+                        <span className="text-xs whitespace-nowrap">
+                          <span className="font-medium mr-1">{statusPageData?.services?.filter((s: {name: string, visible: boolean}) => !s.visible).length || 0}</span>
+                          <span>hidden</span>
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => handleNavigation("statuspage", "services")}
+                      title="Manage Service Visibility"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      <span className="sr-only">Manage Service Visibility</span>
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 mt-4">
                   <Button
                     variant="outline"
                     size="default"
@@ -584,8 +631,8 @@ export function DashboardContent({
         
         {/* History Card - Compact with tabs - takes 4/12 of space */}
         <Card className="overflow-hidden border col-span-6 lg:col-span-4">
-          <CardHeader className="border-b pb-2 pt-3 px-4">
-            <div className="flex items-center justify-between">
+          <CardHeader className="border-b pb-2 pt-3 px-4 h-[72px] flex items-center">
+            <div className="flex items-center justify-between w-full">
               <CardTitle className="text-base font-semibold">Uptime History</CardTitle>
               <TooltipProvider>
                 <Tooltip>
@@ -605,33 +652,12 @@ export function DashboardContent({
           <CardContent className="p-0">
             {historyData ? (
               <div>
-                {/* Uptime visualization */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="w-full">
-                      <div className="flex h-2 w-full overflow-hidden">
-                        <div 
-                          className="bg-emerald-500 h-full transition-all duration-500" 
-                          style={{ width: `${historyStats.uptimePercentage}%` }}
-                        />
-                        <div 
-                          className="bg-red-500 h-full transition-all duration-500" 
-                          style={{ width: `${100 - historyStats.uptimePercentage}%` }} 
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      <p className="text-xs">Overall system uptime: <span className="font-medium">{historyStats.uptimePercentage}%</span></p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                
-                {/* Stats grid - 3-column compact layout */}
-                <div className="grid grid-cols-3 border-b">
+                {/* Stats grid - 3-column compact layout without visual dividers */}
+                <div className="grid grid-cols-3 border-b py-2 px-1">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="p-2 text-center border-r cursor-help">
+                        <div className="p-2 text-center cursor-help">
                           <div className="text-lg font-bold text-emerald-700">{historyStats.uptimePercentage}%</div>
                           <div className="text-xs text-muted-foreground">Uptime</div>
                         </div>
@@ -645,7 +671,7 @@ export function DashboardContent({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="p-2 text-center border-r cursor-help">
+                        <div className="p-2 text-center cursor-help">
                           <div className="text-lg font-bold text-blue-700">{historyStats.averageResponseTime}</div>
                           <div className="text-xs text-muted-foreground">Avg ms</div>
                         </div>
@@ -671,15 +697,15 @@ export function DashboardContent({
                   </TooltipProvider>
                 </div>
                 
-                {/* Response time graph with uptime periods */}
-                <div className="p-3">
-                  {/* Response time trend - moved to top and enlarged */}
-                  {historyStats.responseTimeData.length > 0 && (
+                {/* Compact content area */}
+                <div className="px-4 py-3">
+                  {/* Response time trend - streamlined */}
+                  {historyStats.responseTimeData.length > 0 ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger className="w-full">
-                          <div className="flex flex-col items-center w-full pt-1 pb-2">
-                            <div className="w-full flex items-center justify-between mb-1">
+                          <div className="flex flex-col items-center w-full mb-3">
+                            <div className="w-full flex items-center justify-between mb-1.5">
                               <span className="text-xs font-medium text-slate-700">Response Time Trend</span>
                               <span className="text-xs text-slate-500">{historyStats.averageResponseTime} ms avg</span>
                             </div>
@@ -695,69 +721,50 @@ export function DashboardContent({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-10 bg-slate-50 rounded-md p-2 mb-3">
+                      <div className="text-xs text-slate-500">No response time data available</div>
+                    </div>
                   )}
                   
-                  {/* Uptime period stats */}
-                  <div className="grid grid-cols-2 gap-3 mt-2">
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm">
-                        <div className="w-8 h-1.5 bg-muted rounded-full mr-2 overflow-hidden">
+                  {/* Uptime period stats - more compact */}
+                  <div className="bg-slate-50 rounded-md p-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-medium text-slate-700">Uptime Periods</h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => handleNavigation("history")}
+                      >
+                        View History
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center">
+                        <span className="text-xs text-muted-foreground mr-1.5">24h</span>
+                        <div className="w-24 h-1.5 bg-muted rounded-full mr-1.5 overflow-hidden flex-1">
                           <div 
                             className="h-full bg-emerald-500 rounded-full"
                             style={{ width: `${historyStats.uptime24h}%` }}
                           />
                         </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground">24h</span>
-                          <span className="text-xs font-medium ml-3">{historyStats.uptime24h}%</span>
-                        </div>
+                        <span className="text-xs font-medium">{historyStats.uptime24h}%</span>
                       </div>
                       
-                      <div className="flex items-center text-sm">
-                        <div className="w-8 h-1.5 bg-muted rounded-full mr-2 overflow-hidden">
+                      <div className="flex items-center">
+                        <span className="text-xs text-muted-foreground mr-1.5">7d</span>
+                        <div className="w-24 h-1.5 bg-muted rounded-full mr-1.5 overflow-hidden flex-1">
                           <div 
                             className="h-full bg-blue-500 rounded-full"
                             style={{ width: `${historyStats.uptimeWeek}%` }}
                           />
                         </div>
-                        <div>
-                          <span className="text-xs text-muted-foreground">7d</span>
-                          <span className="text-xs font-medium ml-3">{historyStats.uptimeWeek}%</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></div>
-                          <span className="text-xs">Operational</span>
-                        </div>
-                        <span className="text-xs font-medium">{upServices}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></div>
-                          <span className="text-xs">Issues</span>
-                        </div>
-                        <span className="text-xs font-medium">{downServices}</span>
+                        <span className="text-xs font-medium">{historyStats.uptimeWeek}%</span>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Actions - Moved to a more prominent position and styled better */}
-                <div className="p-4 pt-3 border-t flex justify-center">
-                  <Button
-                    variant="default"
-                    size="default"
-                    className="w-3/4 justify-center"
-                    onClick={() => handleNavigation("history")}
-                  >
-                    <History className="h-4 w-4 mr-2" />
-                    <span>View Full History</span>
-                  </Button>
                 </div>
               </div>
             ) : (

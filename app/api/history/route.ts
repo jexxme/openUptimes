@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServiceHistory, closeRedisConnection, getRedisClient } from '@/lib/redis';
+import { getServiceHistory, getRedisClient } from '@/lib/redis';
 import { ServiceConfig } from '@/lib/config';
 
 /**
@@ -22,6 +22,22 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
 }
 
 /**
+ * Get all service names that have history entries
+ */
+async function getAllHistoryServiceNames(): Promise<string[]> {
+  try {
+    const client = await getRedisClient();
+    const keys = await client.keys('history:*');
+    
+    // Extract service names from the Redis keys (format: "history:serviceName")
+    return keys.map((key: string) => key.substring(8)); // Remove "history:" prefix
+  } catch (error) {
+    console.error('Error getting history service names:', error);
+    return [];
+  }
+}
+
+/**
  * GET /api/history
  * Returns the historical status data for all services
  * 
@@ -31,6 +47,7 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
  * - startTime: Custom start time (timestamp)
  * - endTime: Custom end time (timestamp)
  * - limit: Limit the number of records returned
+ * - includeDeleted: Include services that have been deleted (default true)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +57,7 @@ export async function GET(request: NextRequest) {
     const timeRange = searchParams.get('timeRange');
     const startTime = searchParams.get('startTime');
     const endTime = searchParams.get('endTime');
+    const includeDeleted = searchParams.get('includeDeleted') !== 'false'; // Default to true
     
     // Calculate history limit based on timeRange
     let historyLimit = 60; // Default to 1 hour (60 entries at 1-min intervals)
@@ -73,18 +91,40 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Get all services or filter by service name
-    const services = await getServicesFromRedis();
-    const filteredServices = serviceName 
-      ? services.filter(service => service.name === serviceName)
-      : services;
+    // Get all active services
+    const activeServices = await getServicesFromRedis();
+    
+    // Create a map of active service names for quick lookup
+    const activeServiceMap = new Map(activeServices.map(service => [service.name, service]));
+    
+    let serviceNames: string[] = [];
+    
+    if (serviceName) {
+      // If a specific service is requested, use it regardless of active status
+      serviceNames = [serviceName];
+    } else if (includeDeleted) {
+      // Get all service names that have history (including deleted ones)
+      const historyServiceNames = await getAllHistoryServiceNames();
+      serviceNames = Array.from(new Set([
+        ...activeServices.map(s => s.name),
+        ...historyServiceNames
+      ]));
+    } else {
+      // Only use active services
+      serviceNames = activeServices.map(s => s.name);
+    }
     
     // Fetch history data for each service
     const results = await Promise.all(
-      filteredServices.map(async (service) => {
-        console.log(`Fetching history for service: ${service.name}`);
+      serviceNames.map(async (name) => {
+        console.log(`Fetching history for service: ${name}`);
         try {
-          const history = await getServiceHistory(service.name, historyLimit);
+          const history = await getServiceHistory(name, historyLimit);
+          
+          // Skip services with no history
+          if (history.length === 0) {
+            return null;
+          }
           
           // Filter by time range if custom range is provided
           let filteredHistory = history;
@@ -96,14 +136,24 @@ export async function GET(request: NextRequest) {
             );
           }
           
+          // Skip if filtered history is empty
+          if (filteredHistory.length === 0) {
+            return null;
+          }
+          
+          // Tag services that no longer exist as deleted
+          const isDeleted = !activeServiceMap.has(name);
+          
           return {
-            name: service.name,
+            name,
+            isDeleted,
             history: filteredHistory
           };
         } catch (serviceError) {
-          console.error(`Error fetching history for service ${service.name}:`, serviceError);
+          console.error(`Error fetching history for service ${name}:`, serviceError);
           return {
-            name: service.name,
+            name,
+            isDeleted: !activeServiceMap.has(name),
             history: [],
             error: (serviceError as Error).message
           };
@@ -111,24 +161,16 @@ export async function GET(request: NextRequest) {
       })
     );
     
-    // Close Redis connection to avoid exhausting connections in serverless environment
-    try {
-      await closeRedisConnection();
-      console.log('Redis connection closed successfully');
-    } catch (closeError) {
-      console.error('Error closing Redis connection:', closeError);
-    }
+    // Filter out null results (services with no history)
+    const filteredResults = results.filter(result => result !== null);
     
-    return NextResponse.json(results);
+    // Note: We no longer explicitly close the Redis connection
+    // This allows the connection pool to be managed by the Redis library
+    // and prevents "client is closed" errors during rapid requests
+    
+    return NextResponse.json(filteredResults);
   } catch (error) {
     console.error('Error in history API:', error);
-    
-    // Close Redis connection even on error
-    try {
-      await closeRedisConnection();
-    } catch (closeError) {
-      console.error('Error closing Redis connection after error:', closeError);
-    }
     
     return NextResponse.json(
       { error: 'Failed to fetch history data' },

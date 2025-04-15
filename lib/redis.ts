@@ -9,17 +9,22 @@ export type ServiceStatus = {
   error?: string;
 };
 
-// Create and initialize Redis client
-let redisClient: RedisClientType | null = null;
+// Create and initialize Redis client - use any to resolve type compatibility issues
+let redisClient: any = null;
 let isConnecting = false;
-let connectionPromise: Promise<RedisClientType> | null = null;
+let connectionPromise: Promise<any> | null = null;
+let lastUsedTimestamp = 0;
+const CONNECTION_TIMEOUT = 60000; // 60 seconds of inactivity before considering closure
 
 // Initialize Redis client with improved connection handling
-export const getRedisClient = async (): Promise<RedisClientType> => {
+export const getRedisClient = async (): Promise<any> => {
+  // Update last used timestamp
+  lastUsedTimestamp = Date.now();
+  
   // If client exists and is open, return it
   if (redisClient && redisClient.isOpen) {
     try {
-      // Verify connection is alive
+      // Verify connection is alive with a lightweight ping
       await redisClient.ping();
       return redisClient;
     } catch (error) {
@@ -40,72 +45,11 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
 
   // Set connecting flag and create a new connection
   isConnecting = true;
+  connectionPromise = null; // Reset any failed promise
   
   try {
     // Create connection promise
-    connectionPromise = (async () => {
-      if (!process.env.REDIS_URL) {
-        console.error('REDIS_URL environment variable is not set');
-        throw new Error('REDIS_URL environment variable is not set');
-      }
-      
-      try {
-        // Clean up old client if it exists
-        if (redisClient) {
-          try {
-            await redisClient.quit().catch(() => {});
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-          redisClient = null;
-        }
-        
-        // Create new client
-        const newClient = createClient({
-          url: process.env.REDIS_URL,
-          socket: {
-            connectTimeout: 5000, // 5s connection timeout
-            reconnectStrategy: (retries) => {
-              const delay = Math.min(retries * 100, 3000);
-              console.log(`Redis reconnecting in ${delay}ms (attempt ${retries})`);
-              return delay; // Increasing delay up to 3s
-            }
-          }
-        });
-        
-        // Handle connection events
-        newClient.on('connect', () => {
-          console.log('Redis client connecting...');
-        });
-        
-        newClient.on('ready', () => {
-          console.log('Redis client ready and connected');
-        });
-        
-        // Handle errors
-        newClient.on('error', (err) => {
-          console.error('Redis connection error:', err);
-        });
-        
-        newClient.on('end', () => {
-          console.log('Redis connection ended');
-          // Only reset if this is the current client
-          if (redisClient === newClient) {
-            redisClient = null;
-          }
-        });
-        
-        await newClient.connect();
-        console.log('Redis client connected successfully');
-        
-        // Store the new client
-        redisClient = newClient;
-        return newClient;
-      } catch (error) {
-        console.error('Failed to initialize Redis client:', error);
-        throw error;
-      }
-    })();
+    connectionPromise = createRedisConnection();
     
     // Wait for the connection and return the client
     const client = await connectionPromise;
@@ -119,25 +63,123 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
   }
 };
 
+// Helper function to create a new Redis connection
+async function createRedisConnection(): Promise<any> {
+  if (!process.env.REDIS_URL) {
+    console.error('REDIS_URL environment variable is not set');
+    throw new Error('REDIS_URL environment variable is not set');
+  }
+  
+  try {
+    // Clean up old client if it exists
+    if (redisClient) {
+      try {
+        await redisClient.quit().catch(() => {});
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      redisClient = null;
+    }
+    
+    // Create new client
+    const newClient = createClient({
+      url: process.env.REDIS_URL,
+      socket: {
+        connectTimeout: 5000, // 5s connection timeout
+        reconnectStrategy: (retries) => {
+          const delay = Math.min(retries * 100, 3000);
+          console.log(`Redis reconnecting in ${delay}ms (attempt ${retries})`);
+          return delay; // Increasing delay up to 3s
+        }
+      }
+    });
+    
+    // Handle connection events
+    newClient.on('connect', () => {
+      console.log('Redis client connecting...');
+    });
+    
+    newClient.on('ready', () => {
+      console.log('Redis client ready and connected');
+    });
+    
+    // Handle errors
+    newClient.on('error', (err) => {
+      console.error('Redis connection error:', err);
+    });
+    
+    newClient.on('end', () => {
+      console.log('Redis connection ended');
+      // Only reset if this is the current client
+      if (redisClient === newClient) {
+        redisClient = null;
+      }
+    });
+    
+    await newClient.connect();
+    console.log('Redis client connected successfully');
+    
+    // Store the new client
+    redisClient = newClient;
+    
+    // Set up automatic connection management
+    setupConnectionManagement();
+    
+    return newClient;
+  } catch (error) {
+    console.error('Failed to initialize Redis client:', error);
+    throw error;
+  }
+}
+
+// Set up connection management to automatically close idle connections
+let connectionManagementInterval: NodeJS.Timeout | null = null;
+
+function setupConnectionManagement() {
+  // Clear any existing interval
+  if (connectionManagementInterval) {
+    clearInterval(connectionManagementInterval);
+  }
+  
+  // Set up a new interval to check for idle connections
+  connectionManagementInterval = setInterval(() => {
+    const now = Date.now();
+    const idleTime = now - lastUsedTimestamp;
+    
+    // If connection has been idle for too long and no operations are in progress
+    if (idleTime > CONNECTION_TIMEOUT && redisClient && !isConnecting) {
+      console.log(`Redis connection idle for ${idleTime}ms, closing automatically`);
+      closeRedisConnection();
+    }
+  }, 30000); // Check every 30 seconds
+}
+
 /**
  * Close Redis connection - now implemented with a delayed closure
  * to avoid closing connections that are still in use
  */
 export async function closeRedisConnection(): Promise<void> {
   if (redisClient) {
-    // Schedule connection closure after a delay to allow pending operations to complete
+    // Schedule connection closure after a longer delay to allow pending operations to complete
+    // This helps prevent "client is closed" errors in high-frequency API scenarios
     setTimeout(async () => {
       try {
-        if (redisClient && redisClient.isOpen) {
+        // Only close if no active connection requests are in progress
+        // and enough time has passed since the last usage
+        const idleTime = Date.now() - lastUsedTimestamp;
+        if (redisClient && redisClient.isOpen && !isConnecting && idleTime > 10000) {
+          console.log(`Closing idle Redis connection after ${idleTime}ms of inactivity`);
           await redisClient.quit();
           console.log('Redis connection closed after timeout');
+        } else {
+          console.log('Skipping Redis closure due to active connections or recent usage');
         }
       } catch (error) {
         console.error('Error in delayed Redis connection closure:', error);
       }
-    }, 1000); // 1 second delay
+    }, 5000); // 5 second delay (increased from 1s)
     
-    console.log('Redis connection scheduled for closure');
+    console.log('Redis connection scheduled for delayed closure');
   }
 }
 
@@ -217,7 +259,7 @@ export async function getServiceHistory(name: string, limit: number = 1440): Pro
   try {
     const client = await getRedisClient();
     const history = await client.lRange(`history:${name}`, 0, limit - 1);
-    return history.map(item => JSON.parse(item));
+    return history.map((item: string) => JSON.parse(item));
   } catch (err) {
     console.error(`Error fetching history for ${name}:`, err);
     return [];

@@ -23,6 +23,22 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
 }
 
 /**
+ * Get all service names that have history entries
+ */
+async function getAllHistoryServiceNames(): Promise<string[]> {
+  try {
+    const client = await getRedisClient();
+    const keys = await client.keys('history:*');
+    
+    // Extract service names from the Redis keys (format: "history:serviceName")
+    return keys.map((key: string) => key.substring(8)); // Remove "history:" prefix
+  } catch (error) {
+    console.error('Error getting history service names:', error);
+    return [];
+  }
+}
+
+/**
  * Save services to Redis
  */
 async function saveServicesToRedis(services: ServiceConfig[]): Promise<void> {
@@ -98,12 +114,67 @@ async function checkService(service: ServiceConfig) {
 
 /**
  * GET /api/services - Get all services
+ * 
+ * Query Parameters:
+ * - includeDeleted: Include services that have been deleted but have history (default: false)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const services = await getServicesFromRedis();
-    return NextResponse.json(services);
+    const { searchParams } = new URL(request.url);
+    const includeDeleted = searchParams.get('includeDeleted') === 'true';
+    
+    // Get active services from Redis
+    const activeServices = await getServicesFromRedis();
+    
+    // If not including deleted services, just return active ones
+    if (!includeDeleted) {
+      return NextResponse.json(activeServices);
+    }
+    
+    // Get all service names with history entries (potential deleted services)
+    const historyServiceNames = await getAllHistoryServiceNames();
+    
+    // Create a map of active service names for quick lookup
+    const activeServiceMap = new Map(activeServices.map(service => [service.name, service]));
+    
+    // Create an array for deleted services
+    const deletedServices: ServiceConfig[] = [];
+    
+    // Find services that have history but aren't in the active list
+    for (const name of historyServiceNames) {
+      if (!activeServiceMap.has(name)) {
+        // This is a deleted service
+        deletedServices.push({
+          name,
+          url: '', // No URL for deleted services
+          isDeleted: true
+        });
+      }
+    }
+    
+    // Add isDeleted: false to all active services for consistency
+    const servicesWithFlag = activeServices.map(service => ({
+      ...service,
+      isDeleted: false
+    }));
+    
+    // Combine active and deleted services
+    const allServices = [...servicesWithFlag, ...deletedServices];
+    
+    // Close Redis connection
+    await closeRedisConnection();
+    
+    return NextResponse.json(allServices);
   } catch (error) {
+    console.error('Error fetching services:', error);
+    
+    // Close Redis connection on error
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch services' },
       { status: 500 }
@@ -258,8 +329,21 @@ export async function DELETE(request: NextRequest) {
     services.splice(serviceIndex, 1);
     await saveServicesToRedis(services);
     
+    // Note: We intentionally don't delete the history data
+    // This allows showing deleted services in history view
+    
+    // Close Redis connection
+    await closeRedisConnection();
+    
     return NextResponse.json({ success: true });
   } catch (error) {
+    // Close Redis connection on error
+    try {
+      await closeRedisConnection();
+    } catch (closeError) {
+      console.error('Error closing Redis connection:', closeError);
+    }
+    
     return NextResponse.json(
       { error: 'Failed to delete service' },
       { status: 500 }

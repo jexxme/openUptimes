@@ -26,6 +26,15 @@ import { AdminStatusPage } from "../components/admin/pages/StatusPage";
 import { AdminHistory } from "../components/admin/pages/History";
 import { AdminSettings } from "../components/admin/pages/Settings";
 
+// Define types needed for the component
+interface StatusHistoryItem {
+  status: 'up' | 'down' | 'unknown';
+  timestamp: number;
+  responseTime?: number;
+  statusCode?: number;
+  error?: string;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -41,11 +50,19 @@ export default function AdminPage() {
   const [statusPageData, setStatusPageData] = useState<any>(null);
   const [appearanceData, setAppearanceData] = useState<any>(null);
   const [statusPageDataLoaded, setStatusPageDataLoaded] = useState(false);
-  const [historyData, setHistoryData] = useState<any>(null);
+  const [historyData, setHistoryData] = useState<{ service: string; item: StatusHistoryItem; isDeleted?: boolean }[]>([]);
   const [historyDataLoaded, setHistoryDataLoaded] = useState(false);
   const [servicesData, setServicesData] = useState<any>(null);
   const [servicesConfigData, setServicesConfigData] = useState<any>(null);
   const [servicesDataLoaded, setServicesDataLoaded] = useState(false);
+  
+  // Track specifically which services have been loaded for the history dropdown
+  const [historyServicesList, setHistoryServicesList] = useState<{
+    name: string;
+    currentStatus?: { status: 'up' | 'down' | 'unknown' };
+    isDeleted?: boolean;
+  }[]>([]);
+  const [historyServicesLoaded, setHistoryServicesLoaded] = useState(false);
   
   // Setup status check
   const { setupComplete, loading: setupLoading, error: setupError } = useSetupStatus();
@@ -73,22 +90,21 @@ export default function AdminPage() {
   }, [activeTab, isLoaded]);
 
   // Save preloaded data in a ref to avoid rerenders on tab change
-  const preloadedDataRef = useRef({
-    services: servicesData,
-    servicesConfig: servicesConfigData,
-    statusPage: statusPageData,
-    appearance: appearanceData,
-    history: historyData
+  const preloadedDataRef = useRef<{
+    services: any[] | null;
+    servicesConfig: any[] | null;
+    statusPage: any | null;
+    appearance: any | null;
+    history: any[] | null;
+    historyServices: any[] | null;
+  }>({
+    services: null,
+    servicesConfig: null,
+    statusPage: null,
+    appearance: null,
+    history: null,
+    historyServices: null
   });
-
-  // Only update preloaded data refs when the data actually changes
-  useEffect(() => {
-    if (servicesData) preloadedDataRef.current.services = servicesData;
-    if (servicesConfigData) preloadedDataRef.current.servicesConfig = servicesConfigData;
-    if (statusPageData) preloadedDataRef.current.statusPage = statusPageData;
-    if (appearanceData) preloadedDataRef.current.appearance = appearanceData;
-    if (historyData) preloadedDataRef.current.history = historyData;
-  }, [servicesData, servicesConfigData, statusPageData, appearanceData, historyData]);
 
   // Preload logo during loading phase
   useEffect(() => {
@@ -251,31 +267,130 @@ export default function AdminPage() {
         setLoadingState("Loading history data...");
         setLoadingProgress(90);
         
+        // Fetch services first to ensure we have proper service data for the dropdown
+        let servicesList = servicesData;
+        
+        // If services data is empty or invalid, fetch it again with includeDeleted=true
+        if (!servicesList || !Array.isArray(servicesList) || servicesList.length === 0 || 
+            !servicesList.some(s => s && typeof s === 'object' && s.name)) {
+          try {
+            setLoadingState("Refreshing services data for history...");
+            const servicesResponse = await fetch('/api/services?includeDeleted=true', {
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            if (servicesResponse.ok) {
+              servicesList = await servicesResponse.json();
+              // Update the services data
+              setServicesData(servicesList);
+              
+              // Extract just what we need for the history dropdown
+              if (Array.isArray(servicesList)) {
+                const historyServices = servicesList.map(service => ({
+                  name: service.name,
+                  currentStatus: service.currentStatus || { status: 'unknown' },
+                  isDeleted: service.isDeleted || false
+                }));
+                setHistoryServicesList(historyServices);
+                setHistoryServicesLoaded(true);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to refresh services data for history:", error);
+          }
+        } else if (Array.isArray(servicesList)) {
+          // Extract services info from existing data
+          const historyServices = servicesList.map(service => ({
+            name: service.name,
+            currentStatus: service.currentStatus || { status: 'unknown' },
+            isDeleted: service.isDeleted || false
+          }));
+          setHistoryServicesList(historyServices);
+          setHistoryServicesLoaded(true);
+        }
+        
+        setLoadingState("Loading history records...");
+        
         // Fetch history with default settings (30m time range, 50 entries)
         const url = new URL('/api/history', window.location.origin);
         url.searchParams.append('timeRange', '30m');
+        url.searchParams.append('includeDeleted', 'true');
         
-        const response = await fetch(url.toString());
+        const response = await fetch(url.toString(), {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         
         if (response.ok) {
-          const data = await response.json();
+          let data = await response.json();
+          
+          // If data is empty or invalid, wait and try again
+          if (!data || !Array.isArray(data) || data.length === 0) {
+            setLoadingState("Waiting for history data to be available...");
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const retryResponse = await fetch(url.toString(), {
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            if (retryResponse.ok) {
+              const retryData = await retryResponse.json();
+              data = retryData;
+            }
+          }
           
           // Process data into a flat array for display
-          let allHistory: { service: string; item: any }[] = [];
+          let allHistory: { service: string; item: any; isDeleted?: boolean }[] = [];
           
-          data.forEach((service: { name: string; history: any[] }) => {
-            service.history.forEach(item => {
-              allHistory.push({ service: service.name, item });
+          if (data && Array.isArray(data)) {
+            data.forEach((service: { name: string; history: any[]; isDeleted?: boolean }) => {
+              if (service && service.name && Array.isArray(service.history)) {
+                service.history.forEach(item => {
+                  if (item && typeof item === 'object' && item.status && item.timestamp) {
+                    allHistory.push({ 
+                      service: service.name, 
+                      item,
+                      isDeleted: service.isDeleted || false
+                    });
+                  }
+                });
+              }
             });
-          });
-          
-          // Sort by timestamp descending (newest first)
-          allHistory.sort((a, b) => b.item.timestamp - a.item.timestamp);
-          
-          // Limit to 50 entries
-          allHistory = allHistory.slice(0, 50);
-          
-          setHistoryData(allHistory);
+            
+            // Sort by timestamp descending (newest first)
+            allHistory.sort((a, b) => b.item.timestamp - a.item.timestamp);
+            
+            // Limit to 50 entries for preloading
+            allHistory = allHistory.slice(0, 50);
+            
+            // Validate the data by checking if it has the required fields
+            const isValidHistoryData = allHistory.length > 0 && 
+              allHistory.every(item => 
+                item.service && 
+                item.item && 
+                item.item.status && 
+                item.item.timestamp
+              );
+              
+            if (isValidHistoryData) {
+              setHistoryData(allHistory);
+              setLoadingState("History data loaded successfully");
+            } else {
+              console.warn("Invalid history data format:", allHistory.slice(0, 2));
+              setLoadingState("History data format is incorrect, will reload when needed");
+            }
+          }
+        } else {
+          console.error(`Failed to load history: ${response.status}`);
+          setLoadingState("Failed to load history data, continuing anyway...");
         }
         
         setHistoryDataLoaded(true);
@@ -285,13 +400,14 @@ export default function AdminPage() {
         // Continue even if there's an error
         setHistoryDataLoaded(true);
         setLoadingProgress(95);
+        setLoadingState("Error loading history data, continuing anyway...");
       }
     }
     
     if (servicesDataLoaded && !historyDataLoaded && !isLoaded) {
       preloadHistoryData();
     }
-  }, [servicesDataLoaded, historyDataLoaded, isLoaded]);
+  }, [servicesDataLoaded, historyDataLoaded, isLoaded, servicesData]);
 
   // Enhanced loading logic with progress tracking
   useEffect(() => {
@@ -313,6 +429,33 @@ export default function AdminPage() {
       setLoadingState("Checking setup status...");
       setLoadingProgress(98);
     } else {
+      // Do a final validation of all the preloaded data before showing content
+      let dataValidationMessage = "";
+      
+      // Validate services data
+      if (!servicesData || !Array.isArray(servicesData) || servicesData.length === 0 || 
+          !servicesData.some(s => s && typeof s === 'object' && s.name)) {
+        dataValidationMessage = "Service data validation failed, some features may be limited.";
+        console.warn("Services data validation failed:", servicesData);
+      }
+      
+      // Validate history data
+      if (!historyData || !Array.isArray(historyData) || historyData.length === 0 || 
+          !historyData.some(item => item && typeof item === 'object' && item.service && item.item)) {
+        if (dataValidationMessage) {
+          dataValidationMessage += " History data also failed validation.";
+        } else {
+          dataValidationMessage = "History data validation failed, some features may be limited.";
+        }
+        console.warn("History data validation failed:", historyData);
+      }
+      
+      if (dataValidationMessage) {
+        setLoadingState(dataValidationMessage);
+      } else {
+        setLoadingState("Data loaded successfully!");
+      }
+      
       setLoadingProgress(100);
       // Small delay before showing content to ensure smooth transition
       const timer = setTimeout(() => {
@@ -320,7 +463,72 @@ export default function AdminPage() {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isLoaded, isValidatingSession, logoPreloaded, statusPageDataLoaded, servicesDataLoaded, historyDataLoaded, setupLoading]);
+  }, [isLoaded, isValidatingSession, logoPreloaded, statusPageDataLoaded, servicesDataLoaded, historyDataLoaded, setupLoading, servicesData, historyData]);
+
+  // Update the preloadedDataRef with validated data
+  useEffect(() => {
+    // Validate services data
+    const validServicesData = servicesData && 
+      Array.isArray(servicesData) && 
+      servicesData.length > 0 && 
+      servicesData.some(s => s && typeof s === 'object' && s.name)
+        ? servicesData 
+        : null;
+        
+    // Validate services config data
+    const validServicesConfigData = servicesConfigData && 
+      Array.isArray(servicesConfigData) && 
+      servicesConfigData.length > 0
+        ? servicesConfigData 
+        : null;
+        
+    // Validate history data
+    const validHistoryData = historyData && 
+      Array.isArray(historyData) && 
+      historyData.length > 0 && 
+      historyData.some(item => item && typeof item === 'object' && item.service && item.item)
+        ? historyData 
+        : null;
+        
+    // Validate history services list for dropdown
+    const validHistoryServicesList = historyServicesList && 
+      Array.isArray(historyServicesList) && 
+      historyServicesList.length > 0
+        ? historyServicesList 
+        : null;
+        
+    // Validate status page data
+    const validStatusPageData = statusPageData && 
+      typeof statusPageData === 'object'
+        ? statusPageData 
+        : null;
+        
+    // Validate appearance data
+    const validAppearanceData = appearanceData && 
+      typeof appearanceData === 'object'
+        ? appearanceData 
+        : null;
+    
+    // Update the preloaded data ref with validated data
+    preloadedDataRef.current = {
+      services: validServicesData,
+      servicesConfig: validServicesConfigData,
+      statusPage: validStatusPageData,
+      appearance: validAppearanceData,
+      history: validHistoryData,
+      historyServices: validHistoryServicesList
+    };
+    
+    // Log validation results
+    console.log("Preloaded data validation:", {
+      services: !!validServicesData,
+      servicesConfig: !!validServicesConfigData,
+      statusPage: !!validStatusPageData,
+      appearance: !!validAppearanceData,
+      history: !!validHistoryData,
+      historyServices: !!validHistoryServicesList
+    });
+  }, [servicesData, servicesConfigData, statusPageData, appearanceData, historyData, historyServicesList]);
 
   // Ensure the session is valid on page load
   useEffect(() => {
@@ -444,6 +652,7 @@ export default function AdminPage() {
       case "history":
         return <AdminHistory 
           preloadedHistory={preloadedDataRef.current.history}
+          preloadedHistoryServices={preloadedDataRef.current.historyServices}
           setActiveTab={setActiveTab}
         />;
       case "settings":

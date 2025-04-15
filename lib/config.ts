@@ -7,6 +7,7 @@ export type ServiceConfig = {
   description?: string;
   expectedStatus?: number;
   visible?: boolean;
+  isDeleted?: boolean;
 }
 
 /**
