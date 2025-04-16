@@ -1,6 +1,9 @@
 name: OpenUptimes Ping Check
 
 on:
+  push:
+    branches:
+      - '**'  # Run on any branch
   schedule:
     # Default to run every 5 minutes, but this should be configured in the app
     - cron: '*/5 * * * *'
