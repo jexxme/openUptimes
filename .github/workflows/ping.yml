@@ -5,8 +5,8 @@ on:
     branches:
       - '**'  # Run on any branch
   schedule:
-    # Schedule with minimum GitHub Actions interval
-    - cron: '*/5 * * * *'  # Every 5 minutes (GitHub Actions minimum)
+    # More frequent schedule to compensate for GitHub's scheduling delays
+    - cron: '*/3 * * * *'  # Every 3 minutes
   # Allow manual triggering
   workflow_dispatch:
 
