@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useStatus } from "@/app/hooks/useStatus";
 import { useServicesConfig } from "@/app/hooks/useServicesConfig";
-import { ServicesList } from "@/app/components/admin/ServicesList";
+import { ServicesList } from "@/app/components/admin/services/ServicesList";
 
 interface AdminServicesProps {
   preloadedServices?: any;
