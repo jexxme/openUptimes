@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useStatus } from "@/app/hooks/useStatus";
 import { useServicesConfig } from "@/app/hooks/useServicesConfig";
 import { ServicesList } from "@/app/components/admin/services/ServicesList";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AdminServicesProps {
   preloadedServices?: any;
@@ -132,28 +133,55 @@ export function AdminServices({
   };
 
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="min-w-[1000px] w-full">
-        {/* Services management */}
-        <ServicesList
-          services={displayServices}
-          servicesConfig={displayServicesConfig}
-          statusLoading={displayStatusLoading}
-          servicesConfigLoading={displayConfigLoading}
-          statusError={statusError}
-          servicesConfigError={servicesConfigError}
-          isUpdating={isUpdating}
-          lastUpdated={lastUpdated || "Using preloaded data..."}
-          refreshServicesConfig={refreshServicesConfig}
-          refresh={refresh}
-          addService={addService}
-          updateService={updateService}
-          deleteService={deleteService}
-          onViewHistory={handleViewHistory}
-        />
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Service Management</CardTitle>
+              <CardDescription>Configure and monitor your service endpoints</CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center px-3 py-1 rounded-md bg-muted/40 border">
+                  <span className="text-sm font-medium">{displayServicesConfig?.length || 0}</span>
+                  <span className="text-sm ml-1.5">Total</span>
+                </div>
+                <div className="flex items-center px-3 py-1 rounded-md bg-emerald-50 border border-emerald-200">
+                  <span className="text-sm font-medium text-emerald-700">{displayServices?.filter(s => s?.currentStatus?.status === "up")?.length || 0}</span>
+                  <span className="text-sm text-emerald-700 ml-1.5">Online</span>
+                </div>
+                <div className="flex items-center px-3 py-1 rounded-md bg-red-50 border border-red-200">
+                  <span className="text-sm font-medium text-red-700">{displayServices?.filter(s => s?.currentStatus?.status === "down")?.length || 0}</span>
+                  <span className="text-sm text-red-700 ml-1.5">Offline</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="min-w-[1000px] w-full">
+            <ServicesList
+              services={displayServices}
+              servicesConfig={displayServicesConfig}
+              statusLoading={displayStatusLoading}
+              servicesConfigLoading={displayConfigLoading}
+              statusError={statusError}
+              servicesConfigError={servicesConfigError}
+              isUpdating={isUpdating}
+              lastUpdated={lastUpdated || "Using preloaded data..."}
+              refreshServicesConfig={refreshServicesConfig}
+              refresh={refresh}
+              addService={addService}
+              updateService={updateService}
+              deleteService={deleteService}
+              onViewHistory={handleViewHistory}
+            />
 
-        {renderErrorMessage()}
-      </div>
+            {renderErrorMessage()}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 
