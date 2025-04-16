@@ -1,0 +1,24 @@
+name: Ping Scheduler Debug
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  debug:
+    name: Debug Scheduler
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log scheduled run
+        run: |
+          echo "Scheduled run triggered at: $(date)"
+          echo "This workflow helps confirm GitHub's scheduler is working"
+          echo "GitHub run ID: ${{ github.run_id }}"
+          
+      - name: Check repository and workflow info
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Default branch: ${{ github.event.repository.default_branch }}"
+          echo "Current ref: ${{ github.ref }}"
+          echo "Trigger event: ${{ github.event_name }}" 
