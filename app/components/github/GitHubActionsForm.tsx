@@ -761,7 +761,7 @@ jobs:
 
       {/* Save Button */}
       <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-        <span className="text-xs text-gray-600">Settings are saved locally only</span>
+        <span className="text-xs text-gray-600">Settings are saved on the server, but workflow files need to be manually added to GitHub</span>
         <button
           onClick={handleSave}
           disabled={isSaving}
