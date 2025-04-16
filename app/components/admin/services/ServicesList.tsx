@@ -235,395 +235,372 @@ export function ServicesList({
   const unknownServices = services.filter(service => !service.currentStatus || service.currentStatus?.status === "unknown").length;
 
   return (
-    <div className="overflow-hidden w-full" style={{ minWidth: "1000px" }}>
-      <Card className="border w-full">
-        <CardHeader className="flex flex-col pb-3 pt-6 px-8 space-y-4">
-          <div className="flex flex-row items-start justify-between w-full">
-            <div>
-              <CardTitle className="text-xl font-semibold">Manage Services</CardTitle>
-              <CardDescription className="mt-1">
-                {lastUpdated 
-                  ? `Last updated: ${lastUpdated}` 
-                  : "Configure and manage monitored services"}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3 mt-1">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="gap-2 px-4 h-9 whitespace-nowrap" 
-                onClick={handleRefresh}
-                disabled={statusLoading || servicesConfigLoading || isUpdating}
-                aria-label="Refresh services data"
-                title="Refresh services data"
-              >
-                <RefreshCw 
-                  className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-refresh-rotate' : ''}`} 
-                />
-                <span>Refresh</span>
-              </Button>
-              <Button 
-                size="sm" 
-                className="gap-2 px-4 h-9 whitespace-nowrap"
-                onClick={() => setIsAddServiceOpen(true)}
-                disabled={isUpdating}
-              >
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span>Add Service</span>
-              </Button>
-            </div>
+    <div className="overflow-hidden w-full">
+      {/* Search and action buttons */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="relative w-full max-w-md">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
           </div>
-          
-          {/* Compact service stats */}
-          <div className="flex flex-wrap gap-3 mt-4">
-            <ServiceStatChip count={totalServices} label="Total" color="bg-gray-50 border-gray-200 text-gray-700" />
-            <ServiceStatChip count={activeServices} label="Online" color="bg-emerald-50 border-emerald-200 text-emerald-700" />
-            <ServiceStatChip count={offlineServices} label="Offline" color="bg-red-50 border-red-200 text-red-700" />
-            {unknownServices > 0 && (
-              <ServiceStatChip count={unknownServices} label="Unknown" color="bg-amber-50 border-amber-200 text-amber-700" />
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          {/* Search bar */}
-          <div className="mb-6 relative">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="w-full py-2.5 pl-12 pr-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Search services..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+          <input
+            type="text"
+            className="w-full py-2.5 pl-12 pr-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Search services..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 px-4 h-9 whitespace-nowrap" 
+            onClick={handleRefresh}
+            disabled={statusLoading || servicesConfigLoading || isUpdating}
+            aria-label="Refresh services data"
+            title="Refresh services data"
+          >
+            <RefreshCw 
+              className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-refresh-rotate' : ''}`} 
             />
-          </div>
-          
-          {(statusLoading && services.length === 0) || servicesConfigLoading ? (
-            <div className="flex h-48 items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-            </div>
-          ) : statusError || servicesConfigError ? (
-            <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-red-50">
-              <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
-              <h3 className="text-red-700 font-medium mb-1">Error Loading Services</h3>
-              <p className="text-sm text-red-600 mb-4 text-center">
-                {statusError || servicesConfigError}
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRefresh} 
-                className="gap-1"
-                aria-label="Try again to load services"
-                title="Retry loading services"
+            <span>Refresh</span>
+          </Button>
+          <Button 
+            size="sm" 
+            className="gap-2 px-4 h-9 whitespace-nowrap"
+            onClick={() => setIsAddServiceOpen(true)}
+            disabled={isUpdating}
+          >
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span>Add Service</span>
+          </Button>
+        </div>
+      </div>
+      
+      {/* Services list */}
+      {(statusLoading && services.length === 0) || servicesConfigLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        </div>
+      ) : statusError || servicesConfigError ? (
+        <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-red-50">
+          <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
+          <h3 className="text-red-700 font-medium mb-1">Error Loading Services</h3>
+          <p className="text-sm text-red-600 mb-4 text-center">
+            {statusError || servicesConfigError}
+          </p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            className="gap-1"
+            aria-label="Try again to load services"
+            title="Retry loading services"
+          >
+            <RefreshCw 
+              className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-refresh-rotate' : ''}`} 
+            />
+            Try Again
+          </Button>
+        </div>
+      ) : filteredServices.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 text-center">
+          <Server className="h-8 w-8 text-slate-300 mb-2" />
+          <h3 className="text-slate-700 font-medium">No services found</h3>
+          <p className="text-sm text-slate-500 mt-1 mb-4">
+            {searchQuery
+              ? "No services match your search query"
+              : "Add your first service to start monitoring"
+            }
+          </p>
+          {!searchQuery && (
+            <Button onClick={() => setIsAddServiceOpen(true)}>Add Service</Button>
+          )}
+          {searchQuery && (
+            <Button variant="outline" size="sm" onClick={() => setSearchQuery("")}>
+              Clear Search
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredServices.map((service) => {
+            // Find matching status data
+            const statusData = processedServices?.find(s => s.name === service.name);
+            const status = statusData?.currentStatus?.status || "unknown";
+            const responseTime = statusData?.currentStatus?.responseTime;
+            const { uptimePercentage, onlineSince } = calculateUptimeStats(statusData);
+            const isExpanded = expandedServices[service.name] || false;
+            
+            return (
+              <div 
+                key={service.name} 
+                className="bg-white rounded-lg border hover:shadow-sm transition-shadow duration-200 overflow-hidden w-full"
               >
-                <RefreshCw 
-                  className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-refresh-rotate' : ''}`} 
-                />
-                Try Again
-              </Button>
-            </div>
-          ) : filteredServices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-center">
-              <Server className="h-8 w-8 text-slate-300 mb-2" />
-              <h3 className="text-slate-700 font-medium">No services found</h3>
-              <p className="text-sm text-slate-500 mt-1 mb-4">
-                {searchQuery
-                  ? "No services match your search query"
-                  : "Add your first service to start monitoring"
-                }
-              </p>
-              {!searchQuery && (
-                <Button onClick={() => setIsAddServiceOpen(true)}>Add Service</Button>
-              )}
-              {searchQuery && (
-                <Button variant="outline" size="sm" onClick={() => setSearchQuery("")}>
-                  Clear Search
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredServices.map((service) => {
-                // Find matching status data
-                const statusData = processedServices?.find(s => s.name === service.name);
-                const status = statusData?.currentStatus?.status || "unknown";
-                const responseTime = statusData?.currentStatus?.responseTime;
-                const { uptimePercentage, onlineSince } = calculateUptimeStats(statusData);
-                const isExpanded = expandedServices[service.name] || false;
-                
-                return (
-                  <div 
-                    key={service.name} 
-                    className="bg-white rounded-lg border hover:shadow-sm transition-shadow duration-200 overflow-hidden w-full"
-                  >
-                    <div 
-                      className="flex items-center justify-between p-6 cursor-pointer w-full"
-                      onClick={() => toggleServiceExpansion(service.name)}
-                    >
-                      <div className="flex items-center space-x-4 flex-1 min-w-0 max-w-[calc(100%-180px)]">
-                        <div className="flex items-center pl-1">
-                          <StatusDot status={status} />
+                <div 
+                  className="flex items-center justify-between p-6 cursor-pointer w-full"
+                  onClick={() => toggleServiceExpansion(service.name)}
+                >
+                  <div className="flex items-center space-x-4 flex-1 min-w-0 max-w-[calc(100%-180px)]">
+                    <div className="flex items-center pl-1">
+                      <StatusDot status={status} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center flex-wrap gap-2">
+                        <h3 className="font-medium truncate">{service.name}</h3>
+                        {responseTime && (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">
+                            {responseTime}ms
+                          </span>
+                        )}
+                        <div className={`text-xs px-2 py-0.5 rounded-full font-medium
+                          ${status === "up" ? "bg-emerald-100 text-emerald-700" : 
+                            status === "down" ? "bg-red-100 text-red-700" : 
+                            "bg-slate-100 text-slate-700"}
+                        `}>
+                          {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center flex-wrap gap-2">
-                            <h3 className="font-medium truncate">{service.name}</h3>
-                            {responseTime && (
-                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">
-                                {responseTime}ms
-                              </span>
-                            )}
-                            <div className={`text-xs px-2 py-0.5 rounded-full font-medium
-                              ${status === "up" ? "bg-emerald-100 text-emerald-700" : 
-                                status === "down" ? "bg-red-100 text-red-700" : 
-                                "bg-slate-100 text-slate-700"}
-                            `}>
-                              {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
+                      </div>
+                      <div className="text-sm text-slate-500 truncate mt-1">
+                        <a 
+                          href={service.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center hover:text-blue-600"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="truncate">{service.url}</span>
+                          <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
+                        </a>
+                      </div>
+                      {service.description && (
+                        <p className="text-xs text-slate-500 mt-1">{service.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 hover:text-blue-600 hover:bg-blue-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewHistory?.(service.name);
+                      }}
+                      title="View History"
+                    >
+                      <History className="h-4 w-4" />
+                      <span className="sr-only">History</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDialog(service);
+                      }}
+                      title="Edit Service"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 hover:text-red-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteDialog(service);
+                      }}
+                      title="Delete Service"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                    <div className="w-6 flex justify-center">
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Expanded details section */}
+                {isExpanded && (
+                  <div className="px-6 pb-6 pt-2 border-t border-slate-100 w-full">
+                    <div className="ml-11 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                      {/* Metadata section */}
+                      <div className="bg-slate-50 p-5 rounded-md w-full">
+                        <h4 className="text-sm font-medium mb-3 text-slate-700">Service Metadata</h4>
+                        <div className="space-y-3 text-xs w-full">
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">Expected Status:</span>
+                            <span className="font-medium">{service.expectedStatus || 200}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">Visible on Status Page:</span>
+                            <span className="font-medium">{service.visible ? 'Yes' : 'No'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">Last Check:</span>
+                            <span className="font-medium">
+                              {statusData?.currentStatus?.timestamp 
+                                ? new Date(statusData.currentStatus.timestamp).toLocaleString() 
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          {statusData?.currentStatus?.statusCode && (
+                            <div className="flex justify-between">
+                              <span className="text-slate-600">Status Code:</span>
+                              <span className="font-medium">{statusData.currentStatus.statusCode}</span>
                             </div>
-                          </div>
-                          <div className="text-sm text-slate-500 truncate mt-1">
-                            <a 
-                              href={service.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center hover:text-blue-600"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <span className="truncate">{service.url}</span>
-                              <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
-                            </a>
-                          </div>
-                          {service.description && (
-                            <p className="text-xs text-slate-500 mt-1">{service.description}</p>
+                          )}
+                          {statusData?.currentStatus?.error && (
+                            <div className="mt-3">
+                              <span className="text-slate-600 block mb-1">Last Error:</span>
+                              <span className="font-medium text-red-600 text-xs block p-2 bg-red-50 rounded overflow-auto">
+                                {statusData.currentStatus.error}
+                              </span>
+                            </div>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 w-9 p-0 hover:text-blue-600 hover:bg-blue-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onViewHistory?.(service.name);
-                          }}
-                          title="View History"
-                        >
-                          <History className="h-4 w-4" />
-                          <span className="sr-only">History</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 w-9 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditDialog(service);
-                          }}
-                          title="Edit Service"
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 w-9 p-0 hover:text-red-500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteDialog(service);
-                          }}
-                          title="Delete Service"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                        <div className="w-6 flex justify-center">
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                      
+                      {/* Uptime & Statistics section */}
+                      <div className="bg-slate-50 p-5 rounded-md w-full">
+                        <h4 className="text-sm font-medium mb-3 text-slate-700">Uptime Statistics</h4>
+                        <div className="space-y-4 w-full">
+                          {uptimePercentage !== null && (
+                            <div className="mb-3 w-full">
+                              <div className="flex justify-between text-xs mb-1 w-full">
+                                <span className="text-slate-600">Uptime</span>
+                                <span className="font-medium">{uptimePercentage.toFixed(2)}%</span>
+                              </div>
+                              <div className="relative w-full bg-slate-200 rounded-full h-2">
+                                <div 
+                                  className={`absolute top-0 left-0 h-2 rounded-full ${
+                                    uptimePercentage > 99 ? 'bg-emerald-500' : 
+                                    uptimePercentage > 95 ? 'bg-green-500' : 
+                                    uptimePercentage > 90 ? 'bg-yellow-500' : 
+                                    'bg-red-500'
+                                  }`}
+                                  style={{ width: `${Math.min(100, uptimePercentage)}%` }}
+                                />
+                              </div>
+                            </div>
                           )}
+                          
+                          {status === 'up' && (
+                            <div className="flex items-start text-xs">
+                              <Clock className="h-3.5 w-3.5 text-emerald-600 mt-0.5 mr-1.5" />
+                              <div>
+                                <span className="text-slate-600 block">Online since:</span>
+                                <span className="font-medium text-emerald-700">
+                                  {onlineSince ? (
+                                    <>
+                                      {formatOnlineSince(onlineSince)} 
+                                      <span className="text-slate-500 ml-1">
+                                        ({onlineSince.toLocaleString()})
+                                      </span>
+                                    </>
+                                  ) : (
+                                    'Unknown'
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Response Time Chart Section */}
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs mb-2">
+                              <span className="text-slate-600">Response Time (Last 10 checks)</span>
+                              <button
+                                className="text-blue-600 hover:underline text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onViewHistory?.(service.name);
+                                }}
+                              >
+                                View Details
+                              </button>
+                            </div>
+                            
+                            {/* Response Time Chart */}
+                            {statusData?.history && statusData.history.length > 0 ? (
+                              <div className="mt-1 rounded-md bg-slate-100 overflow-visible">
+                                {/* Bar Chart Section */}
+                                <div className="h-14 flex items-end justify-between px-1.5 pt-1.5 pb-1">
+                                  {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => {
+                                    // Get valid response times only
+                                    const validTimes = statusData.history
+                                      .slice(0, 10)
+                                      .map((c: any) => c.responseTime)
+                                      .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                                    
+                                    // Calculate max for normalization, with a reasonable default
+                                    const maxTime = validTimes.length > 0 
+                                      ? Math.max(...validTimes) 
+                                      : 1000;
+                                    
+                                    // Calculate height percentage (10% min to 90% max)
+                                    const hasResponseTime = typeof check.responseTime === 'number' && !isNaN(check.responseTime);
+                                    const heightPx = hasResponseTime 
+                                      ? Math.max(8, Math.min(35, (check.responseTime / maxTime) * 35))
+                                      : 5;
+                                    
+                                    return (
+                                      <div key={index} className="flex-1 flex flex-col items-center justify-end group">
+                                        <div className="text-xs text-slate-800 font-medium text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+                                          {hasResponseTime ? `${check.responseTime}ms` : 'N/A'}
+                                        </div>
+                                        
+                                        {/* Bar */}
+                                        <div 
+                                          className={`w-full min-w-[4px] max-w-[8px] mx-auto rounded-t-sm group-hover:opacity-80 transition-opacity ${
+                                            check.status === 'up' 
+                                              ? 'bg-emerald-500' 
+                                              : check.status === 'down' 
+                                                ? 'bg-red-500' 
+                                                : 'bg-slate-400'
+                                          }`}
+                                          style={{ height: `${heightPx}px` }}
+                                        />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {/* Timestamp Labels Section - Separated from chart */}
+                                <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 bg-slate-50">
+                                  {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => (
+                                    <div key={`time-${index}`} className="flex-1 text-center">
+                                      <div className="text-[8px] text-slate-500 truncate px-0.5">
+                                        {new Date(check.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center h-12 bg-slate-100 rounded-md p-2">
+                                <div className="text-xs text-slate-500">No response time data available</div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Expanded details section */}
-                    {isExpanded && (
-                      <div className="px-6 pb-6 pt-2 border-t border-slate-100 w-full">
-                        <div className="ml-11 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                          {/* Metadata section */}
-                          <div className="bg-slate-50 p-5 rounded-md w-full">
-                            <h4 className="text-sm font-medium mb-3 text-slate-700">Service Metadata</h4>
-                            <div className="space-y-3 text-xs w-full">
-                              <div className="flex justify-between">
-                                <span className="text-slate-600">Expected Status:</span>
-                                <span className="font-medium">{service.expectedStatus || 200}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-slate-600">Visible on Status Page:</span>
-                                <span className="font-medium">{service.visible ? 'Yes' : 'No'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-slate-600">Last Check:</span>
-                                <span className="font-medium">
-                                  {statusData?.currentStatus?.timestamp 
-                                    ? new Date(statusData.currentStatus.timestamp).toLocaleString() 
-                                    : 'N/A'}
-                                </span>
-                              </div>
-                              {statusData?.currentStatus?.statusCode && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600">Status Code:</span>
-                                  <span className="font-medium">{statusData.currentStatus.statusCode}</span>
-                                </div>
-                              )}
-                              {statusData?.currentStatus?.error && (
-                                <div className="mt-3">
-                                  <span className="text-slate-600 block mb-1">Last Error:</span>
-                                  <span className="font-medium text-red-600 text-xs block p-2 bg-red-50 rounded overflow-auto">
-                                    {statusData.currentStatus.error}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Uptime & Statistics section */}
-                          <div className="bg-slate-50 p-5 rounded-md w-full">
-                            <h4 className="text-sm font-medium mb-3 text-slate-700">Uptime Statistics</h4>
-                            <div className="space-y-4 w-full">
-                              {uptimePercentage !== null && (
-                                <div className="mb-3 w-full">
-                                  <div className="flex justify-between text-xs mb-1 w-full">
-                                    <span className="text-slate-600">Uptime</span>
-                                    <span className="font-medium">{uptimePercentage.toFixed(2)}%</span>
-                                  </div>
-                                  <div className="relative w-full bg-slate-200 rounded-full h-2">
-                                    <div 
-                                      className={`absolute top-0 left-0 h-2 rounded-full ${
-                                        uptimePercentage > 99 ? 'bg-emerald-500' : 
-                                        uptimePercentage > 95 ? 'bg-green-500' : 
-                                        uptimePercentage > 90 ? 'bg-yellow-500' : 
-                                        'bg-red-500'
-                                      }`}
-                                      style={{ width: `${Math.min(100, uptimePercentage)}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {status === 'up' && (
-                                <div className="flex items-start text-xs">
-                                  <Clock className="h-3.5 w-3.5 text-emerald-600 mt-0.5 mr-1.5" />
-                                  <div>
-                                    <span className="text-slate-600 block">Online since:</span>
-                                    <span className="font-medium text-emerald-700">
-                                      {onlineSince ? (
-                                        <>
-                                          {formatOnlineSince(onlineSince)} 
-                                          <span className="text-slate-500 ml-1">
-                                            ({onlineSince.toLocaleString()})
-                                          </span>
-                                        </>
-                                      ) : (
-                                        'Unknown'
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Response Time Chart Section */}
-                              <div className="mt-3">
-                                <div className="flex items-center justify-between text-xs mb-2">
-                                  <span className="text-slate-600">Response Time (Last 10 checks)</span>
-                                  <button
-                                    className="text-blue-600 hover:underline text-xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onViewHistory?.(service.name);
-                                    }}
-                                  >
-                                    View Details
-                                  </button>
-                                </div>
-                                
-                                {/* Response Time Chart */}
-                                {statusData?.history && statusData.history.length > 0 ? (
-                                  <div className="mt-1 rounded-md bg-slate-100 overflow-visible">
-                                    {/* Bar Chart Section */}
-                                    <div className="h-14 flex items-end justify-between px-1.5 pt-1.5 pb-1">
-                                      {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => {
-                                        // Get valid response times only
-                                        const validTimes = statusData.history
-                                          .slice(0, 10)
-                                          .map((c: any) => c.responseTime)
-                                          .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
-                                        
-                                        // Calculate max for normalization, with a reasonable default
-                                        const maxTime = validTimes.length > 0 
-                                          ? Math.max(...validTimes) 
-                                          : 1000;
-                                        
-                                        // Calculate height percentage (10% min to 90% max)
-                                        const hasResponseTime = typeof check.responseTime === 'number' && !isNaN(check.responseTime);
-                                        const heightPx = hasResponseTime 
-                                          ? Math.max(8, Math.min(35, (check.responseTime / maxTime) * 35))
-                                          : 5;
-                                        
-                                        return (
-                                          <div key={index} className="flex-1 flex flex-col items-center justify-end group">
-                                            <div className="text-xs text-slate-800 font-medium text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-                                              {hasResponseTime ? `${check.responseTime}ms` : 'N/A'}
-                                            </div>
-                                            
-                                            {/* Bar */}
-                                            <div 
-                                              className={`w-full min-w-[4px] max-w-[8px] mx-auto rounded-t-sm group-hover:opacity-80 transition-opacity ${
-                                                check.status === 'up' 
-                                                  ? 'bg-emerald-500' 
-                                                  : check.status === 'down' 
-                                                    ? 'bg-red-500' 
-                                                    : 'bg-slate-400'
-                                              }`}
-                                              style={{ height: `${heightPx}px` }}
-                                            />
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                    
-                                    {/* Timestamp Labels Section - Separated from chart */}
-                                    <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 bg-slate-50">
-                                      {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => (
-                                        <div key={`time-${index}`} className="flex-1 text-center">
-                                          <div className="text-[8px] text-slate-500 truncate px-0.5">
-                                            {new Date(check.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col items-center justify-center h-12 bg-slate-100 rounded-md p-2">
-                                    <div className="text-xs text-slate-500">No response time data available</div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Service form dialogs */}
       <ServiceForm
