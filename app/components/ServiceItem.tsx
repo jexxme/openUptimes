@@ -61,7 +61,7 @@ export function ServiceItem({
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const questionRef = useRef<HTMLButtonElement>(null);
 
-  // Calculate time range for the uptime bar
+  // Calculate time range for the uptime bar - ensure we use exactly 90 days 
   const now = Date.now();
   const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
   

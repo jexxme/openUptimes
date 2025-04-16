@@ -15,17 +15,12 @@ export async function GET() {
     
     // Extract only appearance-related settings
     const appearanceConfig = {
-      theme: siteConfig.theme || {
-        up: '#10b981',
-        down: '#ef4444',
-        unknown: '#6b7280'
-      },
+      // Removed theme object completely
       // Add any other appearance settings here
       customCSS: siteConfig.customCSS || '',
+      customHeader: siteConfig.customHeader || '',
       logo: siteConfig.logo || null,
       favicon: siteConfig.favicon || null,
-      primaryColor: siteConfig.primaryColor || "#0284c7",
-      accentColor: siteConfig.accentColor || "#06b6d4",
       logoUrl: siteConfig.logoUrl || "",
       showServiceUrls: siteConfig.showServiceUrls !== undefined ? siteConfig.showServiceUrls : true,
       showServiceDescription: siteConfig.showServiceDescription !== undefined ? siteConfig.showServiceDescription : true
@@ -58,45 +53,33 @@ export async function PUT(request: NextRequest) {
       description: 'Service Status Monitor',
       refreshInterval: 60000,
       historyLength: 1440,
-      theme: {
-        up: '#10b981',
-        down: '#ef4444',
-        unknown: '#6b7280'
-      }
+      // Removed theme object
     };
     
-    // Update theme colors if provided
-    if (updatedAppearance.theme) {
-      siteConfig.theme = {
-        ...siteConfig.theme,
-        ...updatedAppearance.theme
-      };
-    }
+    // Removed theme colors update
     
     // Update other appearance settings if provided
     if (updatedAppearance.customCSS !== undefined) {
       siteConfig.customCSS = updatedAppearance.customCSS;
     }
     
+    // Update custom header HTML if provided
+    if (updatedAppearance.customHeader !== undefined) {
+      siteConfig.customHeader = updatedAppearance.customHeader;
+    }
+    
     if (updatedAppearance.logo !== undefined) {
-      siteConfig.logo = updatedAppearance.logo;
+      // Convert empty string to null for logo
+      siteConfig.logo = updatedAppearance.logo === "" ? null : updatedAppearance.logo;
     }
     
     if (updatedAppearance.favicon !== undefined) {
       siteConfig.favicon = updatedAppearance.favicon;
     }
     
-    // Update primary and accent colors
-    if (updatedAppearance.primaryColor !== undefined) {
-      siteConfig.primaryColor = updatedAppearance.primaryColor;
-    }
-    
-    if (updatedAppearance.accentColor !== undefined) {
-      siteConfig.accentColor = updatedAppearance.accentColor;
-    }
-    
     if (updatedAppearance.logoUrl !== undefined) {
-      siteConfig.logoUrl = updatedAppearance.logoUrl;
+      // Convert empty string to null for logoUrl
+      siteConfig.logoUrl = updatedAppearance.logoUrl === "" ? null : updatedAppearance.logoUrl;
     }
     
     // Update show service URLs flag
@@ -113,12 +96,11 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json({ 
       success: true,
-      theme: siteConfig.theme,
+      // Removed theme from response
       customCSS: siteConfig.customCSS,
+      customHeader: siteConfig.customHeader,
       logo: siteConfig.logo,
       favicon: siteConfig.favicon,
-      primaryColor: siteConfig.primaryColor,
-      accentColor: siteConfig.accentColor,
       logoUrl: siteConfig.logoUrl,
       showServiceUrls: siteConfig.showServiceUrls,
       showServiceDescription: siteConfig.showServiceDescription

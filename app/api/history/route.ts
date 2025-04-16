@@ -86,8 +86,10 @@ export async function GET(request: NextRequest) {
         historyLimit = 7 * 24 * 6; // 7 days (10-min resolution)
       } else if (timeRange === '30d') {
         historyLimit = 30 * 24 * 2; // 30 days (30-min resolution)
+      } else if (timeRange === '90d') {
+        historyLimit = 90 * 24 * 60; // Full 90 days of data (1-min resolution)
       } else if (timeRange === 'all') {
-        historyLimit = 30 * 24 * 60; // Max 30 days of data
+        historyLimit = 90 * 24 * 60; // Max 90 days of data
       }
     }
     

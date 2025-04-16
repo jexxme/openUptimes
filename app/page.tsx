@@ -7,6 +7,7 @@ import { StatusHeader } from "./components/StatusHeader";
 import { ServiceItem } from "./components/ServiceItem";
 import { Footer } from "./components/Footer";
 import { useHistoricalData } from "./hooks/useHistoricalData";
+import { useAppearanceSettings } from "./hooks/useAppearanceSettings";
 import Image from "next/image";
 import { RefreshCw } from "lucide-react";
 
@@ -55,12 +56,8 @@ function HomeContent() {
     }
   });
   
-  const [appearanceConfig, setAppearanceConfig] = useState<any>({
-    logo: null,
-    logoUrl: "",
-    showServiceUrls: true,
-    showServiceDescription: true
-  });
+  // Use the shared hook for appearance settings
+  const { settings: appearanceConfig } = useAppearanceSettings();
   
   const [serviceVisibility, setServiceVisibility] = useState<Record<string, boolean>>({});
   const { data: services, loading: historyLoading, error: historyError } = useHistoricalData('90d');
@@ -68,10 +65,12 @@ function HomeContent() {
   
   // Fetch site settings
   useEffect(() => {
+    let isMounted = true;
+    
     async function fetchSiteConfig() {
       try {
         const response = await fetch('/api/settings');
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const data = await response.json();
           setSiteConfig(data);
         }
@@ -81,31 +80,22 @@ function HomeContent() {
     }
     
     fetchSiteConfig();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
   
-  // Fetch appearance settings
-  useEffect(() => {
-    async function fetchAppearanceSettings() {
-      try {
-        const response = await fetch('/api/settings/appearance');
-        if (response.ok) {
-          const data = await response.json();
-          setAppearanceConfig(data);
-        }
-      } catch (error) {
-        console.error('Error fetching appearance settings:', error);
-      }
-    }
-    
-    fetchAppearanceSettings();
-  }, []);
+  // No need for fetchAppearanceSettings - using the hook instead
   
   // Fetch status page settings
   useEffect(() => {
+    let isMounted = true;
+    
     async function fetchStatusPageSettings() {
       try {
         const response = await fetch('/api/settings/statuspage');
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const data = await response.json();
           console.log('Status page settings:', data);
           // Create a map of service name to visibility
@@ -122,6 +112,10 @@ function HomeContent() {
     }
     
     fetchStatusPageSettings();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
   
   // Redirect to setup wizard if not complete
@@ -197,9 +191,9 @@ function HomeContent() {
     return (
       <div className="flex min-h-screen flex-col bg-white">
         <div className="mx-auto w-full max-w-3xl px-4 py-8 text-center">
-          {(appearanceConfig.logo || appearanceConfig.logoUrl) && (
+          {appearanceConfig && ((appearanceConfig.logo && appearanceConfig.logo !== '') || (appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '')) && (
             <div className="flex justify-center mb-6">
-              {appearanceConfig.logoUrl ? (
+              {appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '' ? (
                 <img 
                   src={appearanceConfig.logoUrl} 
                   alt={`${siteConfig.siteName || 'OpenUptimes'} Logo`}
@@ -237,9 +231,9 @@ function HomeContent() {
       
       <div className="mx-auto w-full max-w-3xl px-4 py-6">
         {/* Logo Section */}
-        {(appearanceConfig.logo || appearanceConfig.logoUrl) && (
+        {appearanceConfig && ((appearanceConfig.logo && appearanceConfig.logo !== '') || (appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '')) && (
           <div className="flex justify-center mb-6">
-            {appearanceConfig.logoUrl ? (
+            {appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '' ? (
               <img 
                 src={appearanceConfig.logoUrl} 
                 alt={`${siteConfig.siteName || 'OpenUptimes'} Logo`}
@@ -321,8 +315,8 @@ function HomeContent() {
                     uptimePercentage={service.uptimePercentage}
                     description={service.description}
                     url={service.url}
-                    showServiceUrls={appearanceConfig.showServiceUrls}
-                    showServiceDescription={appearanceConfig.showServiceDescription}
+                    showServiceUrls={appearanceConfig?.showServiceUrls !== false}
+                    showServiceDescription={appearanceConfig?.showServiceDescription !== false}
                   />
                 ))
               ) : (
