@@ -121,15 +121,6 @@ export default function GitHubActionsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Column - Configuration Forms */}
         <div className="md:col-span-2 space-y-6">
-          {/* About Card */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">About GitHub Actions Integration</h2>
-            <p className="text-sm text-gray-600">
-              GitHub Actions lets you run ping checks on a schedule without requiring a dedicated server. 
-              Your GitHub repository will run a workflow that calls your OpenUptimes instance to check services.
-            </p>
-          </div>
-          
           {/* Configuration Form */}
           {isLoading ? (
             <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 flex justify-center">
