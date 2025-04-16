@@ -13,11 +13,6 @@ async function getSiteConfigFromRedis() {
     return {
       refreshInterval: 60000,
       historyLength: 1440,
-      theme: {
-        up: '#10b981',
-        down: '#ef4444',
-        unknown: '#6b7280'
-      },
       statusPage: {
         enabled: true,
         title: 'Service Status',

@@ -63,16 +63,30 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
   
   // Get day status by index
   const getDayStatus = (dayIndex: number) => {
-    const dayTimestamp = startTime + (dayIndex * 24 * 60 * 60 * 1000);
-    const dayEnd = dayTimestamp + (24 * 60 * 60 * 1000);
+    // Calculate the timestamp for this day based on startTime
+    const dayStart = startTime + (dayIndex * 24 * 60 * 60 * 1000);
+    const dayEnd = dayStart + (24 * 60 * 60 * 1000);
     
-    // Find entries for this day
+    // Calculate the range for this specific day
+    const millisPerDay = 24 * 60 * 60 * 1000;
+    const dayTimestamp = startTime + (dayIndex * millisPerDay);
+    
+    // Find entries for this day - explicitly look for entries within the day range
     const dayEntries = sortedHistory.filter(item => 
-      item.timestamp >= dayTimestamp && item.timestamp < dayEnd
+      item.timestamp >= dayTimestamp && item.timestamp < (dayTimestamp + millisPerDay)
     );
     
     if (dayEntries.length === 0) {
-      // If no entries for this day, use the closest previous entry
+      // Check if this day is in the past (before our history starts)
+      const firstHistoryTimestamp = sortedHistory.length > 0 ? sortedHistory[0].timestamp : Date.now();
+      
+      if (dayEnd < firstHistoryTimestamp) {
+        // This day is before our first history entry, so we have no data
+        return 'unknown';
+      }
+      
+      // If no entries for this day but the day is in our history range,
+      // use the closest previous entry for a more accurate representation
       const previousEntries = sortedHistory.filter(item => item.timestamp < dayTimestamp);
       return previousEntries.length > 0 
         ? previousEntries[previousEntries.length - 1].status 
@@ -97,30 +111,27 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
     const barSpacing = 2;
     const totalWidth = totalBars * (barWidth + barSpacing) - barSpacing;
     
-    // Create mapping of timestamps to statuses for efficient lookup
-    const statusMap = new Map();
-    for (let i = 0; i < totalBars; i++) {
-      statusMap.set(i, getDayStatus(i));
-    }
+    // Calculate duration between start and end
+    const timeRangeDuration = endTime - startTime;
     
     // Calculate the timestamp for a given day index
     const getTimestampForDay = (dayIndex: number) => {
-      return startTime + (dayIndex * 24 * 60 * 60 * 1000);
+      return startTime + (dayIndex * (timeRangeDuration / totalBars));
     };
     
     // Generate the SVG rectangles
     for (let i = 0; i < totalBars; i++) {
-      const status = statusMap.get(i);
+      const status = getDayStatus(i);
       
       // Determine fill color based on status
       let fillColor = "#6b7280"; // Default gray for unknown
       
       if (status === "up") {
-        fillColor = "#3ba55c"; // Discord green
+        fillColor = "#3ba55c"; // Green
       } else if (status === "down") {
-        fillColor = "#ed4245"; // Discord red
+        fillColor = "#ed4245"; // Red
       } else if (status === "degraded" || status === "partial") {
-        fillColor = "#faa61a"; // Discord yellow
+        fillColor = "#faa61a"; // Yellow
       }
       
       const xPosition = i * (barWidth + barSpacing);
