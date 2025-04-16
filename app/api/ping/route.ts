@@ -114,7 +114,7 @@ export async function GET(request: Request) {
     
     // Store in Redis list with a limit
     await client.lPush('ping:history', JSON.stringify(pingRecord));
-    await client.lTrim('ping:history', 0, 99); // Keep last 100 pings
+    await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
     
     // Schedule next ping if not stopped
     const restart = action === 'start' || action === 'restart';
