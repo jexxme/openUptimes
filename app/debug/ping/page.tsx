@@ -9,8 +9,11 @@ export default function PingDebugPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [intervalStats, setIntervalStats] = useState<any>(null);
+  const [lastResetTime, setLastResetTime] = useState<number>(Date.now());
   const [logs, setLogs] = useState<string[]>([]);
   const [siteSettings, setSiteSettings] = useState<any>(null);
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState<number>(10);
   const router = useRouter();
 
   const addLog = (message: string) => {
@@ -18,18 +21,111 @@ export default function PingDebugPage() {
     setLogs(prev => [`${timestamp} - ${message}`, ...prev].slice(0, 100));
   };
 
-  const fetchPingStats = async () => {
+  const calculateIntervalStats = (data: any = pingStats) => {
+    if (!data?.recentHistory || data.recentHistory.length < 2) {
+      return null;
+    }
+    
+    // Filter history to only include entries since the last reset
+    const history = data.recentHistory.filter((entry: any) => {
+      const entryTime = typeof entry.timestamp === 'number' ? 
+        entry.timestamp : new Date(entry.timestamp).getTime();
+      return entryTime >= lastResetTime;
+    });
+    
+    // If not enough entries since reset, return null
+    if (history.length < 2) {
+      return null;
+    }
+    
+    const intervals = [];
+    
+    for (let i = 0; i < history.length - 1; i++) {
+      // Ensure we're working with numbers for the calculation
+      const currentTime = typeof history[i].timestamp === 'number' ? 
+        history[i].timestamp : new Date(history[i].timestamp).getTime();
+      
+      const nextTime = typeof history[i+1].timestamp === 'number' ? 
+        history[i+1].timestamp : new Date(history[i+1].timestamp).getTime();
+      
+      // Only add valid intervals
+      if (!isNaN(currentTime) && !isNaN(nextTime)) {
+        const interval = Math.round((currentTime - nextTime) / 1000);
+        if (interval > 0) intervals.push(interval);
+      }
+    }
+    
+    // If no valid intervals found
+    if (intervals.length === 0) return null;
+    
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const minInterval = Math.min(...intervals);
+    const maxInterval = Math.max(...intervals);
+    
+    // Calculate expected interval from cron (simplistic)
+    const cronSchedule = data.githubAction?.schedule || '*/5 * * * *';
+    let expectedInterval = 300; // Default 5 minutes (GitHub Actions minimum)
+    if (cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/)) {
+      const match = cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/);
+      if (match) {
+        const minutes = parseInt(match[1]);
+        // Enforce minimum 5 minutes for GitHub Actions
+        expectedInterval = Math.max(5, minutes) * 60;
+      }
+    }
+    
+    const avgDrift = intervals.map(i => Math.abs(i - expectedInterval)).reduce((a, b) => a + b, 0) / intervals.length;
+    const consistency = 100 - (avgDrift / expectedInterval * 100);
+    
+    return {
+      avgInterval: Math.round(avgInterval),
+      minInterval,
+      maxInterval,
+      avgDrift: Math.round(avgDrift),
+      consistency: Math.round(Math.max(0, Math.min(100, consistency))),
+      sampleSize: intervals.length,
+      totalSamples: data.recentHistory.length,
+      expectedInterval,
+      resetTime: lastResetTime
+    };
+  };
+
+  const fetchPingStats = async (resetIntervals = false) => {
     try {
       setIsLoading(true);
       addLog('Fetching ping stats...');
       
-      const response = await fetch('/api/ping-stats');
+      // Request all ping history entries by adding limit=0 parameter
+      const response = await fetch('/api/ping-stats?limit=0');
       if (!response.ok) {
         throw new Error(`Failed to fetch ping stats: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
+      
+      // Ensure we're using all available entries
+      if (data.recentHistory) {
+        addLog(`Processing ${data.recentHistory.length} ping history entries`);
+      }
+      
       setPingStats(data);
+      
+      // Reset interval stats if requested
+      if (resetIntervals) {
+        setLastResetTime(Date.now());
+        setIntervalStats(null);
+        addLog('Interval statistics reset successfully');
+      } else {
+        // Otherwise calculate them based on fetched data
+        const stats = calculateIntervalStats(data);
+        setIntervalStats(stats);
+        if (stats) {
+          addLog(`Interval statistics updated successfully (${stats.sampleSize} intervals since last reset)`);
+        } else {
+          addLog('Not enough data for interval statistics since last reset');
+        }
+      }
+      
       setLastUpdate(new Date());
       addLog('Ping stats updated successfully');
     } catch (err) {
@@ -100,7 +196,7 @@ export default function PingDebugPage() {
     getPingStatus();
     
     // Refresh stats every 5 seconds
-    const interval = setInterval(fetchPingStats, 5000);
+    const interval = setInterval(() => fetchPingStats(), 5000);
     
     return () => clearInterval(interval);
   }, []);
@@ -158,51 +254,13 @@ export default function PingDebugPage() {
     return pingStats.timeUntilNextRun > 0 ? `${Math.floor(pingStats.timeUntilNextRun / 1000)} seconds` : 'Imminent';
   };
 
-  // Calculate interval stats
-  const calculateIntervalStats = () => {
-    if (!pingStats?.recentHistory || pingStats.recentHistory.length < 2) {
-      return null;
-    }
-    
-    const history = pingStats.recentHistory;
-    const intervals = [];
-    
-    for (let i = 0; i < history.length - 1; i++) {
-      const interval = Math.round((history[i].timestamp - history[i+1].timestamp) / 1000);
-      intervals.push(interval);
-    }
-    
-    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-    const minInterval = Math.min(...intervals);
-    const maxInterval = Math.max(...intervals);
-    
-    // Calculate expected interval from cron (simplistic)
-    const cronSchedule = pingStats.githubAction?.schedule || '*/5 * * * *';
-    let expectedInterval = 300; // Default 5 minutes (GitHub Actions minimum)
-    if (cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/)) {
-      const match = cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/);
-      if (match) {
-        const minutes = parseInt(match[1]);
-        // Enforce minimum 5 minutes for GitHub Actions
-        expectedInterval = Math.max(5, minutes) * 60;
-      }
-    }
-    
-    const avgDrift = intervals.map(i => Math.abs(i - expectedInterval)).reduce((a, b) => a + b, 0) / intervals.length;
-    const consistency = 100 - (avgDrift / expectedInterval * 100);
-    
-    return {
-      avgInterval: Math.round(avgInterval),
-      minInterval,
-      maxInterval,
-      avgDrift: Math.round(avgDrift),
-      consistency: Math.round(Math.max(0, Math.min(100, consistency))),
-      sampleSize: intervals.length,
-      expectedInterval
-    };
+  // Function to show more history entries
+  const showMoreHistory = () => {
+    // Increase by 10 or show all remaining
+    const remaining = (pingStats?.recentHistory?.length || 0) - visibleHistoryCount;
+    const increment = Math.min(remaining, 10);
+    setVisibleHistoryCount(visibleHistoryCount + increment);
   };
-
-  const intervalStats = calculateIntervalStats();
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -264,9 +322,10 @@ export default function PingDebugPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2.5 text-sm">
-              <div className="flex justify-between">
-                <span className="font-medium">Status:</span>
+            <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+              {/* Status Header with Badge */}
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-sm font-medium text-gray-700">Ping Service</span>
                 <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${
                   pingStats?.lastPing && (Date.now() - pingStats.lastPing > 90000)
                     ? "bg-red-100 text-red-800"
@@ -283,49 +342,64 @@ export default function PingDebugPage() {
                     : "No Data"}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <Tooltip text="Time when the last ping check was performed">
-                  <span className="text-gray-600 border-b border-dotted border-gray-300">Last ping:</span>
-                </Tooltip>
-                <span>{formatTime(pingStats?.lastPing)}</span>
-              </div>
-              <div className="flex justify-between">
-                <Tooltip text="Time elapsed since the last ping check">
-                  <span className="text-gray-600 border-b border-dotted border-gray-300">Since last ping:</span>
-                </Tooltip>
-                {pingStats?.lastPing ? (
-                  formatRelativeTimeWithStatus(Math.floor((Date.now() - pingStats.lastPing) / 1000))
-                ) : (
-                  <span>N/A</span>
-                )}
-              </div>
-              <div className="flex justify-between">
-                <Tooltip text="Estimated time for the next GitHub Action run">
-                  <span className="text-gray-600 border-b border-dotted border-gray-300">Next run:</span>
-                </Tooltip>
-                <span>{pingStats?.nextEstimatedRun ? formatTimeConsistent(pingStats.nextEstimatedRun) : 'Unknown'}</span>
-              </div>
-              <div className="flex justify-between">
-                <Tooltip text="Time remaining until next ping">
-                  <span className="text-gray-600 border-b border-dotted border-gray-300">Wait time:</span>
-                </Tooltip>
-                <span>{timeUntilNextRun()}</span>
-              </div>
-              <div className="flex justify-between">
-                <Tooltip text="GitHub Action schedule">
-                  <span className="text-gray-600 border-b border-dotted border-gray-300">Schedule:</span>
-                </Tooltip>
-                <span>
-                  {pingStats?.githubAction?.schedule ? 
-                    formatCronSchedule(pingStats.githubAction.schedule) : 
-                    'Not configured'}
-                </span>
-              </div>
-              <div className="flex justify-between pt-2 mt-1 border-t border-gray-100">
-                <Tooltip text="Last time this page was refreshed">
-                  <span className="text-gray-600 border-b border-dotted border-gray-300">Updated:</span>
-                </Tooltip>
-                <span>{formatTimeConsistent(lastUpdate.getTime())}</span>
+              
+              {/* Visual Progress Bar */}
+              {pingStats?.lastPing && (
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-1 text-xs">
+                    <Tooltip text="Time elapsed since the last ping">
+                      <span className="text-gray-600">Last ping: {formatTime(pingStats?.lastPing)}</span>
+                    </Tooltip>
+                    <span className="font-medium">
+                      {Math.floor((Date.now() - pingStats.lastPing) / 1000)}s ago
+                    </span>
+                  </div>
+                  <div className="bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className={`h-full ${
+                        Math.floor((Date.now() - pingStats.lastPing) / 1000) > 90 ? 'bg-red-500' : 
+                        Math.floor((Date.now() - pingStats.lastPing) / 1000) > 60 ? 'bg-yellow-500' : 
+                        'bg-green-500'
+                      }`} 
+                      style={{ width: `${Math.min(100, Math.floor((Date.now() - pingStats.lastPing) / 1000) / (pingStats.intervalSeconds || 300) * 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Key Information */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div className="flex justify-between">
+                  <Tooltip text="Estimated time for the next GitHub Action run">
+                    <span className="text-gray-600 border-b border-dotted border-gray-300">Next run:</span>
+                  </Tooltip>
+                  <span>{pingStats?.nextEstimatedRun ? formatTimeConsistent(pingStats.nextEstimatedRun) : 'Unknown'}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <Tooltip text="Time remaining until next ping">
+                    <span className="text-gray-600 border-b border-dotted border-gray-300">Wait time:</span>
+                  </Tooltip>
+                  <span>{timeUntilNextRun()}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <Tooltip text="GitHub Action schedule">
+                    <span className="text-gray-600 border-b border-dotted border-gray-300">Schedule:</span>
+                  </Tooltip>
+                  <span>
+                    {pingStats?.githubAction?.schedule ? 
+                      formatCronSchedule(pingStats.githubAction.schedule) : 
+                      'Not configured'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <Tooltip text="Last time this page was refreshed">
+                    <span className="text-gray-600 border-b border-dotted border-gray-300">Updated:</span>
+                  </Tooltip>
+                  <span>{formatTimeConsistent(lastUpdate.getTime())}</span>
+                </div>
               </div>
             </div>
           )}
@@ -339,18 +413,28 @@ export default function PingDebugPage() {
               </svg>
               Interval Analysis
             </h2>
+          </div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              {intervalStats && (
+                <>
+                  <Tooltip text="Only using ping data since last reset">
+                    <span className="text-xs text-gray-600 border-dotted border-b border-gray-300">
+                      Since: {formatTime(lastResetTime)}
+                    </span>
+                  </Tooltip>
+                </>
+              )}
+            </div>
             {intervalStats && (
               <button 
-                onClick={() => {
-                  fetchPingStats();
-                  addLog('Interval statistics cleared');
-                }} 
+                onClick={() => fetchPingStats(true)} 
                 className="text-xs text-red-600 hover:text-red-800 flex items-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                Clear Stats
+                Reset Stats
               </button>
             )}
           </div>
@@ -359,65 +443,94 @@ export default function PingDebugPage() {
               <p className="text-gray-500 py-2 text-center">Not enough data for interval analysis (need at least 2 pings)</p>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                      <div className="flex justify-between">
-                        <Tooltip text="The expected interval based on GitHub Actions schedule">
-                      <span className="text-gray-600 border-b border-dotted border-gray-300">Expected interval:</span>
-                        </Tooltip>
-                    <span className="font-medium">{intervalStats.expectedInterval}s</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <Tooltip text="Average time between recorded pings">
-                      <span className="text-gray-600 border-b border-dotted border-gray-300">Actual avg interval:</span>
-                        </Tooltip>
-                    <span className={`font-medium ${Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval) > 5 ? 'text-amber-600' : 'text-gray-800'}`}>{intervalStats.avgInterval}s</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <Tooltip text="Average deviation from expected interval">
-                      <span className="text-gray-600 border-b border-dotted border-gray-300">Average drift:</span>
-                        </Tooltip>
-                    <span className={`font-medium ${intervalStats.avgDrift > 5 ? 'text-amber-600' : 'text-green-600'}`}>±{intervalStats.avgDrift}s</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <Tooltip text="Range of observed intervals">
-                      <span className="text-gray-600 border-b border-dotted border-gray-300">Min/Max interval:</span>
-                        </Tooltip>
-                    <span className="font-medium">{intervalStats.minInterval}s / {intervalStats.maxInterval}s</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <Tooltip text="Based on sample of recorded ping intervals">
-                      <span className="text-gray-600 border-b border-dotted border-gray-300">Sample size:</span>
-                        </Tooltip>
-                    <span className="font-medium">{intervalStats.sampleSize} intervals</span>
-                  </div>
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between">
+                      <Tooltip text="The expected interval based on GitHub Actions schedule">
+                        <span className="text-gray-600 border-b border-dotted border-gray-300">Expected interval:</span>
+                      </Tooltip>
+                      <span className="font-medium">{intervalStats.expectedInterval}s</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <Tooltip text="Average time between recorded pings">
+                        <span className="text-gray-600 border-b border-dotted border-gray-300">Actual avg interval:</span>
+                      </Tooltip>
+                      <span className={`font-medium ${Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval) > 5 ? 'text-amber-600' : 'text-gray-800'}`}>
+                        {intervalStats.avgInterval}s
+                        {Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval) > 5 && 
+                          <span className="ml-1 text-xs">
+                            ({intervalStats.avgInterval > intervalStats.expectedInterval ? '+' : '-'}
+                            {Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval)}s)
+                          </span>
+                        }
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <Tooltip text="Average deviation from expected interval">
+                        <span className="text-gray-600 border-b border-dotted border-gray-300">Average drift:</span>
+                      </Tooltip>
+                      <span className={`font-medium ${intervalStats.avgDrift > 5 ? 'text-amber-600' : 'text-green-600'}`}>±{intervalStats.avgDrift}s</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <Tooltip text="Range of observed intervals">
+                        <span className="text-gray-600 border-b border-dotted border-gray-300">Min/Max interval:</span>
+                      </Tooltip>
+                      <span className="font-medium">{intervalStats.minInterval}s / {intervalStats.maxInterval}s</span>
+                    </div>
                   </div>
                   <div>
-                    <Tooltip text="How consistently GitHub Actions maintains the schedule">
-                    <p className="text-center mb-2 font-medium text-gray-700 border-b border-dotted border-gray-300">Timing Consistency</p>
-                    </Tooltip>
-                  <div className="bg-gray-200 rounded-full h-5 overflow-hidden mb-2">
-                      <div 
-                        className={`h-full ${
-                          intervalStats.consistency > 90 ? 'bg-green-500' : 
-                          intervalStats.consistency > 70 ? 'bg-yellow-500' : 
-                          'bg-orange-500'
-                        }`} 
-                        style={{ width: `${intervalStats.consistency}%` }}
-                      ></div>
+                    <div className="flex justify-between items-center mb-2">
+                      <Tooltip text="How consistently GitHub Actions maintains the schedule">
+                        <span className="font-medium text-gray-700 border-b border-dotted border-gray-300">Timing Consistency</span>
+                      </Tooltip>
+                      <div className="flex items-center space-x-1.5">
+                        <Tooltip text="Intervals analyzed since last reset">
+                          <div className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                            </svg>
+                            {intervalStats.sampleSize} / {intervalStats.totalSamples - 1}
+                          </div>
+                        </Tooltip>
+                      </div>
                     </div>
-                  <p className="text-xs text-center font-medium">
-                      {intervalStats.consistency}% ({
-                        intervalStats.consistency > 90 ? 'Excellent' : 
-                        intervalStats.consistency > 70 ? 'Good' : 
-                        intervalStats.consistency > 50 ? 'Fair' : 
-                        'Poor'
-                      })
-                    </p>
-                  <p className="text-xs text-gray-500 text-center mt-1.5">
-                      {intervalStats.consistency < 70 ? 
-                        "Inconsistent timing may be due to GitHub Actions scheduler load." : 
-                        "Timing is within acceptable range."}
-                    </p>
+                    <div className="bg-gray-100 rounded-lg p-2">
+                      <div className="bg-gray-200 rounded-full h-5 overflow-hidden mb-2">
+                        <div 
+                          className={`h-full ${
+                            intervalStats.consistency > 90 ? 'bg-green-500' : 
+                            intervalStats.consistency > 70 ? 'bg-yellow-500' : 
+                            'bg-orange-500'
+                          }`} 
+                          style={{ width: `${intervalStats.consistency}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-xs text-gray-500">Poor</span>
+                        <span className="text-xs font-medium">
+                          {intervalStats.consistency}% ({
+                            intervalStats.consistency > 90 ? 'Excellent' : 
+                            intervalStats.consistency > 70 ? 'Good' : 
+                            intervalStats.consistency > 50 ? 'Fair' : 
+                            'Poor'
+                          })
+                        </span>
+                        <span className="text-xs text-gray-500">Excellent</span>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center">
+                      <div className={`w-2 h-2 rounded-full mr-1 ${
+                        intervalStats.sampleSize < 3 ? 'bg-amber-500' : 
+                        intervalStats.sampleSize < 10 ? 'bg-yellow-500' : 
+                        'bg-green-500'
+                      }`}></div>
+                      <span className="text-xs text-gray-600">
+                        {intervalStats.sampleSize < 3 ? 
+                          'Limited data - more samples needed for reliable analysis' : 
+                          intervalStats.sampleSize < 10 ? 
+                          'Moderate sample size - analysis is becoming more reliable' : 
+                          'Good sample size - analysis is statistically reliable'}
+                      </span>
+                    </div>
                   </div>
                 </div>
             )}
@@ -711,7 +824,7 @@ export default function PingDebugPage() {
               </tr>
             </thead>
             <tbody>
-              {pingStats?.recentHistory?.map((entry: any, i: number) => {
+              {pingStats?.recentHistory?.slice(0, visibleHistoryCount).map((entry: any, i: number) => {
                 // Calculate trend indicators for execution time
                 const prevEntry = i < pingStats.recentHistory.length - 1 ? pingStats.recentHistory[i+1] : null;
                 const executionTrend = prevEntry ? 
@@ -764,6 +877,21 @@ export default function PingDebugPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Show More Button */}
+        {pingStats?.recentHistory && pingStats.recentHistory.length > visibleHistoryCount && (
+          <div className="mt-3 flex justify-center">
+            <button 
+              onClick={showMoreHistory} 
+              className="text-blue-600 hover:text-blue-800 text-xs flex items-center px-3 py-1.5 border border-blue-200 rounded-md hover:bg-blue-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              Show More ({Math.min(10, pingStats.recentHistory.length - visibleHistoryCount)} of {pingStats.recentHistory.length - visibleHistoryCount} remaining)
+            </button>
+          </div>
+        )}
         
         {/* Execution Time Legend */}
         <div className="mt-3 text-xs text-gray-600 flex flex-wrap">
