@@ -200,7 +200,7 @@ export default function AdminPage() {
         
         // Fetch services status data with basic error handling
         try {
-          const servicesResponse = await fetch('/api/status');
+          const servicesResponse = await fetch('/api/status?filterByVisibility=false');
           if (servicesResponse.ok) {
             const servicesData = await servicesResponse.json();
             setServicesData(servicesData);

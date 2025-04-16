@@ -37,7 +37,8 @@ export function AdminServices({
   } = useStatus(
     showHistory, 
     60, 
-    hasPreloadedServices ? preloadedServices : undefined
+    hasPreloadedServices ? preloadedServices : undefined,
+    false // Don't filter by visibility in admin view
   );
   
   // Get services configuration data with initialData
