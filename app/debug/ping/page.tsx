@@ -129,11 +129,17 @@ export default function PingDebugPage() {
     if (!cronExpression) return 'Invalid schedule';
     
     // Simple human-readable conversion for common patterns
-    if (cronExpression === '* * * * *') return 'Every minute';
+    if (cronExpression === '* * * * *') return 'Every minute (requires minimum 5 minutes for GitHub Actions)';
     if (cronExpression.match(/^\*\/(\d+) \* \* \* \*$/)) {
       const match = cronExpression.match(/^\*\/(\d+) \* \* \* \*$/);
       const mins = match ? match[1] : '';
-      return `Every ${mins} minute${parseInt(mins) > 1 ? 's' : ''}`;
+      const interval = parseInt(mins);
+      
+      if (interval < 5) {
+        return `Every ${mins} minute${interval > 1 ? 's' : ''} (below GitHub Actions 5-minute minimum)`;
+      }
+      
+      return `Every ${mins} minute${interval > 1 ? 's' : ''}`;
     }
     
     return cronExpression;
@@ -172,11 +178,13 @@ export default function PingDebugPage() {
     
     // Calculate expected interval from cron (simplistic)
     const cronSchedule = pingStats.githubAction?.schedule || '*/5 * * * *';
-    let expectedInterval = 300; // Default 5 minutes
+    let expectedInterval = 300; // Default 5 minutes (GitHub Actions minimum)
     if (cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/)) {
       const match = cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/);
       if (match) {
-        expectedInterval = parseInt(match[1]) * 60;
+        const minutes = parseInt(match[1]);
+        // Enforce minimum 5 minutes for GitHub Actions
+        expectedInterval = Math.max(5, minutes) * 60;
       }
     }
     

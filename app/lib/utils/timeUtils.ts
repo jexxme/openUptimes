@@ -6,12 +6,39 @@ export const formatCronSchedule = (cronExpression: string): string => {
   
   // Simple human-readable conversion for common patterns
   if (cronExpression === '* * * * *') return 'Every minute';
+  
+  // Every N minutes pattern: */N * * * *
   if (cronExpression.match(/^\*\/(\d+) \* \* \* \*$/)) {
     const match = cronExpression.match(/^\*\/(\d+) \* \* \* \*$/);
     const mins = match ? match[1] : '';
     return `Every ${mins} minute${parseInt(mins) > 1 ? 's' : ''}`;
   }
   
+  // Every hour pattern: 0 */1 * * *
+  if (cronExpression.match(/^0 \*\/1 \* \* \*$/)) {
+    return 'Every hour';
+  }
+  
+  // Every N hours pattern: 0 */N * * *
+  if (cronExpression.match(/^0 \*\/(\d+) \* \* \*$/)) {
+    const match = cronExpression.match(/^0 \*\/(\d+) \* \* \*$/);
+    const hours = match ? match[1] : '';
+    return `Every ${hours} hour${parseInt(hours) > 1 ? 's' : ''}`;
+  }
+  
+  // Daily pattern: 0 0 * * *
+  if (cronExpression === '0 0 * * *') {
+    return 'Once a day (midnight)';
+  }
+  
+  // At specific minute of every hour: M * * * *
+  if (cronExpression.match(/^(\d+) \* \* \* \*$/)) {
+    const match = cronExpression.match(/^(\d+) \* \* \* \*$/);
+    const minute = match ? match[1] : '';
+    return `Every hour at ${minute} minute${parseInt(minute) > 1 ? 's' : ''}`;
+  }
+  
+  // Return the original expression if no patterns match
   return cronExpression;
 };
 

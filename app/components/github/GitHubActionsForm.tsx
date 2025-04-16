@@ -32,9 +32,34 @@ export default function GitHubActionsForm({
   );
   
   const [showKeyWarning, setShowKeyWarning] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [showAuthHelp, setShowAuthHelp] = useState(false);
+
+  // Function to validate minimum 5-minute interval in cron schedule
+  const validateCronSchedule = (cronExpression: string): boolean => {
+    // Check for minute-based interval notation (*/n)
+    const minutePattern = /^\*\/(\d+) \* \* \* \*$/;
+    const match = cronExpression.match(minutePattern);
+    
+    if (match) {
+      const minutes = parseInt(match[1], 10);
+      return minutes >= 5;
+    }
+    
+    // For hourly or other complex schedules, allow them
+    return true;
+  };
 
   const handleSave = async () => {
     try {
+      // Validate schedule before saving
+      if (!validateCronSchedule(githubSettings.schedule)) {
+        setScheduleError('GitHub Actions requires a minimum interval of 5 minutes');
+        addLog('Error: Schedule validation failed - minimum 5 minutes required');
+        return;
+      }
+      
+      setScheduleError(null);
       addLog(`Saving GitHub Action settings...`);
       await onSave({
         githubAction: githubSettings,
@@ -42,6 +67,17 @@ export default function GitHubActionsForm({
       });
     } catch (err) {
       addLog(`Error saving settings: ${(err as Error).message}`);
+    }
+  };
+  
+  // Function to update schedule and validate it
+  const updateSchedule = (schedule: string) => {
+    setGithubSettings({...githubSettings, schedule});
+    
+    if (!validateCronSchedule(schedule)) {
+      setScheduleError('GitHub Actions requires a minimum interval of 5 minutes');
+    } else {
+      setScheduleError(null);
     }
   };
   
@@ -61,6 +97,79 @@ export default function GitHubActionsForm({
     setShowKeyWarning(false);
     addLog('Generated new API key');
   };
+
+  // Add this function inside the component to generate the workflow YAML
+  function generateWorkflowYaml() {
+    return `name: OpenUptimes Ping Check
+
+on:
+  push:
+    branches:
+      - '**'  # Run on any branch
+  schedule:
+    # Schedule with minimum GitHub Actions interval of 5 minutes
+    - cron: '${githubSettings.schedule}'  # ${formatCronSchedule(githubSettings.schedule)}
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Service Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log start time
+        run: echo "Workflow started at $(date)"
+
+      - name: Log trigger event
+        run: 'echo "Triggered by: ${"${{ github.event_name }}"}' 
+        
+      - name: Check if App URL is provided
+        id: url_check
+        run: |
+          if [[ "${"${{ vars.APP_URL }}"}" == "http://localhost:3000" || "${"${{ vars.APP_URL }}"}" == "" ]]; then
+            echo "Using localhost - skipping ping as this is likely a local environment or not yet configured"
+            echo "configured=false" >> $GITHUB_OUTPUT
+          else
+            # Remove trailing slash if present
+            APP_URL="${"${{ vars.APP_URL }}"}"
+            APP_URL=\${APP_URL%/}
+            echo "Using remote URL: $APP_URL"
+            echo "configured=true" >> $GITHUB_OUTPUT
+            echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Perform Ping
+        if: steps.url_check.outputs.configured == 'true'
+        env:
+          PING_API_KEY: ${"${{ secrets."}${githubSettings.secretName}${" }}"}
+          RUN_ID: ${"${{ github.run_id }}"}
+          APP_URL: ${"${{ steps.url_check.outputs.app_url }}"}
+        run: |
+          echo "Running ping check (ID: $RUN_ID)"
+          
+          # Construct the API URL
+          PING_URL="\${APP_URL}/api/ping?runId=\${RUN_ID}"
+          
+          # Make the request with curl (with redirect following)
+          HTTP_STATUS=$(curl -L -s -o response.txt -w "%{http_code}" \\
+            -H "Content-Type: application/json" \\
+            -H "User-Agent: GitHub-Actions-Ping-Scheduler" \\
+            -H "X-API-Key: $PING_API_KEY" \\
+            "$PING_URL")
+          
+          # Check if successful
+          if [ $HTTP_STATUS -ne 200 ]; then
+            echo "Error: Received HTTP status $HTTP_STATUS"
+            cat response.txt
+            exit 1
+          fi
+          
+          echo "Ping successful"
+          cat response.txt
+          
+      - name: Log completion time
+        run: echo "Workflow completed at $(date)"`;
+  }
 
   return (
     <div className="space-y-4">
@@ -153,109 +262,213 @@ export default function GitHubActionsForm({
                 placeholder="ping.yml"
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Name of the workflow file in your repository</p>
+            <div className="flex justify-between mt-1">
+              <p className="text-xs text-gray-500">Name of the workflow file in your repository</p>
+              {githubSettings.repository && (
+                <a 
+                  href={`https://github.com/${githubSettings.repository}/actions/workflows/${githubSettings.workflow}`} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:underline"
+                >
+                  View workflow runs →
+                </a>
+              )}
+            </div>
           </div>
         </div>
-        
-        {githubSettings.repository && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <a 
-              href={`https://github.com/${githubSettings.repository}/actions/workflows/${githubSettings.workflow}`} 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-500 hover:text-blue-600 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              View workflow runs
-            </a>
-          </div>
-        )}
       </div>
       
-      {/* Schedule Configuration Card */}
+      {/* Workflow Configuration Card */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         <h3 className="text-sm font-medium text-gray-800 mb-3 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          Schedule Configuration
+          Workflow Configuration
         </h3>
         
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
             Schedule (Cron Expression)
+            <div className="relative ml-1 group">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="absolute left-0 bottom-full mb-2 w-72 bg-white border border-gray-200 rounded-md shadow-lg p-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
+                <h4 className="font-medium text-amber-800 mb-1">GitHub Actions Schedule Limitation</h4>
+                <p className="text-gray-700 mb-2">
+                  GitHub Actions requires a <strong>minimum interval of 5 minutes</strong> between scheduled runs. 
+                  Any schedule with less than 5 minutes will not run as expected.
+                </p>
+                <p className="text-gray-700">
+                  Note: GitHub doesn't guarantee precise timing for scheduled workflows. Actual intervals may be longer due to system load.
+                </p>
+              </div>
+            </div>
           </label>
           <div className="flex space-x-2">
             <input
               type="text"
               value={githubSettings.schedule}
-              onChange={e => setGithubSettings({...githubSettings, schedule: e.target.value})}
-              className="flex-grow border border-gray-300 rounded px-2 py-1.5 text-sm"
+              onChange={e => updateSchedule(e.target.value)}
+              className={`flex-grow border rounded px-2 py-1.5 text-sm ${
+                scheduleError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
               placeholder="*/5 * * * *"
             />
             <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1.5 text-xs flex items-center">
               <span className="text-blue-800 whitespace-nowrap">{formatCronSchedule(githubSettings.schedule)}</span>
             </div>
           </div>
-          <div className="flex items-center justify-between mt-1.5">
-            <p className="text-xs text-gray-500">Format: minute hour day month weekday</p>
-            <a 
-              href="https://crontab.guru" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-xs text-blue-500 hover:underline flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Cron expression help
-            </a>
+          {scheduleError && (
+            <p className="text-xs text-red-600 mt-1">{scheduleError}</p>
+          )}
+          
+          <div className="mt-2 bg-gray-50 p-2 rounded text-xs border border-gray-200">
+            <p className="text-gray-700 flex items-center">
+              <span className="font-medium">Common examples:</span>
+              <span className="ml-2 text-red-600 font-medium text-xs">(minimum 5 minutes required)</span>
+            </p>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <div className="flex items-center">
+                <button 
+                  onClick={() => updateSchedule('*/5 * * * *')}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  */5 * * * *
+                </button>
+                <span className="ml-2 text-gray-600">Every 5 minutes</span>
+              </div>
+              <div className="flex items-center">
+                <button 
+                  onClick={() => updateSchedule('*/15 * * * *')}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  */15 * * * *
+                </button>
+                <span className="ml-2 text-gray-600">Every 15 minutes</span>
+              </div>
+              <div className="flex items-center">
+                <button 
+                  onClick={() => updateSchedule('0 */1 * * *')}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  0 */1 * * *
+                </button>
+                <span className="ml-2 text-gray-600">Every hour (at minute 0)</span>
+              </div>
+              <div className="flex items-center">
+                <button 
+                  onClick={() => updateSchedule('0 */6 * * *')}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  0 */6 * * *
+                </button>
+                <span className="ml-2 text-gray-600">Every 6 hours</span>
+              </div>
+              <div className="flex items-center">
+                <button 
+                  onClick={() => updateSchedule('*/30 * * * *')}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  */30 * * * *
+                </button>
+                <span className="ml-2 text-gray-600">Every 30 minutes</span>
+              </div>
+              <div className="flex items-center">
+                <button 
+                  onClick={() => updateSchedule('0 0 * * *')}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  0 0 * * *
+                </button>
+                <span className="ml-2 text-gray-600">Once a day (midnight)</span>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-2">
+              <a 
+                href="https://crontab.guru" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-xs text-blue-500 hover:underline flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                </svg>
+                Cron expression help
+              </a>
+            </div>
           </div>
         </div>
         
-        <div className="mt-2 bg-gray-50 p-2 rounded text-xs border border-gray-200">
-          <p className="text-gray-700">
-            <span className="font-medium">Common examples:</span>
-          </p>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <div className="flex items-center">
-              <button 
-                onClick={() => setGithubSettings({...githubSettings, schedule: '*/5 * * * *'})}
-                className="text-blue-500 hover:text-blue-700"
+        <div className="mb-3 text-xs text-gray-600 border-t border-gray-100 pt-4">
+          <p>Copy this YAML configuration to your GitHub repository as <code className="bg-gray-100 px-1 py-0.5 rounded">.github/workflows/{githubSettings.workflow}</code></p>
+          <div className="flex items-center mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Be sure to update this file whenever you change your schedule settings</span>
+          </div>
+        </div>
+        
+        <div className="relative">
+          <div className="absolute top-2 right-2 flex">
+            {githubSettings.repository && (
+              <a 
+                href={`https://github.com/${githubSettings.repository}/new/main?filename=.github/workflows/${githubSettings.workflow}&value=${encodeURIComponent(generateWorkflowYaml())}`} 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded-md flex items-center"
+                title="Create in GitHub"
               >
-                */5 * * * *
-              </button>
-              <span className="ml-2 text-gray-600">Every 5 minutes</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Create in GitHub
+              </a>
+            )}
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(generateWorkflowYaml());
+                addLog('Workflow YAML copied to clipboard');
+              }}
+              className="ml-2 bg-green-600 hover:bg-green-700 text-white text-xs py-1 px-2 rounded-md flex items-center"
+              title="Copy to clipboard"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              Copy Code
+            </button>
+          </div>
+          
+          <pre className="bg-gray-50 border border-gray-200 rounded p-3 text-xs font-mono overflow-x-auto whitespace-pre text-gray-800 max-h-80 overflow-y-auto">
+            {generateWorkflowYaml()}
+          </pre>
+          
+          <div className="mt-2 flex justify-between items-center">
+            <div className="text-xs text-gray-500 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Changes to this file need to be made directly in your GitHub repository
             </div>
-            <div className="flex items-center">
-              <button 
-                onClick={() => setGithubSettings({...githubSettings, schedule: '*/15 * * * *'})}
-                className="text-blue-500 hover:text-blue-700"
+            
+            {githubSettings.repository && (
+              <a 
+                href={`https://github.com/${githubSettings.repository}/edit/main/.github/workflows/${githubSettings.workflow}`} 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
               >
-                */15 * * * *
-              </button>
-              <span className="ml-2 text-gray-600">Every 15 minutes</span>
-            </div>
-            <div className="flex items-center">
-              <button 
-                onClick={() => setGithubSettings({...githubSettings, schedule: '0 */1 * * *'})}
-                className="text-blue-500 hover:text-blue-700"
-              >
-                0 */1 * * *
-              </button>
-              <span className="ml-2 text-gray-600">Every hour</span>
-            </div>
-            <div className="flex items-center">
-              <button 
-                onClick={() => setGithubSettings({...githubSettings, schedule: '0 */6 * * *'})}
-                className="text-blue-500 hover:text-blue-700"
-              >
-                0 */6 * * *
-              </button>
-              <span className="ml-2 text-gray-600">Every 6 hours</span>
-            </div>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit Existing Workflow
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -270,9 +483,27 @@ export default function GitHubActionsForm({
         </h3>
         
         <div className="bg-blue-50 p-3 rounded-md border border-blue-100 mb-3">
-          <h4 className="text-xs font-medium text-blue-800 mb-2">How API Authentication Works</h4>
+          <button 
+            onClick={() => setShowAuthHelp(!showAuthHelp)} 
+            className="w-full flex items-center justify-between hover:bg-blue-100 transition-colors duration-150 px-2 py-1 rounded"
+          >
+            <h4 className="text-xs font-medium text-blue-800">How API Authentication Works</h4>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className={`h-4 w-4 text-blue-600 transition-transform duration-200 ${showAuthHelp ? 'transform rotate-180' : ''}`} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           
-          <div className="space-y-2">
+          <div 
+            className={`space-y-2 mt-2 overflow-hidden transition-all duration-300 ease-in-out ${
+              showAuthHelp ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
             <div className="flex items-center">
               <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-2">
                 <span className="text-blue-800 text-xs font-medium">1</span>
@@ -419,7 +650,7 @@ export default function GitHubActionsForm({
           </div>
         </div>
       </div>
-      
+
       {/* Save Button */}
       <div className="flex justify-end">
         <button
@@ -447,4 +678,4 @@ export default function GitHubActionsForm({
       </div>
     </div>
   );
-} 
+}

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import GitHubActionsForm from '../../../components/github/GitHubActionsForm';
-import ConfigSummary from '../../../components/github/ConfigSummary';
 import ManualActions from '../../../components/github/ManualActions';
+import ConfigSummary from '../../../components/github/ConfigSummary';
 
 export default function GitHubActionsPage() {
   const [siteSettings, setSiteSettings] = useState<any>(null);
@@ -147,18 +147,18 @@ export default function GitHubActionsPage() {
               siteSettings={siteSettings}
             />
           )}
-          
-          {/* Configuration Summary */}
-          {siteSettings && (
-            <ConfigSummary 
-              siteSettings={siteSettings} 
-              onManualPing={triggerPing} 
-            />
-          )}
         </div>
         
         {/* Right Column - Activity and Help */}
         <div className="space-y-6">
+          {/* Configuration Summary Card */}
+          {siteSettings && (
+            <ConfigSummary
+              siteSettings={siteSettings}
+              onManualPing={triggerPing}
+            />
+          )}
+          
           {/* Activity Log Card */}
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             <h2 className="text-sm font-medium text-gray-800 mb-3 flex items-center">

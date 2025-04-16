@@ -113,7 +113,32 @@ function estimateNextCronRun(cronExpression: string): number | null {
   const minutePart = parts[0];
   if (minutePart.startsWith('*/')) {
     const interval = parseInt(minutePart.substring(2), 10);
-    if (isNaN(interval) || interval <= 0) return null;
+    
+    // Enforce minimum 5-minute interval (GitHub Actions requirement)
+    if (isNaN(interval) || interval < 5) {
+      console.warn(`Invalid cron interval: ${minutePart}. GitHub Actions requires minimum 5 minutes.`);
+      // Default to 5 minutes if interval is invalid or less than 5
+      const safeInterval = 5;
+      
+      const currentMinute = now.getMinutes();
+      const nextMinute = Math.ceil(currentMinute / safeInterval) * safeInterval;
+      
+      result.setMinutes(nextMinute >= 60 ? nextMinute - 60 : nextMinute);
+      result.setSeconds(0);
+      result.setMilliseconds(0);
+      
+      // If we've moved to the next hour
+      if (nextMinute >= 60) {
+        result.setHours(result.getHours() + 1);
+      }
+      
+      // If the calculated time is in the past, add one more interval
+      if (result <= now) {
+        result.setMinutes(result.getMinutes() + safeInterval);
+      }
+      
+      return result.getTime();
+    }
     
     const currentMinute = now.getMinutes();
     const nextMinute = Math.ceil(currentMinute / interval) * interval;
@@ -136,5 +161,5 @@ function estimateNextCronRun(cronExpression: string): number | null {
   }
   
   // For more complex expressions, return a simple estimate
-  return now.getTime() + 5 * 60 * 1000; // Default to 5 minutes
+  return now.getTime() + 5 * 60 * 1000; // Default to 5 minutes (GitHub Actions minimum)
 } 
