@@ -57,7 +57,9 @@ function HomeContent() {
   
   const [appearanceConfig, setAppearanceConfig] = useState<any>({
     logo: null,
-    logoUrl: ""
+    logoUrl: "",
+    showServiceUrls: true,
+    showServiceDescription: true
   });
   
   const [serviceVisibility, setServiceVisibility] = useState<Record<string, boolean>>({});
@@ -318,6 +320,9 @@ function HomeContent() {
                     history={service.history}
                     uptimePercentage={service.uptimePercentage}
                     description={service.description}
+                    url={service.url}
+                    showServiceUrls={appearanceConfig.showServiceUrls}
+                    showServiceDescription={appearanceConfig.showServiceDescription}
                   />
                 ))
               ) : (

@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UptimeBar } from './UptimeBar';
+import { ExternalLink } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 interface ServiceItemProps {
   name: string;
@@ -10,17 +12,53 @@ interface ServiceItemProps {
   }>;
   uptimePercentage: number;
   description?: string;
+  url?: string;
+  showServiceUrls?: boolean;
+  showServiceDescription?: boolean;
 }
+
+// ServiceItemTooltip component for description tooltip
+const ServiceItemTooltip = ({ 
+  visible, 
+  text, 
+  position 
+}: { 
+  visible: boolean; 
+  text: string;
+  position: { x: number; y: number; 
+}}) => {
+  if (!visible) return null;
+  
+  return createPortal(
+    <div 
+      className="fixed z-[9999] transform -translate-x-1/2 -translate-y-full shadow-lg"
+      style={{ 
+        left: `${position.x}px`, 
+        top: `${position.y - 10}px`,
+        pointerEvents: 'none' 
+      }}
+    >
+      <div className="bg-gray-800 text-white text-xs leading-normal px-3 py-2 rounded-md max-w-xs">
+        {text}
+        <div className="tooltip-arrow bg-gray-800 w-2 h-2 rotate-45 absolute -bottom-1 left-1/2 transform -translate-x-1/2"></div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 export function ServiceItem({ 
   name, 
   status, 
   history, 
   uptimePercentage, 
-  description 
+  description,
+  url,
+  showServiceUrls = true,
+  showServiceDescription = true
 }: ServiceItemProps) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const questionRef = useRef<HTMLButtonElement>(null);
 
   // Calculate time range for the uptime bar
@@ -28,6 +66,13 @@ export function ServiceItem({
   const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
   
   const handleMouseEnter = () => {
+    if (questionRef.current) {
+      const rect = questionRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        x: rect.left + rect.width / 2,
+        y: rect.top
+      });
+    }
     setTooltipVisible(true);
   };
   
@@ -78,42 +123,73 @@ export function ServiceItem({
     }
   };
 
+  // Determine if we need to use a stacked layout or a single row layout
+  const shouldUseStackedLayout = showServiceUrls && url;
+
   return (
-    <div className="component-container hover-lift border-t border-gray-200 first:border-t-0 py-7 space-y-5 px-5">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-800 font-semibold text-base tracking-tight">{name}</span>
-          {description && (
-            <div className="relative">
-              <button 
-                ref={questionRef}
-                className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full" 
-                aria-label="More information"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onFocus={handleMouseEnter}
-                onBlur={handleMouseLeave}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                </svg>
-              </button>
-              
-              {tooltipVisible && description && (
-                <div 
-                  ref={tooltipRef}
-                  className="absolute z-50 transform -translate-x-1/2 -translate-y-full left-1/2 top-0 mt-[-8px]"
-                >
-                  <div className="bg-gray-800 text-white text-xs leading-normal px-3 py-2 rounded-md shadow-lg max-w-xs">
-                    {description}
-                    <div className="tooltip-arrow bg-gray-800 w-2 h-2 rotate-45 absolute -bottom-1 left-1/2 transform -translate-x-1/2"></div>
+    <div className="component-container hover-lift border-t border-gray-200 first:border-t-0 py-7 space-y-4 px-5">
+      <div className={`flex ${shouldUseStackedLayout ? 'flex-col' : ''}`}>
+        <div className="flex justify-between items-center w-full">
+          {shouldUseStackedLayout ? (
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                <span className="text-gray-800 font-semibold text-base tracking-tight">{name}</span>
+                {showServiceDescription && description && (
+                  <div className="relative ml-2 inline-flex items-center">
+                    <button 
+                      ref={questionRef}
+                      className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center" 
+                      aria-label="More information"
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                      onFocus={handleMouseEnter}
+                      onBlur={handleMouseLeave}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                      </svg>
+                    </button>
                   </div>
+                )}
+              </div>
+              
+              <div className="mt-0">
+                <a 
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-600 inline-flex items-center text-sm w-fit"
+                  title={`Visit ${name}`}
+                >
+                  <span className="truncate underline">{url.replace(/^https?:\/\//, '')}</span>
+                  <ExternalLink size={14} className="ml-1 flex-shrink-0" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <span className="text-gray-800 font-semibold text-base tracking-tight">{name}</span>
+              {showServiceDescription && description && (
+                <div className="relative ml-2 inline-flex items-center">
+                  <button 
+                    ref={questionRef}
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center" 
+                    aria-label="More information"
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    onFocus={handleMouseEnter}
+                    onBlur={handleMouseLeave}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               )}
             </div>
           )}
+          {getStatusDisplay()}
         </div>
-        {getStatusDisplay()}
       </div>
       
       <UptimeBar 
@@ -122,6 +198,15 @@ export function ServiceItem({
         endTime={now} 
         uptimePercentage={uptimePercentage} 
       />
+      
+      {/* Use our portal-based tooltip for the description */}
+      {showServiceDescription && description && (
+        <ServiceItemTooltip
+          visible={tooltipVisible}
+          text={description}
+          position={tooltipPosition}
+        />
+      )}
     </div>
   );
 } 

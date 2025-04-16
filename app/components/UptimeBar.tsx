@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import UptimeBarTooltip from './UptimeBarTooltip';
 
 interface UptimeBarProps {
   history: Array<{
@@ -168,43 +169,16 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
           {bars}
         </svg>
         
-        {hoveredBar !== null && (
-          <div 
-            className="absolute z-10 bg-gray-800 text-white text-xs rounded-md py-2 px-3 leading-normal shadow-lg transform -translate-x-1/2 -translate-y-full pointer-events-none"
-            style={{ 
-              left: `${tooltipPosition.x}px`, 
-              top: `${tooltipPosition.y - 10}px`,
-              position: 'fixed'
-            }}
-          >
-            <div className="font-medium">
-              {formatDate(getTimestampForDay(hoveredBar))}
-            </div>
-            
-            <div className="flex items-center mt-1.5 mb-0.5">
-              <span 
-                className="inline-block w-2 h-2 rounded-full mr-1.5"
-                style={{ backgroundColor: getStatusColor(getDayStatus(hoveredBar)) }}
-              ></span>
-              <span>{getStatusLabel(getDayStatus(hoveredBar))}</span>
-            </div>
-            
-            {getDailyUptimePercentage(hoveredBar) !== null && (
-              <div className="text-gray-300 text-[10px] font-medium mt-0.5">
-                {getDailyUptimePercentage(hoveredBar)}% UPTIME
-              </div>
-            )}
-            
-            <div 
-              className="w-0 h-0 absolute -bottom-2 left-1/2 transform -translate-x-1/2" 
-              style={{ 
-                borderLeft: '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop: '8px solid rgb(31, 41, 55)' // Same as bg-gray-800
-              }}
-            ></div>
-          </div>
-        )}
+        {/* Using the Portal-based tooltip component */}
+        <UptimeBarTooltip
+          visible={hoveredBar !== null}
+          position={tooltipPosition}
+          date={hoveredBar !== null ? formatDate(getTimestampForDay(hoveredBar)) : ''}
+          status={hoveredBar !== null ? getDayStatus(hoveredBar) : ''}
+          statusColor={hoveredBar !== null ? getStatusColor(getDayStatus(hoveredBar)) : ''}
+          statusLabel={hoveredBar !== null ? getStatusLabel(getDayStatus(hoveredBar)) : ''}
+          uptimePercentage={hoveredBar !== null ? getDailyUptimePercentage(hoveredBar) : null}
+        />
       </div>
       <div className="flex justify-between text-xs text-gray-500 mt-2.5 px-1">
         <div className="text-xs font-normal text-gray-500">90 days ago</div>

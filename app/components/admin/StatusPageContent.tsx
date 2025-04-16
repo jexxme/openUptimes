@@ -69,6 +69,12 @@ export function StatusPageContent({
   const [logoUrl, setLogoUrl] = useState(
     preloadedAppearanceData?.logoUrl || ""
   );
+  const [showServiceUrls, setShowServiceUrls] = useState(
+    preloadedAppearanceData?.showServiceUrls !== false
+  );
+  const [showServiceDescription, setShowServiceDescription] = useState(
+    preloadedAppearanceData?.showServiceDescription !== false
+  );
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
   const [isLoadingAppearance, setIsLoadingAppearance] = useState(false);
   
@@ -176,6 +182,8 @@ export function StatusPageContent({
         setPrimaryColor(data.primaryColor || "#0284c7");
         setAccentColor(data.accentColor || "#06b6d4");
         setLogoUrl(data.logoUrl || "");
+        setShowServiceUrls(data.showServiceUrls !== false);
+        setShowServiceDescription(data.showServiceDescription !== false);
       } catch (err) {
         console.error("Failed to fetch appearance settings:", err);
         toast({
@@ -300,7 +308,9 @@ export function StatusPageContent({
       const updatedSettings = {
         primaryColor,
         accentColor,
-        logoUrl
+        logoUrl,
+        showServiceUrls,
+        showServiceDescription
       };
       
       // Call API to update settings
@@ -733,14 +743,45 @@ export function StatusPageContent({
                   </div>
                 </div>
                 
+                <div className="rounded-lg border bg-card p-6">
+                  <h3 className="font-medium mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M20.4 14.5 16 10 4 20"/></svg>
+                    <span>Display Options</span>
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium">Show Service URLs</label>
+                        <p className="text-xs text-muted-foreground mt-1">Display clickable links to your services on the status page</p>
+                      </div>
+                      <Switch 
+                        checked={showServiceUrls}
+                        onCheckedChange={setShowServiceUrls}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium">Show Service Descriptions</label>
+                        <p className="text-xs text-muted-foreground mt-1">Display info icons with service descriptions on hover</p>
+                      </div>
+                      <Switch 
+                        checked={showServiceDescription}
+                        onCheckedChange={setShowServiceDescription}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex justify-end">
-                  <Button
-                    onClick={handleSaveAppearanceSettings}
-                    disabled={isSavingAppearance}
+                  <Button 
+                    onClick={handleSaveAppearanceSettings} 
+                    disabled={isSavingAppearance || isLoadingAppearance}
                   >
                     {isSavingAppearance ? 
                       <><div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>Saving...</> : 
-                      "Save Appearance"}
+                      "Save Changes"}
                   </Button>
                 </div>
               </div>
