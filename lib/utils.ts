@@ -9,6 +9,29 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Format a timestamp as a relative time (e.g., "5m ago")
+ * @param timestamp The timestamp in milliseconds to format
+ * @returns A human-readable relative time string
+ */
+export function formatRelativeTime(timestamp: number): string {
+  if (!timestamp) return 'N/A';
+  
+  const now = Date.now();
+  const diffSeconds = Math.floor((now - timestamp) / 1000);
+  
+  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+/**
  * Generate a secure random password with specified length
  * @param length Length of the password to generate
  * @returns A random password string with mixed characters
