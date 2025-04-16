@@ -28,24 +28,45 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
       </button>
       
       {repository && (
-        <a 
-          href={`https://github.com/${repository}/actions/workflows/${workflow}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-blue-300 flex items-center transition-all duration-200"
-        >
-          <div className="h-9 w-9 bg-blue-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <div className="ml-3 text-left">
-            <h3 className="font-medium text-gray-900 text-sm">View GitHub Workflow</h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Check workflow runs for {workflow} in your repository
-            </p>
-          </div>
-        </a>
+        <>
+          <a 
+            href={`https://github.com/${repository}/actions/workflows/${workflow}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-blue-300 flex items-center transition-all duration-200"
+          >
+            <div className="h-9 w-9 bg-blue-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <div className="ml-3 text-left">
+              <h3 className="font-medium text-gray-900 text-sm">View GitHub Workflow</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Check workflow runs for {workflow} in your repository
+              </p>
+            </div>
+          </a>
+          
+          <a 
+            href={`https://github.com/${repository}/edit/main/.github/workflows/${workflow}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-amber-300 flex items-center transition-all duration-200"
+          >
+            <div className="h-9 w-9 bg-amber-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <div className="ml-3 text-left">
+              <h3 className="font-medium text-gray-900 text-sm">Edit Workflow File</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Update GitHub Actions schedule with minimum 5 min interval
+              </p>
+            </div>
+          </a>
+        </>
       )}
       
       <a 
