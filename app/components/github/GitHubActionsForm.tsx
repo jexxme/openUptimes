@@ -34,6 +34,8 @@ export default function GitHubActionsForm({
   const [showKeyWarning, setShowKeyWarning] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [showAuthHelp, setShowAuthHelp] = useState(false);
+  const [showCronExamples, setShowCronExamples] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Function to validate minimum 5-minute interval in cron schedule
   const validateCronSchedule = (cronExpression: string): boolean => {
@@ -203,6 +205,71 @@ jobs:
             ? 'GitHub Actions will run the ping workflow on schedule.' 
             : 'Enable this after setting up the workflow file in your repository.'}
         </p>
+        
+        {/* New collapsible workflow info section */}
+        <div className="mt-3 border-t border-gray-200 pt-3">
+          <button 
+            onClick={() => setShowAuthHelp(!showAuthHelp)} 
+            className="w-full flex items-center justify-between text-left hover:bg-gray-50 transition-colors duration-150 px-2 py-1 rounded"
+          >
+            <span className="text-xs font-medium text-gray-700 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              How GitHub Actions Integration Works
+            </span>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showAuthHelp ? 'transform rotate-180' : ''}`}
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <div 
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              showAuthHelp ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'
+            }`}
+          >
+            <div className="bg-gray-50 p-3 rounded text-xs">
+              <h4 className="font-medium text-gray-800 mb-2">Two-step process:</h4>
+              
+              <div className="space-y-3">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-2 mt-0.5">
+                    <span className="text-blue-800 text-xs font-medium">1</span>
+                  </div>
+                  <div>
+                    <p className="text-gray-700 font-medium">Configure settings in this form</p>
+                    <p className="text-gray-600 mt-0.5">This stores settings locally and generates the workflow YAML.</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-2 mt-0.5">
+                    <span className="text-blue-800 text-xs font-medium">2</span>
+                  </div>
+                  <div>
+                    <p className="text-gray-700 font-medium">Copy YAML to your GitHub repository</p>
+                    <p className="text-gray-600 mt-0.5">Changes to schedule or other settings require manually updating your GitHub workflow file.</p>
+                  </div>
+                </div>
+                
+                <div className="bg-amber-50 p-2 rounded border border-amber-100">
+                  <p className="text-amber-800 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <strong>Important:</strong> Saving settings here does not automatically update your GitHub repository files.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Repository Configuration Card */}
@@ -216,10 +283,45 @@ jobs:
         
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Repository Name
-            </label>
-            <div className="flex">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-medium text-gray-700">
+                Repository Name
+              </label>
+              {githubSettings.repository && (
+                <div className="flex items-center space-x-2">
+                  <a 
+                    href={`https://github.com/${githubSettings.repository}`} 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-500 hover:text-blue-700 flex items-center"
+                    title="View repository on GitHub"
+                  >
+                    <svg className="w-3.5 h-3.5 mr-0.5" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    Repo
+                  </a>
+                  <a 
+                    href={`https://github.com/${githubSettings.repository}/actions/workflows/${githubSettings.workflow}`} 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-500 hover:text-blue-700 flex items-center"
+                    title="View workflow runs on GitHub Actions"
+                  >
+                    <svg className="w-3.5 h-3.5 mr-0.5" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <path d="M1.998 5.5c0-1.381 1.119-2.5 2.5-2.5h15c1.381 0 2.5 1.119 2.5 2.5v13c0 1.381-1.119 2.5-2.5 2.5h-15c-1.381 0-2.5-1.119-2.5-2.5v-13zm2.5-.5c-.276 0-.5.224-.5.5v13c0 .276.224.5.5.5h15c.276 0 .5-.224.5-.5v-13c0-.276-.224-.5-.5-.5h-15z"></path>
+                      <path d="M8 8h1v7.5h-1z"></path>
+                      <path d="M11 8h1v7.5h-1z"></path>
+                      <path d="M14 8h1v7.5h-1z"></path>
+                      <path d="M17 8h1v7.5h-1z"></path>
+                      <path d="M7 6.5c0-.276.224-.5.5-.5h9c.276 0 .5.224.5.5v1c0 .276-.224.5-.5.5h-9c-.276 0-.5-.224-.5-.5v-1z"></path>
+                    </svg>
+                    Workflows
+                  </a>
+                </div>
+              )}
+            </div>
+            <div className="flex mt-1">
               <div className="bg-gray-100 text-gray-700 text-xs px-2 py-1.5 rounded-l border border-gray-300 border-r-0 flex items-center">
                 github.com/
               </div>
@@ -231,50 +333,7 @@ jobs:
                 placeholder="username/repo"
               />
             </div>
-            <div className="flex justify-between mt-1">
-              <p className="text-xs text-gray-500">Format: username/repository</p>
-              {githubSettings.repository && (
-                <a 
-                  href={`https://github.com/${githubSettings.repository}`} 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-500 hover:underline"
-                >
-                  View repository →
-                </a>
-              )}
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Workflow Filename
-            </label>
-            <div className="flex">
-              <div className="bg-gray-100 text-gray-700 text-xs px-2 py-1.5 rounded-l border border-gray-300 border-r-0 flex items-center">
-                .github/workflows/
-              </div>
-              <input
-                type="text"
-                value={githubSettings.workflow}
-                onChange={e => setGithubSettings({...githubSettings, workflow: e.target.value})}
-                className="flex-grow border border-gray-300 rounded-r px-2 py-1.5 text-sm"
-                placeholder="ping.yml"
-              />
-            </div>
-            <div className="flex justify-between mt-1">
-              <p className="text-xs text-gray-500">Name of the workflow file in your repository</p>
-              {githubSettings.repository && (
-                <a 
-                  href={`https://github.com/${githubSettings.repository}/actions/workflows/${githubSettings.workflow}`} 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-500 hover:underline"
-                >
-                  View workflow runs →
-                </a>
-              )}
-            </div>
+            <p className="text-xs text-gray-500 mt-1">Format: username/repository</p>
           </div>
         </div>
       </div>
@@ -288,128 +347,152 @@ jobs:
           Workflow Configuration
         </h3>
         
+        {/* Redesigned compact introduction */}
+        <div className="mb-4 text-xs bg-blue-50 p-2.5 rounded border border-blue-100 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p>
+            Configures when your GitHub Action runs to automatically ping your services. 
+            <span className="ml-1 text-red-600 font-medium">Note: GitHub requires minimum 5-minute intervals.</span>
+          </p>
+        </div>
+        
         <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-            Schedule (Cron Expression)
-            <div className="relative ml-1 group">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="absolute left-0 bottom-full mb-2 w-72 bg-white border border-gray-200 rounded-md shadow-lg p-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
-                <h4 className="font-medium text-amber-800 mb-1">GitHub Actions Schedule Limitation</h4>
-                <p className="text-gray-700 mb-2">
-                  GitHub Actions requires a <strong>minimum interval of 5 minutes</strong> between scheduled runs. 
-                  Any schedule with less than 5 minutes will not run as expected.
-                </p>
-                <p className="text-gray-700">
-                  Note: GitHub doesn't guarantee precise timing for scheduled workflows. Actual intervals may be longer due to system load.
-                </p>
-              </div>
+          {/* Schedule input with integrated help */}
+          <div className="flex flex-col space-y-2">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-medium text-gray-700 flex items-center">
+                Schedule (Cron Expression)
+                <div className="relative ml-1 group">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-amber-500 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="absolute left-0 bottom-full mb-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg p-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
+                    <p className="text-gray-700">
+                      <span className="font-medium text-amber-800">Limitation:</span> GitHub Actions requires a <strong>minimum interval of 5 minutes</strong>. Actual timing may vary with system load.
+                    </p>
+                  </div>
+                </div>
+              </label>
+              
+              <button 
+                type="button"
+                onClick={() => setShowCronExamples(prev => !prev)}
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Examples
+              </button>
             </div>
-          </label>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={githubSettings.schedule}
-              onChange={e => updateSchedule(e.target.value)}
-              className={`flex-grow border rounded px-2 py-1.5 text-sm ${
-                scheduleError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-              }`}
-              placeholder="*/5 * * * *"
-            />
-            <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1.5 text-xs flex items-center">
-              <span className="text-blue-800 whitespace-nowrap">{formatCronSchedule(githubSettings.schedule)}</span>
-            </div>
-          </div>
-          {scheduleError && (
-            <p className="text-xs text-red-600 mt-1">{scheduleError}</p>
-          )}
-          
-          <div className="mt-2 bg-gray-50 p-2 rounded text-xs border border-gray-200">
-            <p className="text-gray-700 flex items-center">
-              <span className="font-medium">Common examples:</span>
-              <span className="ml-2 text-red-600 font-medium text-xs">(minimum 5 minutes required)</span>
-            </p>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <div className="flex items-center">
-                <button 
-                  onClick={() => updateSchedule('*/5 * * * *')}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  */5 * * * *
-                </button>
-                <span className="ml-2 text-gray-600">Every 5 minutes</span>
-              </div>
-              <div className="flex items-center">
-                <button 
-                  onClick={() => updateSchedule('*/15 * * * *')}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  */15 * * * *
-                </button>
-                <span className="ml-2 text-gray-600">Every 15 minutes</span>
-              </div>
-              <div className="flex items-center">
-                <button 
-                  onClick={() => updateSchedule('0 */1 * * *')}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  0 */1 * * *
-                </button>
-                <span className="ml-2 text-gray-600">Every hour (at minute 0)</span>
-              </div>
-              <div className="flex items-center">
-                <button 
-                  onClick={() => updateSchedule('0 */6 * * *')}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  0 */6 * * *
-                </button>
-                <span className="ml-2 text-gray-600">Every 6 hours</span>
-              </div>
-              <div className="flex items-center">
-                <button 
-                  onClick={() => updateSchedule('*/30 * * * *')}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  */30 * * * *
-                </button>
-                <span className="ml-2 text-gray-600">Every 30 minutes</span>
-              </div>
-              <div className="flex items-center">
-                <button 
-                  onClick={() => updateSchedule('0 0 * * *')}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  0 0 * * *
-                </button>
-                <span className="ml-2 text-gray-600">Once a day (midnight)</span>
+            
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={githubSettings.schedule}
+                onChange={e => updateSchedule(e.target.value)}
+                className={`flex-grow border rounded px-2 py-1.5 text-sm ${
+                  scheduleError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+                placeholder="*/5 * * * *"
+              />
+              <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1.5 text-xs flex items-center whitespace-nowrap">
+                {formatCronSchedule(githubSettings.schedule)}
               </div>
             </div>
             
-            <div className="flex justify-end mt-2">
-              <a 
-                href="https://crontab.guru" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-xs text-blue-500 hover:underline flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            {scheduleError ? (
+              <p className="text-xs text-red-600">{scheduleError}</p>
+            ) : (
+              <p className="text-xs text-gray-500 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Cron expression help
-              </a>
+                After changing, scroll down to copy the updated YAML
+              </p>
+            )}
+          </div>
+          
+          {/* Collapsible Examples Section - More compact */}
+          <div 
+            className={`overflow-hidden transition-all duration-300 ease-in-out mt-2 ${
+              showCronExamples ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="bg-gray-50 p-2 rounded border border-gray-200">
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <button 
+                  onClick={() => updateSchedule('*/5 * * * *')}
+                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                >
+                  <code className="font-mono">*/5 * * * *</code>
+                  <span className="block text-gray-600">Every 5 minutes</span>
+                </button>
+                <button 
+                  onClick={() => updateSchedule('*/15 * * * *')}
+                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                >
+                  <code className="font-mono">*/15 * * * *</code>
+                  <span className="block text-gray-600">Every 15 minutes</span>
+                </button>
+                <button 
+                  onClick={() => updateSchedule('*/30 * * * *')}
+                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                >
+                  <code className="font-mono">*/30 * * * *</code>
+                  <span className="block text-gray-600">Every 30 minutes</span>
+                </button>
+                <button 
+                  onClick={() => updateSchedule('0 */1 * * *')}
+                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                >
+                  <code className="font-mono">0 */1 * * *</code>
+                  <span className="block text-gray-600">Every hour</span>
+                </button>
+                <button 
+                  onClick={() => updateSchedule('0 */6 * * *')}
+                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                >
+                  <code className="font-mono">0 */6 * * *</code>
+                  <span className="block text-gray-600">Every 6 hours</span>
+                </button>
+                <button 
+                  onClick={() => updateSchedule('0 0 * * *')}
+                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                >
+                  <code className="font-mono">0 0 * * *</code>
+                  <span className="block text-gray-600">Once daily</span>
+                </button>
+              </div>
+              
+              <div className="flex justify-end mt-2">
+                <a 
+                  href="https://crontab.guru" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-xs text-blue-500 hover:underline flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Cron expression help
+                </a>
+              </div>
             </div>
           </div>
         </div>
         
-        <div className="mb-3 text-xs text-gray-600 border-t border-gray-100 pt-4">
-          <p>Copy this YAML configuration to your GitHub repository as <code className="bg-gray-100 px-1 py-0.5 rounded">.github/workflows/{githubSettings.workflow}</code></p>
-          <div className="flex items-center mt-1">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-500 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Be sure to update this file whenever you change your schedule settings</span>
+        <div className="mb-3 text-xs border-t border-gray-100 pt-4">
+          <div className="flex justify-between items-center mb-2">
+            <p className="font-medium text-gray-700">YAML Configuration</p>
+            <span className="text-amber-600 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Must be manually copied to GitHub
+            </span>
           </div>
         </div>
         
@@ -500,8 +583,8 @@ jobs:
           </button>
           
           <div 
-            className={`space-y-2 mt-2 overflow-hidden transition-all duration-300 ease-in-out ${
-              showAuthHelp ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
+            className={`space-y-2 overflow-hidden transition-all duration-300 ease-in-out ${
+              showAuthHelp ? 'max-h-60 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'
             }`}
           >
             <div className="flex items-center">
@@ -593,58 +676,83 @@ jobs:
         
             {generatedApiKey && !showKeyWarning && (
               <div className="mt-2 bg-green-50 border border-green-200 rounded p-2">
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex justify-between items-center">
                   <p className="text-xs font-medium text-green-800 flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     {generatedApiKey === siteSettings?.apiKey 
-                      ? 'Current API Key (already saved):' 
-                      : 'Your API Key (add this to GitHub):'
+                      ? 'Current API Key (already saved)' 
+                      : 'Your API Key (add this to GitHub)'
                     }
                   </p>
-                  <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedApiKey);
-                      addLog('API key copied to clipboard');
-                    }}
-                    className="text-xs bg-green-600 hover:bg-green-700 text-white px-1.5 py-0.5 rounded flex items-center"
-                    title="Copy to clipboard"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    Copy
-                  </button>
-                </div>
-                <div className="bg-white p-1.5 rounded border border-green-100 overflow-auto">
-                  <code className="text-xs text-green-800 break-all whitespace-pre-wrap">{generatedApiKey}</code>
-                </div>
-                
-                {generatedApiKey !== siteSettings?.apiKey && (
-                  <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-1.5 rounded border border-blue-100">
-                    <p className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedApiKey);
+                        addLog('API key copied to clipboard');
+                      }}
+                      className="text-xs bg-green-600 hover:bg-green-700 text-white px-1.5 py-0.5 rounded flex items-center"
+                      title="Copy to clipboard"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                       </svg>
-                      This is a newly generated key. Click "Save GitHub Action Settings" to save it.
-                    </p>
+                      Copy
+                    </button>
+                    <button 
+                      onClick={() => setShowApiKey(prev => !prev)}
+                      className="text-xs flex items-center"
+                      title="Toggle visibility"
+                    >
+                      <span className="mr-1">{showApiKey ? 'Hide' : 'Show'}</span>
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-3.5 w-3.5 transform transition-transform ${showApiKey ? 'rotate-180' : ''}`}  
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
                   </div>
-                )}
+                </div>
                 
-                {githubSettings.repository && (
-                  <a 
-                    href={`https://github.com/${githubSettings.repository}/settings/secrets/actions/new`} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    Add Secret to GitHub Repository
-                  </a>
-                )}
+                <div 
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    showApiKey ? 'max-h-64 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'
+                  }`}
+                >
+                  <div className="bg-white p-1.5 rounded border border-green-100 overflow-auto">
+                    <code className="text-xs text-green-800 break-all whitespace-pre-wrap">{generatedApiKey}</code>
+                  </div>
+                  
+                  {generatedApiKey !== siteSettings?.apiKey && (
+                    <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-1.5 rounded border border-blue-100">
+                      <p className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        This is a newly generated key. Click "Save GitHub Action Settings" to save it.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {githubSettings.repository && (
+                    <a 
+                      href={`https://github.com/${githubSettings.repository}/settings/secrets/actions/new`} 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 flex items-center justify-center text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      Add Secret to GitHub Repository
+                    </a>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -652,7 +760,8 @@ jobs:
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+        <span className="text-xs text-gray-600">Settings are saved locally only</span>
         <button
           onClick={handleSave}
           disabled={isSaving}
@@ -671,7 +780,7 @@ jobs:
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
-              Save GitHub Action Settings
+              Save Settings
             </>
           )}
         </button>
