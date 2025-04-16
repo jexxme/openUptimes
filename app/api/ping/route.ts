@@ -181,7 +181,8 @@ export async function GET(request: Request) {
 /**
  * Validate the API key for GitHub Actions requests
  * 
- * Later this could be enhanced to check against a stored key in Redis
+ * This verifies that the incoming ping request from GitHub Actions
+ * has the correct API key in the headers
  */
 async function validateApiKey(apiKey: string | null): Promise<boolean> {
   if (!apiKey) return false;
@@ -198,10 +199,14 @@ async function validateApiKey(apiKey: string | null): Promise<boolean> {
     // If GitHub Actions is not enabled in the config, return false
     if (!config.githubAction?.enabled) return false;
     
-    // In a real application, you would store and check against a hashed API key
-    // For now, we'll just compare with the raw key for simplicity
-    // TODO: Implement proper API key validation from Redis
+    // Check if we have a stored API key in the configuration
+    // In a real implementation, this would be a secure comparison with a hashed key
+    if (config.apiKey) {
+      return apiKey === config.apiKey;
+    }
     
+    // As a fallback, use the hard-coded key for development
+    // This is not secure for production and should be replaced with a proper secret
     return apiKey === 'openuptimes-api-key';
   } catch (error) {
     console.error('Error validating API key:', error);

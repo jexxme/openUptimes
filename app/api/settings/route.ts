@@ -81,6 +81,12 @@ export async function PUT(request: NextRequest) {
       };
     }
     
+    // Handle API key separately (only store if provided)
+    if (updatedConfig.apiKey) {
+      console.log('Updating API key in configuration');
+      newConfig.apiKey = updatedConfig.apiKey;
+    }
+    
     await saveSiteConfigToRedis(newConfig);
     
     return NextResponse.json(newConfig);
