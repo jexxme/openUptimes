@@ -144,9 +144,14 @@ export async function GET(request: NextRequest) {
           // Tag services that no longer exist as deleted
           const isDeleted = !activeServiceMap.has(name);
           
+          // Get the service configuration to include URL and description
+          const serviceConfig = activeServiceMap.get(name);
+          
           return {
             name,
             isDeleted,
+            url: serviceConfig?.url || null,
+            description: serviceConfig?.description || null,
             history: filteredHistory
           };
         } catch (serviceError) {

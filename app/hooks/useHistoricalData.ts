@@ -11,6 +11,7 @@ interface ServiceHistory {
   uptimePercentage: number;
   isDeleted?: boolean;
   description?: string;
+  url?: string;
 }
 
 export function useHistoricalData(timeRange = '90d') {

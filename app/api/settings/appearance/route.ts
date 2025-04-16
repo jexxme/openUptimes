@@ -26,7 +26,9 @@ export async function GET() {
       favicon: siteConfig.favicon || null,
       primaryColor: siteConfig.primaryColor || "#0284c7",
       accentColor: siteConfig.accentColor || "#06b6d4",
-      logoUrl: siteConfig.logoUrl || ""
+      logoUrl: siteConfig.logoUrl || "",
+      showServiceUrls: siteConfig.showServiceUrls !== undefined ? siteConfig.showServiceUrls : true,
+      showServiceDescription: siteConfig.showServiceDescription !== undefined ? siteConfig.showServiceDescription : true
     };
     
     return NextResponse.json(appearanceConfig);
@@ -97,6 +99,16 @@ export async function PUT(request: NextRequest) {
       siteConfig.logoUrl = updatedAppearance.logoUrl;
     }
     
+    // Update show service URLs flag
+    if (updatedAppearance.showServiceUrls !== undefined) {
+      siteConfig.showServiceUrls = updatedAppearance.showServiceUrls;
+    }
+    
+    // Update show service description flag
+    if (updatedAppearance.showServiceDescription !== undefined) {
+      siteConfig.showServiceDescription = updatedAppearance.showServiceDescription;
+    }
+    
     await client.set('config:site', JSON.stringify(siteConfig));
     
     return NextResponse.json({ 
@@ -107,7 +119,9 @@ export async function PUT(request: NextRequest) {
       favicon: siteConfig.favicon,
       primaryColor: siteConfig.primaryColor,
       accentColor: siteConfig.accentColor,
-      logoUrl: siteConfig.logoUrl
+      logoUrl: siteConfig.logoUrl,
+      showServiceUrls: siteConfig.showServiceUrls,
+      showServiceDescription: siteConfig.showServiceDescription
     });
   } catch (error) {
     console.error('Error updating appearance settings:', error);
