@@ -148,11 +148,11 @@ export function AdminServices({
                   <span className="text-sm ml-1.5">Total</span>
                 </div>
                 <div className="flex items-center px-3 py-1 rounded-md bg-emerald-50 border border-emerald-200">
-                  <span className="text-sm font-medium text-emerald-700">{displayServices?.filter(s => s?.currentStatus?.status === "up")?.length || 0}</span>
+                  <span className="text-sm font-medium text-emerald-700">{displayServices?.filter((s: any) => s?.currentStatus?.status === "up")?.length || 0}</span>
                   <span className="text-sm text-emerald-700 ml-1.5">Online</span>
                 </div>
                 <div className="flex items-center px-3 py-1 rounded-md bg-red-50 border border-red-200">
-                  <span className="text-sm font-medium text-red-700">{displayServices?.filter(s => s?.currentStatus?.status === "down")?.length || 0}</span>
+                  <span className="text-sm font-medium text-red-700">{displayServices?.filter((s: any) => s?.currentStatus?.status === "down")?.length || 0}</span>
                   <span className="text-sm text-red-700 ml-1.5">Offline</span>
                 </div>
               </div>
