@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRedisClient, closeRedisConnection } from '@/lib/redis';
+import { getRedisClient, closeRedisConnection, setLastIntervalReset } from '@/lib/redis';
 
 // Global state to track ping loop
 let pingLoopActive = false;
@@ -29,6 +29,26 @@ export async function GET(request: Request) {
       { error: 'Unauthorized. Invalid or missing API key.' },
       { status: 401 }
     );
+  }
+  
+  // Reset interval analysis
+  if (action === 'reset_intervals') {
+    try {
+      const timestamp = Date.now();
+      const success = await setLastIntervalReset(timestamp);
+      
+      return NextResponse.json({
+        status: success ? 'success' : 'error',
+        message: success ? 'Interval statistics reset successfully' : 'Failed to reset interval statistics',
+        timestamp: timestamp
+      });
+    } catch (error) {
+      console.error('Error resetting interval statistics:', error);
+      return NextResponse.json(
+        { error: 'Failed to reset interval statistics', message: (error as Error).message },
+        { status: 500 }
+      );
+    }
   }
   
   // Status check - return current ping loop state
