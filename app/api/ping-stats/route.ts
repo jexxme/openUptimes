@@ -4,15 +4,24 @@ import { getRedisClient, closeRedisConnection } from '@/lib/redis';
 /**
  * API endpoint to get current ping statistics from GitHub Actions scheduled runs
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Parse the URL to extract query parameters
+    const url = new URL(request.url);
+    const limitParam = url.searchParams.get('limit');
+    // Default to 10 entries, unless limit=0 (which means all entries)
+    const limit = limitParam === '0' ? -1 : parseInt(limitParam || '10', 10);
+    
     const client = await getRedisClient();
     
     // Get last ping time
     const lastPing = await client.get('ping:last');
     
-    // Get ping history
-    const pingHistory = await client.lRange('ping:history', 0, 9);
+    // Get ping history - now respects the limit parameter
+    const pingHistory = limit === -1 
+      ? await client.lRange('ping:history', 0, -1) // Get all entries when limit=0
+      : await client.lRange('ping:history', 0, limit - 1);
+    
     const parsedPingHistory = pingHistory.map((entry: string) => JSON.parse(entry));
     
     // Get recent service statuses
