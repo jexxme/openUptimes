@@ -31,7 +31,7 @@ export function AdminDashboard({
     error: statusError, 
     lastUpdated, 
     refresh 
-  } = useStatus(showHistory, 60, preloadedServices);
+  } = useStatus(showHistory, 60, preloadedServices, false);
 
   // Track if this is the initial render with preloaded data
   useEffect(() => {

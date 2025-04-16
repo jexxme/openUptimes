@@ -76,6 +76,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --color-up: #3ba55c;
+  --color-down: #ed4245;
+  --color-degraded: #faa61a;
+  --color-unknown: #6b7280;
 }
 
 .dark {
@@ -230,4 +234,63 @@
 
 .animate-refresh-rotate {
   animation: refresh-rotate 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+body {
+  @apply bg-white font-sans text-gray-900 antialiased;
+}
+
+.component-container {
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  isolation: isolate;
+}
+
+.component-container:hover {
+  @apply bg-gray-50;
+}
+
+/* Tooltip arrow */
+.tooltip-arrow {
+  @apply absolute transform rotate-45;
+}
+
+/* First border-top-0 utility for the first item in the list */
+.first\:border-t-0:first-child {
+  border-top-width: 0px;
+}
+
+/* Smooth animations */
+.uptime-day {
+  transition: all 0.2s ease-in-out;
+}
+
+.uptime-day:hover {
+  opacity: 0.75;
+  filter: brightness(1.05);
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+}
+
+/* Smooth transitions */
+a, button, .component-container, .uptime-day {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Add subtle shadows to cards and containers */
+.shadow-subtle {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+}
+
+/* Add subtle hover effect to interactive elements */
+.hover-lift {
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }

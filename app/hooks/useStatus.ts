@@ -45,7 +45,12 @@ let hookInstanceCount = 0;
 /**
  * Custom hook to fetch and manage service status data
  */
-export function useStatus(includeHistory = false, historyLimit = 60, initialData?: StatusData[]) {
+export function useStatus(
+  includeHistory = false, 
+  historyLimit = 60, 
+  initialData?: StatusData[],
+  filterByVisibility = true
+) {
   const [services, setServices] = useState<StatusData[]>(initialData || []);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +101,11 @@ export function useStatus(includeHistory = false, historyLimit = 60, initialData
       }
       if (historyLimit) {
         url.searchParams.append('limit', historyLimit.toString());
+      }
+      
+      // Add filterByVisibility parameter
+      if (!filterByVisibility) {
+        url.searchParams.append('filterByVisibility', 'false');
       }
       
       // Add timestamp to prevent browser caching
@@ -183,7 +193,7 @@ export function useStatus(includeHistory = false, historyLimit = 60, initialData
       setLoading(false);
       activeRequest = null;  // Clear active request flag
     }
-  }, [includeHistory, historyLimit, retryCount, instanceId]);
+  }, [includeHistory, historyLimit, retryCount, instanceId, filterByVisibility]);
 
   // Retry logic for initial load
   useEffect(() => {
