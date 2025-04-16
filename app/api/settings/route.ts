@@ -11,13 +11,20 @@ async function getSiteConfigFromRedis() {
   if (!configStr) {
     // Return default config if not found in Redis
     return {
-      refreshInterval: 60000,
       historyLength: 1440,
       statusPage: {
         enabled: true,
         title: 'Service Status',
         description: 'Current status of our services'
-      }
+      },
+      githubAction: {
+        enabled: true,
+        schedule: '*/5 * * * *', // Every 5 minutes by default
+        repository: '',
+        workflow: 'ping.yml',
+        secretName: 'PING_API_KEY'
+      },
+      lastModified: Date.now()
     };
   }
   
@@ -62,8 +69,17 @@ export async function PUT(request: NextRequest) {
     // This ensures we don't lose properties that weren't updated
     const newConfig = {
       ...currentConfig,
-      ...updatedConfig
+      ...updatedConfig,
+      lastModified: Date.now() // Add timestamp of when settings were last modified
     };
+    
+    // Deep merge for nested githubAction settings if present
+    if (updatedConfig.githubAction && currentConfig.githubAction) {
+      newConfig.githubAction = {
+        ...currentConfig.githubAction,
+        ...updatedConfig.githubAction
+      };
+    }
     
     await saveSiteConfigToRedis(newConfig);
     

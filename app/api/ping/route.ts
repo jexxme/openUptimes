@@ -18,6 +18,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const action = url.searchParams.get('action');
   
+  // Check for API key if request comes from GitHub Actions
+  const runId = url.searchParams.get('runId');
+  const apiKey = request.headers.get('x-api-key');
+  
+  // If run from GitHub Actions, verify API key
+  if (runId && !validateApiKey(apiKey)) {
+    console.error(`[Ping] Unauthorized access attempt with run ID: ${runId}`);
+    return NextResponse.json(
+      { error: 'Unauthorized. Invalid or missing API key.' },
+      { status: 401 }
+    );
+  }
+  
   // Status check - return current ping loop state
   if (action === 'status') {
     try {
@@ -93,7 +106,10 @@ export async function GET(request: Request) {
       executionTime: Date.now() - startTime,
       servicesChecked: results.length,
       refreshInterval,
-      nextScheduled: nextPing
+      nextScheduled: nextPing,
+      // Add source information if from GitHub Actions
+      source: runId ? 'github-action' : 'internal',
+      runId: runId || undefined
     };
     
     // Store in Redis list with a limit
@@ -159,6 +175,37 @@ export async function GET(request: Request) {
       { error: 'Failed to check services', message: (err as Error).message },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Validate the API key for GitHub Actions requests
+ * 
+ * Later this could be enhanced to check against a stored key in Redis
+ */
+async function validateApiKey(apiKey: string | null): Promise<boolean> {
+  if (!apiKey) return false;
+  
+  try {
+    // Get the GitHub action config from Redis
+    const client = await getRedisClient();
+    const configStr = await client.get('config:site');
+    
+    if (!configStr) return false;
+    
+    const config = JSON.parse(configStr);
+    
+    // If GitHub Actions is not enabled in the config, return false
+    if (!config.githubAction?.enabled) return false;
+    
+    // In a real application, you would store and check against a hashed API key
+    // For now, we'll just compare with the raw key for simplicity
+    // TODO: Implement proper API key validation from Redis
+    
+    return apiKey === 'openuptimes-api-key';
+  } catch (error) {
+    console.error('Error validating API key:', error);
+    return false;
   }
 }
 
