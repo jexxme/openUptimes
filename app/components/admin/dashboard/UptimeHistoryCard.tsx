@@ -25,13 +25,15 @@ interface UptimeHistoryCardProps {
     incidentsByService: Record<string, number>;
   };
   handleNavigation: (tab: string, section?: string) => void;
+  className?: string;
 }
 
 export const UptimeHistoryCard = ({
   historyData,
   uptimePercentage,
   historyStats,
-  handleNavigation
+  handleNavigation,
+  className = ""
 }: UptimeHistoryCardProps) => {
   
   // Helper to render sparkline
@@ -63,7 +65,7 @@ export const UptimeHistoryCard = ({
   };
 
   return (
-    <Card className="overflow-hidden border col-span-6 lg:col-span-4">
+    <Card className={`overflow-hidden border col-span-6 lg:col-span-4 ${className}`}>
       <CardHeader className="border-b pb-2 pt-3 px-4 h-[72px] flex items-center">
         <div className="flex items-center justify-between w-full">
           <CardTitle className="text-base font-semibold">Uptime History</CardTitle>
