@@ -39,7 +39,6 @@ type CacheEntry = {
 const CACHE_DURATION = 5000; // 5 seconds cache
 let globalCache: CacheEntry | null = null;
 let activeRequest: Promise<StatusData[]> | null = null;
-let pingRequestTimestamp = 0;
 let hookInstanceCount = 0;
 
 /**
@@ -169,21 +168,19 @@ export function useStatus(
         const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 8000);
         console.log(`[useStatus:${instanceId}] Will retry in ${backoffTime}ms`);
         
-        // Only ping if we haven't pinged recently
-        if (Date.now() - pingRequestTimestamp > 5000) {
-          pingRequestTimestamp = Date.now();
+        // Try manual ping if we need data
+        if (globalCache === null || globalCache.data.length === 0) {
           try {
-            // Try to trigger a service check
-            console.log(`[useStatus:${instanceId}] Triggering ping to refresh service data`);
+            console.log(`[useStatus:${instanceId}] Triggering manual ping to get fresh data`);
             await fetch('/api/ping', { 
               signal: AbortSignal.timeout(5000),
               headers: {
                 'Cache-Control': 'no-cache'
               }
             });
-            console.log(`[useStatus:${instanceId}] Ping successful`);
+            console.log(`[useStatus:${instanceId}] Manual ping successful`);
           } catch (pingErr) {
-            console.error(`[useStatus:${instanceId}] Ping attempt failed:`, pingErr);
+            console.error(`[useStatus:${instanceId}] Manual ping attempt failed:`, pingErr);
           }
         }
       } else {
@@ -234,7 +231,7 @@ export function useStatus(
       const timer = setTimeout(() => {
         console.log(`[useStatus:${instanceId}] Fetching fresh data after using initialData`);
         fetchStatus();
-      }, 30000); // Increased from 3000ms to 30000ms (30 seconds)
+      }, 30000); // 30 seconds
       
       return () => clearTimeout(timer);
     } else {
@@ -253,22 +250,8 @@ export function useStatus(
         return () => clearTimeout(refreshTimer);
       }
       
-      // If we need a fresh ping, do it only if one hasn't been done recently
-      if (Date.now() - pingRequestTimestamp > 5000) {
-        pingRequestTimestamp = Date.now();
-        fetch('/api/ping')
-          .then(() => {
-            console.log(`[useStatus:${instanceId}] Ping successful, fetching status data`);
-            fetchStatus();
-          })
-          .catch(err => {
-            console.error(`[useStatus:${instanceId}] Initial ping failed:`, err);
-            fetchStatus(); // Try to fetch status anyway
-          });
-      } else {
-        // Recent ping happened, just fetch the data
-        fetchStatus();
-      }
+      // Just fetch the data without triggering ping first
+      fetchStatus();
     }
     
     // Set up polling interval for subsequent updates
