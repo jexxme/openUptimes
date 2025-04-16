@@ -15,11 +15,23 @@ jobs:
     name: Ping Service Check
     runs-on: ubuntu-latest
     steps:
+      - name: Check if App URL is provided
+        id: url_check
+        run: |
+          if [[ "${{ vars.APP_URL }}" == "http://localhost:3000" || "${{ vars.APP_URL }}" == "" ]]; then
+            echo "Using localhost - skipping ping as this is likely a local environment or not yet configured"
+            echo "configured=false" >> $GITHUB_OUTPUT
+          else
+            echo "Using remote URL: ${{ vars.APP_URL }}"
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Perform Ping
+        if: steps.url_check.outputs.configured == 'true'
         env:
           PING_API_KEY: ${{ secrets.PING_API_KEY }}
           RUN_ID: ${{ github.run_id }}
-          APP_URL: ${{ vars.APP_URL || 'http://localhost:3000' }}
+          APP_URL: ${{ vars.APP_URL }}
         run: |
           echo "Running ping check (ID: $RUN_ID)"
           
