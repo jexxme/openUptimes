@@ -19,6 +19,8 @@ interface DashboardContentProps {
   statusPageData?: any;
   historyData?: { service: string; item: any }[];
   setActiveTab?: (tab: string) => void;
+  pingCount24h?: number;
+  pingStatsLoading?: boolean;
 }
 
 export function DashboardContent({
@@ -29,7 +31,9 @@ export function DashboardContent({
   refresh,
   statusPageData,
   historyData,
-  setActiveTab
+  setActiveTab,
+  pingCount24h = 0,
+  pingStatsLoading = false
 }: DashboardContentProps) {
   // Calculate stats from real data
   const totalServices = services.length;
@@ -147,11 +151,11 @@ export function DashboardContent({
           description={downServices ? "Services need attention" : "All systems operational"}
         />
         <StatCard 
-          title="Last Updated" 
-          value={lastUpdated ? formatRelativeTime(Date.parse(lastUpdated)) : "Just now"} 
+          title="Ping Frequency" 
+          value={pingStatsLoading ? "Loading..." : pingCount24h.toLocaleString()} 
           icon={Clock}
           color="purple"
-          description="Latest status check"
+          description={`~${pingCount24h > 0 ? Math.round(pingCount24h / 24) : 0}/hour avg in last 24h`}
         />
       </div>
       

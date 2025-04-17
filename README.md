@@ -15,7 +15,8 @@
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#api-endpoints">API Endpoints</a> •
-  <a href="#automated-ping-system">Automated Ping System</a> •
+  <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
+  <a href="#alternative-monitoring">Alternative Monitoring</a> •
   <a href="#troubleshooting">Troubleshooting</a> •
   <a href="#contributing">Contributing</a> •
   <a href="#license">License</a>
@@ -28,34 +29,49 @@
 </p>
 
 ## Introduction
+OpenUptimes is a lightweight status page that helps you monitor and display service uptime. With a clean interface and GitHub Actions integration, tracking your infrastructure's health is easy.
 
-OpenUptimes is a modern, lightweight status page designed to help you monitor and display the uptime of your services. With its clean interface and real-time updates, you can easily keep track of your infrastructure's health and share this information with your users.
+Simplicity is key: deployment takes minutes, configuration is minimal, and monitoring is automatic without complex setups. You only need a GitHub repository, a Redis instance, and a hosting provider like Vercel.
 
-Built with Next.js, Tailwind CSS, and Redis, OpenUptimes provides a seamless experience across all devices and can be deployed in minutes. The system leverages Vercel's Edge Runtime for reliable background monitoring, ensuring consistent uptime checks even without frontend interaction.
+Built with Next.js, Tailwind CSS, and Redis, OpenUptimes offers a seamless experience across devices. It leverages GitHub Actions for reliable background monitoring, ensuring consistent uptime checks without extra services.
 
-Unlike other solutions that require external cron jobs or additional infrastructure, OpenUptimes is fully self-contained and runs entirely on serverless and edge functions, making it perfect for one-click deployment with zero configuration.
+Unlike other solutions that require dedicated servers or costly subscriptions, OpenUptimes is self-contained and ideal for smaller projects needing a simple, low-maintenance solution with minimal configuration.
 
 ## Features
 
 - 🚀 **One-click deploy** - Get started in seconds with Vercel
-- 🔌 **Plug-and-play setup** - Minimal configuration required
-- 📊 **Real-time monitoring** - Track your services' status in real-time
+- 🔌 **Zero configuration** - Everything works out of the box
+- 📊 **GitHub Actions integration** - First-class monitoring system without extra infrastructure
 - 📝 **Historical data** - View uptime history and identify patterns
-- 🛑 **Zero external dependencies** - Uses only your own Redis instance
+- 🛑 **Minimal dependencies** - Uses only GitHub Actions, Redis, and your hosting provider
 - 🧹 **Clean, maintainable codebase** - Easy to understand and extend
 - 🎨 **Beautiful, responsive UI** - Works on all devices
 - 📱 **Mobile-first design** - Perfect experience on any screen size
 - 🔄 **Auto-refreshing data** - Always see the latest status
-- **Automated Service Monitoring**: Background ping mechanism regularly checks service availability
-- **Serverless-compatible**: Runs entirely on Edge and Serverless functions
-- **Self-sustaining ping system**: No need for external cron jobs or schedulers
-- **Admin Dashboard**: Manage services, view status history, and configure settings
+- 🌐 **Flexible monitoring** - Use GitHub Actions or your own cronjobs for custom precision
+- 🔧 **Simple Admin Dashboard** - Manage services through a clean web interface
 
 ## Motivation
 
-OpenUptimes was created to provide an easy, simple, and free solution for monitoring service uptime without relying on external dependencies. By using only your own Redis instance, it ensures that you have full control over your data and infrastructure.
+OpenUptimes was created to provide an easy, simple, and free solution for monitoring service uptime without relying on complex infrastructure. By using GitHub Actions for monitoring along with your own Redis instance, it ensures that you have a lightweight system that's perfect for smaller projects and websites.
 
-It is also (currently) 100% free and open source, so you can start using it right away and self-host it later if you want.
+The solution is particularly suited for cases where:
+- You need a simple status page without significant investment
+- You want a "set it and forget it" monitoring solution
+- You're looking for something that's quick to set up and requires minimal maintenance
+- You prefer using familiar tools (GitHub and Vercel) rather than specialized monitoring services
+
+## Quick Start
+
+The fastest way to get started with OpenUptimes:
+
+1. Click the "Deploy with Vercel" button above
+2. Connect your GitHub account and wait for the initial deployment to complete
+3. Set up Redis in your Vercel project (one-click integration)
+4. Configure GitHub Actions for monitoring (automatic template provided)
+5. Add your services through the admin dashboard at `/admin`
+
+Total setup time: Less than 5 minutes! No coding or complex configuration required.
 
 ## Installation
 
@@ -67,25 +83,17 @@ This is the easiest way to get started, even if you're not a technical user:
 
 1. Click the "Deploy with Vercel" button above
 2. Connect your GitHub account and wait for the initial deployment to complete
-3. Set up Redis in your Vercel project:
+3. Set up Redis as a simple storage solution in your Vercel project:
    - In your Vercel dashboard, go to your newly deployed project
    - Click on "Storage" in the left sidebar
    - Click "Add" and select "Vercel Redis"
    - Follow the prompts to create a new Redis database
    - Once completed, Vercel will automatically add the Redis connection details to your project
 
-4. Configure your project:
-   - In your Vercel project dashboard, go to "Settings" → "Environment Variables"
-   - Add the following environment variables:
-     ```
-     NEXT_PUBLIC_SITE_NAME=Your Status Page Name
-     NEXT_PUBLIC_SITE_DESCRIPTION=A brief description of your status page
-     NEXT_PUBLIC_REFRESH_INTERVAL=60000
-     ```
-   - Navigate to your site's Admin page at "your-domain.com/admin" to add and configure your services
-   - Your status page will now display and monitor all your configured services!
+4. Finish the setup:
+   - Open your Admin page at "your-domain-as-set-in-vercel.com/admin" to add and configure your services
 
-That's it! Your status page is now live and monitoring your services.
+That's it! Your status page is now live at "your-domain-as-set-in-vercel.com" eg "status.mydomain.com" and ready for monitoring your services.
 
 ### Option 2: Self-Hosted Deployment (Advanced)
 
@@ -122,7 +130,9 @@ For users who want more control over their deployment:
 
 6. Navigate to `http://localhost:3000/admin` to configure your services
 
-7. For production, build and start:
+7. Set up GitHub Actions for monitoring (see [GitHub Actions Monitoring](#github-actions-monitoring))
+
+8. For production, build and start:
    ```bash
    npm run build
    npm run start
@@ -137,6 +147,7 @@ Through the admin dashboard, you can:
 - Edit existing service configurations
 - Delete services you no longer wish to monitor
 - View monitoring history and statistics
+- Configure GitHub Actions integration
 
 Each service can be configured with:
 - Name: Display name for the service
@@ -156,6 +167,97 @@ OpenUptimes supports the following environment variables:
 | `NEXT_PUBLIC_SITE_NAME` | Name of your status page | "OpenUptimes" | No |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description | "Service Status Monitor" | No |
 | `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
+
+## GitHub Actions Monitoring
+
+OpenUptimes treats GitHub Actions as a first-class citizen for service monitoring. This approach eliminates the need for external cron jobs or dedicated servers, making the system more accessible and easier to maintain.
+
+### How It Works
+
+1. A GitHub Actions workflow is set up in your repository
+2. The workflow runs on a schedule (typically every 5-15 minutes)
+3. Each run calls the ping API endpoint of your OpenUptimes instance
+4. The ping API checks all your configured services and updates their status in Redis
+5. Your status page displays the latest status information
+
+### Important Considerations
+
+- **Standard Monitoring**: GitHub Actions scheduling is designed for standard monitoring needs with a minimum interval of 5 minutes
+- **Use Case**: Perfect for general status monitoring and long-term uptime analytics
+- **Target Audience**: Best suited for smaller projects and websites that need a simple, low-maintenance monitoring solution
+
+### Setting Up GitHub Actions Monitoring
+
+1. Generate an API key through the admin dashboard
+2. Add the API key as a repository secret (named `PING_API_KEY` by default)
+3. Create a workflow file in your repository at `.github/workflows/ping.yml`:
+
+```yaml
+name: Ping Services
+
+on:
+  schedule:
+    # Runs every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Ping API
+        run: |
+          curl -X GET "https://your-domain.com/api/ping" \
+          -H "Authorization: Bearer ${{ secrets.PING_API_KEY }}"
+```
+
+4. Enable GitHub Actions in the admin dashboard
+
+For more detailed instructions, visit the configuration page at `/debug/ping/github`.
+
+### Customization Options
+
+You can customize the GitHub Actions monitoring by:
+- Adjusting the schedule frequency in the cron expression
+- Adding additional conditions for when to run the workflow
+- Implementing custom notification logic in the workflow
+- Using a different API endpoint or monitoring service
+
+## Alternative Monitoring
+
+While GitHub Actions provides a simple, maintenance-free way to monitor your services, you can also use external tools for more precise monitoring if needed.
+
+### External Cron Jobs for Precise Measurement
+
+Since OpenUptimes is extremely lightweight, its ping endpoint can handle frequent calls without issue. This means you can use external cron services to check your services as frequently as every 30 seconds or 1 minute for more precise downtime detection.
+
+#### Setup Options:
+
+1. **Custom Cron Server**:
+   ```bash
+   # Example crontab entry for checking every minute
+   * * * * * curl -X GET "https://your-domain.com/api/ping" -H "Authorization: Bearer YOUR_API_KEY"
+   ```
+
+2. **Cloud-based Cron Services** such as:
+   - [Easycron](https://www.easycron.com/)
+   - [Cron-job.org](https://cron-job.org/)
+   - AWS CloudWatch Events/Lambda
+   - Google Cloud Scheduler
+
+3. **CI/CD Pipelines**:
+   - GitLab CI/CD with more precise scheduling
+   - Jenkins
+   - Circle CI
+
+With these external tools checking your services more frequently, you can achieve near real-time monitoring while still using the same simple OpenUptimes interface.
+
+### Benefits of External Cron Jobs
+
+- **Higher Precision**: Detect outages within seconds or minutes instead of 5+ minutes
+- **Custom Intervals**: Choose exactly how frequently you want to monitor
+- **Independent System**: Monitoring continues even if GitHub is experiencing issues
+- **Regional Monitoring**: Set up cron jobs in different regions to check from various locations
 
 ## API Endpoints
 
@@ -180,41 +282,6 @@ OpenUptimes provides several API endpoints for monitoring and configuring servic
 - **POST `/api/setup/complete`**: Marks the setup as completed
 - **POST `/api/setup/reset`**: Resets the application to its initial state
 
-## Automated Ping System
-
-OpenUptimes implements an innovative self-sustaining ping mechanism that works reliably in serverless environments without requiring traditional cron jobs:
-
-### How It Works
-
-1. **Edge Runtime Execution**: The system uses Next.js Edge Runtime which allows for longer execution times than standard serverless functions
-2. **Self-scheduling Architecture**: The ping system schedules its own next ping using Redis locks and timeouts
-3. **Automatic Bootstrap**: Whenever the application starts (or receives traffic), the ping cycle is automatically initialized
-4. **Fault Tolerance**: Multiple failsafe mechanisms ensure consistent monitoring even in edge cases
-
-### System Components
-
-- **Edge Ping Function**: Long-running Edge Runtime function that bootstraps the cycle
-- **Ping Scheduler**: Coordinates ping timing and prevents overlap using Redis locks
-- **Service Monitor**: The actual service checking mechanism that stores uptime data
-- **Stats Endpoint**: Provides visibility into the ping system's operations
-
-### Technical Details
-
-- No traditional cron jobs or external schedulers required
-- Works within Vercel and other serverless platforms' constraints
-- Automatically adapts to the configured refresh interval
-- Resistant to cold starts and serverless function timeouts
-- Maintains consistent ping intervals without frontend interaction
-
-### Debugging (Development Only)
-
-When running in development mode, OpenUptimes provides a debug interface at `/debug/ping` that allows you to:
-
-- Monitor ping system statistics in real-time
-- Trigger manual pings through different components of the system
-- View ping history and intervals
-- Troubleshoot the monitoring system
-
 ## Troubleshooting
 
 ### Redis Connection Issues
@@ -234,6 +301,15 @@ If you're having trouble connecting to Redis:
    - With auth: `redis://username:password@redis.example.com:6379`
    - With SSL: `rediss://username:password@redis.example.com:6379`
 
+### GitHub Actions Not Running
+
+If your GitHub Actions workflow isn't running:
+
+1. Check if the workflow is enabled in your repository's Actions settings
+2. Verify that the cron schedule is correctly formatted
+3. Ensure the API key is properly set as a repository secret
+4. Check the workflow run history for any error messages
+
 ### Status Not Updating
 
 If your service statuses aren't updating:
@@ -242,6 +318,7 @@ If your service statuses aren't updating:
 2. Verify the `/api/ping` endpoint is working
 3. Ensure your Redis instance is working properly
 4. Check that your service URLs are accessible from your deployment environment
+5. Verify your GitHub Actions workflow is running successfully
 
 ### Admin UI Issues
 
@@ -251,12 +328,6 @@ If you're having trouble with the admin interface:
 2. Check that your Redis connection is working properly (try `/api/test-redis`)
 3. Clear your browser cache and cookies if you see outdated information
 4. Ensure your browser has JavaScript enabled
-
-### Vercel Deployment Issues
-
-1. Ensure all environment variables are set correctly
-2. Check that the Vercel Redis integration is properly configured
-3. Review build logs for any errors during deployment
 
 ## Contributing
 
@@ -275,7 +346,7 @@ Please make sure your code follows our style guidelines and includes appropriate
 - **Framework**: Next.js 14+ (App Router)
 - **UI**: Tailwind CSS + shadcn/ui
 - **Storage**: Redis (via node-redis)
-- **Monitoring**: Vercel Edge Functions + Client-side Polling
+- **Monitoring**: GitHub Actions + Client-side Polling
 - **Deployment**: Vercel
 
 ## License
@@ -287,27 +358,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <p align="center">
 Made on a healthy dose of ☕️
 </p>
-
-## Architecture
-
-### Automated Ping System
-
-OpenUptimes implements a self-sustaining ping mechanism that works reliably in serverless environments:
-
-1. **Edge Function**: Uses Next.js Edge Runtime for longer execution times
-2. **Self-scheduling**: The system schedules its own next ping using a combination of edge functions and redis locks
-3. **Bootstrap**: App initialization triggers the ping cycle on startup
-4. **Failsafe**: Multiple safety mechanisms ensure consistent pinging
-
-### Key Components
-
-- `/api/ping-scheduler`: Manages ping scheduling and Redis locking
-- `/api/edge-ping`: Edge runtime function that creates a self-sustaining ping cycle
-- `/api/ping`: Performs the actual service status checks
-- `/api/ping-stats`: Provides status information about the ping system
-
-## Getting Started
-
-1. Set up a Redis instance (e.g., Upstash Redis)
-2. Configure environment variables (see `.env.example`)
-3. Deploy to Vercel or run locally with `npm run dev`
