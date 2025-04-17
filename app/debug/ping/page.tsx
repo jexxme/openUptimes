@@ -10,7 +10,6 @@ export default function PingDebugPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [intervalStats, setIntervalStats] = useState<any>(null);
-  const [lastResetTime, setLastResetTime] = useState<number>(Date.now());
   const [logs, setLogs] = useState<string[]>([]);
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [visibleHistoryCount, setVisibleHistoryCount] = useState<number>(10);
@@ -27,6 +26,7 @@ export default function PingDebugPage() {
     }
     
     // Filter history to only include entries since the last reset
+    const lastResetTime = data.lastIntervalReset || 0;
     const history = data.recentHistory.filter((entry: any) => {
       const entryTime = typeof entry.timestamp === 'number' ? 
         entry.timestamp : new Date(entry.timestamp).getTime();
@@ -95,6 +95,20 @@ export default function PingDebugPage() {
       setIsLoading(true);
       addLog('Fetching ping stats...');
       
+      // If reset is requested, call the reset API first
+      if (resetIntervals) {
+        addLog('Resetting interval statistics...');
+        try {
+          const resetResponse = await fetch('/api/ping?action=reset_intervals');
+          if (!resetResponse.ok) {
+            throw new Error(`Failed to reset intervals: ${resetResponse.status} ${resetResponse.statusText}`);
+          }
+          addLog('Interval statistics reset successfully');
+        } catch (resetErr) {
+          addLog(`Error resetting intervals: ${(resetErr as Error).message}`);
+        }
+      }
+      
       // Request all ping history entries by adding limit=0 parameter
       const response = await fetch('/api/ping-stats?limit=0');
       if (!response.ok) {
@@ -110,20 +124,13 @@ export default function PingDebugPage() {
       
       setPingStats(data);
       
-      // Reset interval stats if requested
-      if (resetIntervals) {
-        setLastResetTime(Date.now());
-        setIntervalStats(null);
-        addLog('Interval statistics reset successfully');
+      // Calculate interval stats based on fetched data
+      const stats = calculateIntervalStats(data);
+      setIntervalStats(stats);
+      if (stats) {
+        addLog(`Interval statistics updated successfully (${stats.sampleSize} intervals since last reset)`);
       } else {
-        // Otherwise calculate them based on fetched data
-        const stats = calculateIntervalStats(data);
-        setIntervalStats(stats);
-        if (stats) {
-          addLog(`Interval statistics updated successfully (${stats.sampleSize} intervals since last reset)`);
-        } else {
-          addLog('Not enough data for interval statistics since last reset');
-        }
+        addLog('Not enough data for interval statistics since last reset');
       }
       
       setLastUpdate(new Date());
@@ -420,7 +427,7 @@ export default function PingDebugPage() {
                 <>
                   <Tooltip text="Only using ping data since last reset">
                     <span className="text-xs text-gray-600 border-dotted border-b border-gray-300">
-                      Since: {formatTime(lastResetTime)}
+                      Since: {formatTime(pingStats?.lastIntervalReset || 0)}
                     </span>
                   </Tooltip>
                 </>
@@ -820,6 +827,7 @@ export default function PingDebugPage() {
                 <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Execution</th>
                 <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Services</th>
                 <th className="text-center py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Source</th>
+                <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Interval</th>
                 <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Run ID</th>
               </tr>
             </thead>
@@ -834,6 +842,28 @@ export default function PingDebugPage() {
                 
                 const executionDiff = prevEntry ? 
                   `${Math.abs(entry.executionTime - prevEntry.executionTime)}ms` : '';
+                
+                // Calculate interval since last ping of the same source type
+                let intervalDisplay = '-';
+                if (entry.source && entry.source !== 'internal' && entry.source !== 'manual') {
+                  // Find the previous entry with the same source
+                  const prevSameSourceIndex = pingStats.recentHistory.findIndex((item: any, idx: number) => 
+                    idx > i && item.source === entry.source && (item.source !== 'internal' && item.source !== 'manual')
+                  );
+                  
+                  if (prevSameSourceIndex !== -1) {
+                    const prevSameSource = pingStats.recentHistory[prevSameSourceIndex];
+                    const intervalMs = entry.timestamp - prevSameSource.timestamp;
+                    const intervalSec = Math.round(intervalMs / 1000);
+                    const intervalMin = Math.floor(intervalSec / 60);
+                    
+                    if (intervalMin > 0) {
+                      intervalDisplay = `${intervalMin}m ${intervalSec % 60}s`;
+                    } else {
+                      intervalDisplay = `${intervalSec}s`;
+                    }
+                  }
+                }
                 
                 return (
                   <tr key={i} className={i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}>
@@ -856,12 +886,16 @@ export default function PingDebugPage() {
                     <td className="py-2.5 px-3 text-right border-b border-gray-100 font-medium">{entry.servicesChecked}</td>
                     <td className="py-2.5 px-3 text-center border-b border-gray-100">
                       <span className={`px-2 py-0.5 rounded-full text-xs ${
-                        entry.source === 'github' ? 'bg-blue-100 text-blue-800' :
+                        entry.source === 'github-action' ? 'bg-blue-100 text-blue-800' :
                         entry.source === 'manual' ? 'bg-green-100 text-green-800' :
+                        entry.source === 'internal' ? 'bg-gray-100 text-gray-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                       {entry.source || 'legacy'}
                       </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right border-b border-gray-100 font-mono">
+                      {intervalDisplay}
                     </td>
                     <td className="py-2.5 px-3 text-right border-b border-gray-100 font-mono">
                       {entry.runId || '-'}

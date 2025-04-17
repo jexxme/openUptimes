@@ -15,7 +15,8 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  Calendar
+  Calendar,
+  EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -360,6 +361,12 @@ export function ServicesList({
                         `}>
                           {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
                         </div>
+                        {service.visible === false && (
+                          <div className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 flex items-center gap-1">
+                            <EyeOff className="h-3 w-3" />
+                            <span>Hidden</span>
+                          </div>
+                        )}
                       </div>
                       <div className="text-sm text-slate-500 truncate mt-1">
                         <a 

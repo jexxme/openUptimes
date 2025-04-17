@@ -67,7 +67,7 @@ export function SettingsContent({ activeSection = "general" }: SettingsContentPr
     async function fetchGeneralSettings() {
       setSettingsLoading(true);
       try {
-        const response = await fetch('/api/settings/general');
+        const response = await fetch('/api/settings');
         
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);
