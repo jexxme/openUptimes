@@ -30,14 +30,41 @@ export function ResetSettings() {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [isResettingApplication, setIsResettingApplication] = useState(false);
   const [factoryResetError, setFactoryResetError] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+
+  const verifyPassword = async () => {
+    // Clear previous errors
+    setFactoryResetError("");
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: adminPassword }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Invalid password');
+      }
+      
+      // Password verified
+      setIsPasswordVerified(true);
+    } catch (error) {
+      console.error("Password verification error:", error);
+      setFactoryResetError(error instanceof Error ? error.message : "Invalid password");
+    }
+  };
 
   const handleFactoryReset = async () => {
     // Clear previous errors
     setFactoryResetError("");
     
-    // Validate confirmation text
-    if (resetConfirmText !== "reset") {
-      setFactoryResetError("Please type 'reset' to confirm");
+    if (!isPasswordVerified) {
+      setFactoryResetError("Please verify your password first");
       return;
     }
     
@@ -58,6 +85,8 @@ export function ResetSettings() {
       
       // Clear form and close dialog
       setResetConfirmText("");
+      setAdminPassword("");
+      setIsPasswordVerified(false);
       setIsFactoryResetDialogOpen(false);
       
       // Show success message
@@ -77,6 +106,17 @@ export function ResetSettings() {
     } finally {
       setIsResettingApplication(false);
     }
+  };
+
+  // Reset state when dialog is closed
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      setResetConfirmText("");
+      setAdminPassword("");
+      setIsPasswordVerified(false);
+      setFactoryResetError("");
+    }
+    setIsFactoryResetDialogOpen(open);
   };
 
   return (
@@ -119,7 +159,7 @@ export function ResetSettings() {
       </Card>
       
       {/* Factory Reset Dialog */}
-      <Dialog open={isFactoryResetDialogOpen} onOpenChange={setIsFactoryResetDialogOpen}>
+      <Dialog open={isFactoryResetDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl">Confirm Factory Reset</DialogTitle>
@@ -136,33 +176,60 @@ export function ResetSettings() {
           )}
           
           <div className="space-y-4 p-1">
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800 font-medium">
-                To confirm, type "reset" in the field below:
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Input
-                autoFocus
-                type="text"
-                value={resetConfirmText}
-                onChange={(e) => setResetConfirmText(e.target.value)}
-                placeholder="Type 'reset' to confirm"
-                className="h-10"
-              />
-            </div>
+            {!isPasswordVerified ? (
+              <>
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+                  <p className="text-sm text-amber-800 font-medium">
+                    To confirm, type "reset" in the field below:
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Input
+                    autoFocus
+                    type="text"
+                    value={resetConfirmText}
+                    onChange={(e) => setResetConfirmText(e.target.value)}
+                    placeholder="Type 'reset' to confirm"
+                    className="h-10"
+                  />
+                </div>
+                
+                {resetConfirmText === "reset" && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="text-sm font-medium mb-1.5">Enter your admin password to proceed. <br /> (You may reset your password in the Security Settings):</div>
+                    <Input
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Admin password"
+                      className="h-10"
+                    />
+                    <Button 
+                      onClick={verifyPassword}
+                      disabled={!adminPassword || isResettingApplication}
+                      className="w-full h-10 mt-2"
+                    >
+                      Verify Password
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-800 font-medium flex items-center">
+                  <span className="bg-green-100 text-green-700 p-1 rounded-full mr-2">✓</span>
+                  Password verified. You can now proceed with the factory reset.
+                </p>
+              </div>
+            )}
           </div>
           
           <DialogFooter className="sm:justify-between mt-2">
             <Button 
               variant="outline"
               size="lg"
-              onClick={() => {
-                setFactoryResetError("");
-                setResetConfirmText("");
-                setIsFactoryResetDialogOpen(false);
-              }}
+              onClick={handleDialogClose.bind(null, false)}
               disabled={isResettingApplication}
               className="h-10"
             >
@@ -172,7 +239,7 @@ export function ResetSettings() {
               variant="destructive"
               size="lg"
               onClick={handleFactoryReset}
-              disabled={isResettingApplication || resetConfirmText !== "reset"}
+              disabled={!isPasswordVerified || isResettingApplication}
               className="h-10"
             >
               {isResettingApplication ? (

@@ -159,7 +159,7 @@ export function AdminServices({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-auto">
           <div className="min-w-[1000px] w-full">
             <ServicesList
               services={displayServices}
