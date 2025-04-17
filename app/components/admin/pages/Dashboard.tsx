@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStatus } from "@/app/hooks/useStatus";
+import { usePingStats } from "@/app/hooks/usePingStats";
 import { DashboardContent } from "@/app/components/admin/DashboardContent";
 
 interface AdminDashboardProps {
@@ -32,6 +33,10 @@ export function AdminDashboard({
     lastUpdated, 
     refresh 
   } = useStatus(showHistory, 60, preloadedServices, false);
+
+  // Get ping frequency data from the new hook with 30s refresh
+  const { getPingFrequency } = usePingStats(30000);
+  const { count: pingCount24h, loading: pingStatsLoading } = getPingFrequency();
 
   // Track if this is the initial render with preloaded data
   useEffect(() => {
@@ -100,6 +105,8 @@ export function AdminDashboard({
       statusPageData={preloadedStatusPageData}
       historyData={preloadedHistoryData}
       setActiveTab={setActiveTab}
+      pingCount24h={pingCount24h}
+      pingStatsLoading={pingStatsLoading}
     />
   );
 } 
