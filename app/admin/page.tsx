@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
+import dynamic from 'next/dynamic';
 
 // Import data hooks
 import { useStatus } from "../hooks/useStatus";
@@ -19,12 +20,12 @@ import { Progress } from "@/components/ui/progress";
 // Import custom components
 import { SidebarNav } from "../components/admin/SidebarNav";
 
-// Admin content pages
-import { AdminDashboard } from "../components/admin/pages/Dashboard";
-import { AdminServices } from "../components/admin/pages/Services";
-import { AdminStatusPage } from "../components/admin/pages/StatusPage";
-import { AdminHistory } from "../components/admin/pages/History";
-import { AdminSettings } from "../components/admin/pages/Settings";
+// Admin content pages - Dynamically import with SSR disabled
+const AdminDashboard = dynamic(() => import("../components/admin/pages/Dashboard").then(mod => mod.AdminDashboard), { ssr: false });
+const AdminServices = dynamic(() => import("../components/admin/pages/Services").then(mod => mod.AdminServices), { ssr: false });
+const AdminStatusPage = dynamic(() => import("../components/admin/pages/StatusPage").then(mod => mod.AdminStatusPage), { ssr: false });
+const AdminHistory = dynamic(() => import("../components/admin/pages/History").then(mod => mod.AdminHistory), { ssr: false });
+const AdminSettings = dynamic(() => import("../components/admin/pages/Settings").then(mod => mod.AdminSettings), { ssr: false });
 
 // Define types needed for the component
 interface StatusHistoryItem {
@@ -35,7 +36,8 @@ interface StatusHistoryItem {
   error?: string;
 }
 
-export default function AdminPage() {
+// Create a client-only wrapper to prevent hydration issues
+const AdminPageClient = () => {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -72,20 +74,18 @@ export default function AdminPage() {
 
   // Handle URL parameters on component mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab');
-      
-      // Set the active tab based on URL parameter
-      if (tabParam) {
-        setActiveTab(tabParam);
-      }
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    
+    // Set the active tab based on URL parameter
+    if (tabParam) {
+      setActiveTab(tabParam);
     }
   }, []);
   
   // Update URL when active tab changes
   useEffect(() => {
-    if (typeof window !== "undefined" && isLoaded) {
+    if (isLoaded) {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', activeTab);
       window.history.pushState({}, '', url.toString());
@@ -521,16 +521,6 @@ export default function AdminPage() {
       history: validHistoryData,
       historyServices: validHistoryServicesList
     };
-    
-    // Log validation results
-    console.log("Preloaded data validation:", {
-      services: !!validServicesData,
-      servicesConfig: !!validServicesConfigData,
-      statusPage: !!validStatusPageData,
-      appearance: !!validAppearanceData,
-      history: !!validHistoryData,
-      historyServices: !!validHistoryServicesList
-    });
   }, [servicesData, servicesConfigData, statusPageData, appearanceData, historyData, historyServicesList]);
 
   // Ensure the session is valid on page load
@@ -758,4 +748,7 @@ export default function AdminPage() {
       </div>
     </SidebarProvider>
   );
-} 
+};
+
+// Export a client-only wrapper component
+export default dynamic(() => Promise.resolve(AdminPageClient), { ssr: false }); 
