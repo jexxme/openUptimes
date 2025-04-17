@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRedisClient, closeRedisConnection } from '@/lib/redis';
+import { getRedisClient, closeRedisConnection, getLastIntervalReset } from '@/lib/redis';
 
 /**
  * API endpoint to get current ping statistics from GitHub Actions scheduled runs
@@ -16,6 +16,9 @@ export async function GET(request: Request) {
     
     // Get last ping time
     const lastPing = await client.get('ping:last');
+    
+    // Get last interval reset time
+    const lastIntervalReset = await getLastIntervalReset();
     
     // Get ping history - now respects the limit parameter
     const pingHistory = limit === -1 
@@ -79,6 +82,7 @@ export async function GET(request: Request) {
       lastPing: lastPing ? parseInt(lastPing, 10) : null,
       nextEstimatedRun: nextRunEstimate,
       timeUntilNextRun: nextRunEstimate ? nextRunEstimate - now : null,
+      lastIntervalReset: lastIntervalReset,
       githubAction: githubConfig,
       serviceStatuses,
       recentHistory: parsedPingHistory,

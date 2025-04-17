@@ -388,6 +388,13 @@ export async function initializeRedisWithDefaults(): Promise<void> {
       await client.set('config:site', JSON.stringify(config));
       console.log('Initialized Redis with default site config from config.ts');
     }
+    
+    // Initialize last interval reset time if it doesn't exist
+    const lastIntervalReset = await client.get('ping:last-interval-reset');
+    if (!lastIntervalReset) {
+      await client.set('ping:last-interval-reset', Date.now().toString());
+      console.log('Initialized ping interval reset time');
+    }
   } catch (error) {
     console.error('Error initializing Redis with defaults:', error);
     throw error;
@@ -420,5 +427,33 @@ export async function getPingStats() {
       now: Date.now(),
       error: (err as Error).message
     };
+  }
+}
+
+/**
+ * Get the last time interval stats were reset
+ */
+export async function getLastIntervalReset(): Promise<number> {
+  try {
+    const client = await getRedisClient();
+    const lastReset = await client.get('ping:last-interval-reset');
+    return lastReset ? parseInt(lastReset, 10) : 0;
+  } catch (err) {
+    console.error('Error fetching last interval reset:', err);
+    return 0;
+  }
+}
+
+/**
+ * Set the last time interval stats were reset
+ */
+export async function setLastIntervalReset(timestamp: number): Promise<boolean> {
+  try {
+    const client = await getRedisClient();
+    await client.set('ping:last-interval-reset', timestamp.toString());
+    return true;
+  } catch (err) {
+    console.error('Error setting last interval reset:', err);
+    return false;
   }
 } 
