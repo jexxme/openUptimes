@@ -29,9 +29,9 @@ interface TooltipProps {
 const Tooltip = ({ text, children }: TooltipProps) => (
   <div className="group relative inline-block">
     {children}
-    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs rounded p-1 absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-1 w-48 pointer-events-none">
+    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 dark:bg-gray-900 text-white text-xs rounded p-1 absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-1 w-48 pointer-events-none">
       {text}
-      <svg className="absolute text-gray-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255">
+      <svg className="absolute text-gray-800 dark:text-gray-900 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255">
         <polygon className="fill-current" points="0,0 127.5,127.5 255,0" />
       </svg>
     </div>
@@ -317,16 +317,16 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
 
   // Determine logger status
   const getLoggerStatus = () => {
-    if (!pingStats?.lastPing) return { status: 'Unknown', color: 'bg-slate-100 text-slate-500' };
+    if (!pingStats?.lastPing) return { status: 'Unknown', color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' };
     
     const seconds = Math.floor((currentTime - pingStats.lastPing) / 1000);
     
     if (seconds > 90) {
-      return { status: 'Critical', color: 'bg-red-100 text-red-700' };
+      return { status: 'Critical', color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' };
     } else if (seconds > 60) {
-      return { status: 'Warning', color: 'bg-orange-100 text-orange-700' };
+      return { status: 'Warning', color: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400' };
     } else {
-      return { status: 'Healthy', color: 'bg-green-100 text-green-700' };
+      return { status: 'Healthy', color: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' };
     }
   };
 
@@ -370,8 +370,8 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
           </div>
         ) : error ? (
           <div className="h-[120px] flex items-center justify-center flex-col space-y-2">
-            <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
-            <p className="text-sm text-red-500 text-center">{error}</p>
+            <AlertTriangle className="h-8 w-8 text-red-500 dark:text-red-400 mb-2" />
+            <p className="text-sm text-red-500 dark:text-red-400 text-center">{error}</p>
             <Button 
               variant="outline" 
               size="sm" 
@@ -388,35 +388,95 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
               <div>
                 <div className="flex justify-between items-center mb-1 text-xs">
                   <Tooltip text="Last time GitHub Actions triggered a ping">
-                    <span className="text-slate-600">Last GitHub ping:</span>
+                    <span className="text-slate-600 dark:text-slate-400">Last GitHub ping:</span>
                   </Tooltip>
                   <span className={`font-medium ${
-                    secondsSinceLastPing > 90 ? 'text-red-600' : 
-                    secondsSinceLastPing > 60 ? 'text-orange-600' : 
-                    'text-green-600'
+                    secondsSinceLastPing > 90 ? 'text-red-600 dark:text-red-400' : 
+                    secondsSinceLastPing > 60 ? 'text-orange-600 dark:text-orange-400' : 
+                    'text-green-600 dark:text-green-400'
                   }`}>
                     {getLastGitHubActionsPing()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center mb-1 text-xs">
                   <Tooltip text="Expected interval based on GitHub Actions schedule">
-                    <span className="text-slate-600">Expected interval:</span>
+                    <span className="text-slate-600 dark:text-slate-400">Expected interval:</span>
                   </Tooltip>
-                  <span className="font-medium">
+                  <span className="font-medium dark:text-slate-300">
                     {pingStats?.githubAction?.schedule ? 
                       formatCronSchedule(pingStats.githubAction.schedule) : 
                       'Not configured'}
                   </span>
                 </div>
-                <div className="bg-slate-200 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className={`h-full ${
-                      secondsSinceLastPing > 90 ? 'bg-red-500' : 
-                      secondsSinceLastPing > 60 ? 'bg-yellow-500' : 
-                      'bg-green-500'
-                    }`} 
-                    style={{ width: `${Math.min(100, secondsSinceLastPing / (pingStats.intervalSeconds || 300) * 100)}%` }}
-                  ></div>
+
+                {/* Timeline Status Bar */}
+                <div className="mt-3 mb-2">
+                  {/* Time labels */}
+                  <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-1">
+                    <span>Last ping</span>
+                    <span>Expected</span>
+                    <span>Current</span>
+                  </div>
+                  
+                  {/* Timeline bar */}
+                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden">
+                    {/* Elapsed time section */}
+                    <div 
+                      className={`absolute h-full ${
+                        secondsSinceLastPing > pingStats.intervalSeconds ? 
+                          (secondsSinceLastPing > 1.5 * pingStats.intervalSeconds ? 'bg-red-500' : 'bg-yellow-500') : 
+                          'bg-green-500'
+                      }`}
+                      style={{ 
+                        width: `${Math.min(100, (100 * secondsSinceLastPing) / Math.max(secondsSinceLastPing, pingStats.intervalSeconds || 300))}%` 
+                      }}
+                    ></div>
+                    
+                    {/* Expected time marker */}
+                    <Tooltip text={`Expected ping after: ${pingStats.intervalSeconds || 300}s`}>
+                      <div 
+                        className="absolute h-full w-0.5 bg-slate-600 dark:bg-slate-400 z-10"
+                        style={{ 
+                          left: `${Math.min(100, (100 * (pingStats.intervalSeconds || 300)) / Math.max(secondsSinceLastPing, pingStats.intervalSeconds || 300))}%` 
+                        }}
+                      ></div>
+                    </Tooltip>
+                  </div>
+                  
+                  {/* Time values */}
+                  <div className="relative text-[10px] mt-1">
+                    {/* Start time */}
+                    <span className="absolute left-0 text-slate-500 dark:text-slate-400">0s</span>
+                    
+                    {/* Expected time - centered */}
+                    <div className="absolute left-1/2 transform -translate-x-1/2">
+                      <Tooltip text="Expected time interval">
+                        <span className="text-slate-600 dark:text-slate-400 font-medium">
+                          {pingStats.intervalSeconds || 300}s
+                        </span>
+                      </Tooltip>
+                    </div>
+                    
+                    {/* Current time */}
+                    <div className="absolute right-0">
+                      <Tooltip text={secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 
+                        `Overdue by ${secondsSinceLastPing - (pingStats.intervalSeconds || 300)}s` : 
+                        "Time since last ping"}>
+                        <span className={`font-medium ${
+                          secondsSinceLastPing > 1.5 * (pingStats.intervalSeconds || 300) ? 'text-red-600 dark:text-red-400' : 
+                          secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 'text-yellow-600 dark:text-yellow-400' : 
+                          'text-slate-600 dark:text-slate-400'
+                        }`}>
+                          {secondsSinceLastPing}s
+                          {secondsSinceLastPing > (pingStats.intervalSeconds || 300) && 
+                            ` (+${secondsSinceLastPing - (pingStats.intervalSeconds || 300)}s)`}
+                        </span>
+                      </Tooltip>
+                    </div>
+                  </div>
+                  
+                  {/* Add height to account for absolute positioning */}
+                  <div className="h-4"></div>
                 </div>
               </div>
             )}
@@ -426,30 +486,30 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
               {/* Left Column: GitHub + Performance */}
               <div className="space-y-3">
                 {/* GitHub Actions Status */}
-                <div className="bg-slate-50 rounded-md p-2.5">
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <div className={`h-2 w-2 rounded-full mr-1.5 ${pingStats?.githubAction?.enabled ? 'bg-green-500' : 'bg-slate-300'}`}></div>
-                    <h3 className="text-xs font-medium text-slate-700 flex items-center">
-                      <Github className="h-3 w-3 mr-1 text-slate-500" />
+                    <div className={`h-2 w-2 rounded-full mr-1.5 ${pingStats?.githubAction?.enabled ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <h3 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                      <Github className="h-3 w-3 mr-1 text-slate-500 dark:text-slate-400" />
                       GitHub Actions
                     </h3>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
                       <Tooltip text="GitHub Actions workflow status">
-                        <span className="text-slate-600 border-b border-dotted border-slate-300">Status:</span>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Status:</span>
                       </Tooltip>
                       <span className="text-right">
                         {pingStats?.githubAction?.enabled ? 
-                          <span className="text-green-600">Enabled</span> : 
-                          <span className="text-slate-400">Disabled</span>}
+                          <span className="text-green-600 dark:text-green-400">Enabled</span> : 
+                          <span className="text-slate-400 dark:text-slate-500">Disabled</span>}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <Tooltip text="Number of successful ping runs">
-                        <span className="text-slate-600 border-b border-dotted border-slate-300">Success count:</span>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Success count:</span>
                       </Tooltip>
-                      <span className="text-right">
+                      <span className="text-right dark:text-slate-300">
                         {pingStats?.recentHistory ? pingStats.recentHistory.filter((entry: any) => 
                           entry.source === 'github-action').length : '0'}
                       </span>
@@ -458,19 +518,19 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
                 </div>
                 
                 {/* Performance */}
-                <div className="bg-slate-50 rounded-md p-2.5">
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Activity className="h-3 w-3 text-slate-500 mr-1" />
-                    <h4 className="text-xs font-medium text-slate-700">Performance</h4>
+                    <Activity className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
+                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Performance</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
                       <Tooltip text="Average execution time">
-                        <span className="text-slate-600 border-b border-dotted border-slate-300">Execution:</span>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Execution:</span>
                       </Tooltip>
                       <span className={pingStats?.recentHistory?.length > 0 && 
                         Math.round(pingStats.recentHistory.reduce((sum: number, entry: any) => sum + entry.executionTime, 0) / pingStats.recentHistory.length) > 500 ? 
-                        'text-amber-600 font-medium' : ''}>
+                        'text-amber-600 dark:text-amber-400 font-medium' : 'dark:text-slate-300'}>
                         {pingStats?.recentHistory?.length > 0 
                           ? `${Math.round(pingStats.recentHistory.reduce((sum: number, entry: any) => sum + entry.executionTime, 0) / pingStats.recentHistory.length)}ms` 
                           : 'N/A'}
@@ -478,12 +538,12 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
                     </div>
                     <div className="flex justify-between items-center">
                       <Tooltip text="Fastest/slowest execution time">
-                        <span className="text-slate-600 border-b border-dotted border-slate-300">Min/Max:</span>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Min/Max:</span>
                       </Tooltip>
                       <span>
                         {pingStats?.recentHistory?.length > 0 
-                          ? <><span className="text-green-600">{Math.min(...pingStats.recentHistory.map((e: any) => e.executionTime))}</span>/
-                             <span className={Math.max(...pingStats.recentHistory.map((e: any) => e.executionTime)) > 500 ? 'text-amber-600' : ''}>
+                          ? <><span className="text-green-600 dark:text-green-400">{Math.min(...pingStats.recentHistory.map((e: any) => e.executionTime))}</span>/
+                             <span className={Math.max(...pingStats.recentHistory.map((e: any) => e.executionTime)) > 500 ? 'text-amber-600 dark:text-amber-400' : ''}>
                                {Math.max(...pingStats.recentHistory.map((e: any) => e.executionTime))}
                              </span>ms</>
                           : 'N/A'}
@@ -496,21 +556,21 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
               {/* Right Column: Timing */}
               <div className="space-y-3">
                 {/* Timing */}
-                <div className="bg-slate-50 rounded-md p-2.5">
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Calendar className="h-3 w-3 text-slate-500 mr-1" />
-                    <h4 className="text-xs font-medium text-slate-700">Timing</h4>
+                    <Calendar className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
+                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Timing</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
                       <Tooltip text="Wait time until next service check">
-                        <span className="text-slate-600 border-b border-dotted border-slate-300">Next check:</span>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Next check:</span>
                       </Tooltip>
                       <span className="font-medium">{timeUntilNextPing()}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <Tooltip text="Estimated time for the next GitHub Action run">
-                        <span className="text-slate-600 border-b border-dotted border-slate-300">Next run:</span>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Next run:</span>
                       </Tooltip>
                       <span>
                         {formatEstimatedRunTime()}
@@ -520,27 +580,27 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
                 </div>
                 
                 {/* Stats */}
-                <div className="bg-slate-50 rounded-md p-2.5">
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Server className="h-3 w-3 text-slate-500 mr-1" />
-                    <h4 className="text-xs font-medium text-slate-700">Stats</h4>
+                    <Server className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
+                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Stats</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
                       <Tooltip text="Services being monitored">
-                        <span className="text-slate-600 border-b border-dotted border-slate-300">Services:</span>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Services:</span>
                       </Tooltip>
                       <span>{getServiceCount()}</span>
                     </div>
                     {intervalStats && (
                       <div className="flex justify-between items-center">
                         <Tooltip text="Scheduling consistency">
-                          <span className="text-slate-600 border-b border-dotted border-slate-300">Consistency:</span>
+                          <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Consistency:</span>
                         </Tooltip>
                         <span className={
-                          intervalStats.consistency > 90 ? 'text-green-600' : 
-                          intervalStats.consistency > 70 ? 'text-yellow-600' : 
-                          'text-orange-600'
+                          intervalStats.consistency > 90 ? 'text-green-600 dark:text-green-400' : 
+                          intervalStats.consistency > 70 ? 'text-yellow-600 dark:text-yellow-400' : 
+                          'text-orange-600 dark:text-orange-400'
                         }>
                           {intervalStats.consistency}%
                         </span>

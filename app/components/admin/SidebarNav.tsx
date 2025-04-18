@@ -1,10 +1,12 @@
 "use client";
 
-import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug } from "lucide-react";
+import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug, Moon, Sun, Info } from "lucide-react";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useTheme } from "../../context/ThemeContext";
 
 interface SidebarNavProps {
   activeTab: string;
@@ -77,6 +79,8 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
   const [isDev, setIsDev] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const isDarkMode = theme === "dark";
   
   // Detect development environment
   useEffect(() => {
@@ -277,6 +281,38 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
       
       <div className="mt-auto border-t border-sidebar-border/80 p-4 space-y-3 bg-sidebar/95 relative">
         <div className="absolute left-0 top-0 w-full h-[1px] bg-gradient-to-r from-transparent via-sidebar-primary/20 to-transparent"></div>
+        
+        <motion.div 
+          variants={sectionVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex justify-between items-center mb-3"
+        >
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={isDarkMode}
+              onCheckedChange={toggleTheme}
+              className={isDarkMode ? "data-[state=checked]:bg-sidebar-primary/70" : ""}
+              aria-label="Toggle dark mode"
+            />
+            <span className="text-sm text-muted-foreground">
+              {isDarkMode ? (
+                <Sun className="h-4 w-4 text-sidebar-primary/80" />
+              ) : (
+                <Moon className="h-4 w-4 text-muted-foreground/70" />
+              )}
+            </span>
+          </div>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center text-muted-foreground hover:text-foreground group"
+          >
+            <Info className="h-3.5 w-3.5 mr-1.5 group-hover:text-primary transition-colors" />
+            <span className="text-sm">About</span>
+          </Button>
+        </motion.div>
         
         <Link href="/" target="_blank" rel="noopener noreferrer" className="w-full block">
           <Button 

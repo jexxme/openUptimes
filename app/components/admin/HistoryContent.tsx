@@ -449,7 +449,7 @@ export function HistoryContent({
               <CardDescription>Analyze status changes and response times over time</CardDescription>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center px-3 py-1 rounded-md bg-muted/40 border">
+              <div className="flex items-center px-3 py-1 rounded-md bg-muted/40 dark:bg-muted/20 border border-border">
                 <div className="flex flex-col">
                   <Label htmlFor="entries-limit-select" className="text-xs text-muted-foreground mb-1">Display rows</Label>
                   <select 
@@ -526,13 +526,13 @@ export function HistoryContent({
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
             </div>
           ) : error ? (
-            <div className="p-6 text-center text-red-500 mt-6 bg-red-50 rounded-md">
-              <p className="mb-4 font-medium">{error}</p>
+            <div className="p-6 text-center mt-6 bg-red-50 dark:bg-red-950/20 rounded-md border border-red-100 dark:border-red-900/30">
+              <p className="mb-4 font-medium text-red-700 dark:text-red-400">{error}</p>
               <Button onClick={handleTryAgain} variant="secondary">Try Again</Button>
             </div>
           ) : (
             <div className="rounded-lg border overflow-hidden mt-6 shadow-sm">
-              <div className="grid grid-cols-12 bg-muted/50 p-3 text-xs font-medium text-muted-foreground">
+              <div className="grid grid-cols-12 bg-muted/50 dark:bg-muted/20 p-3 text-xs font-medium text-muted-foreground">
                 <SortableColumnHeader columnKey="service" width={2} label="Service" sortConfig={sortConfig} handleSort={handleSort} />
                 <SortableColumnHeader columnKey="status" width={2} label="Status" sortConfig={sortConfig} handleSort={handleSort} />
                 <SortableColumnHeader columnKey="timestamp" width={3} label="Timestamp" sortConfig={sortConfig} handleSort={handleSort} />
@@ -541,7 +541,7 @@ export function HistoryContent({
                 <SortableColumnHeader columnKey="error" width={3} label="Error" sortConfig={sortConfig} handleSort={handleSort} />
               </div>
               
-              <div className="divide-y">
+              <div className="divide-y divide-border">
                 {filteredHistoryItems.length > 0 ? (
                   filteredHistoryItems.map(({ service, item }, index) => (
                     <HistoryTableRow 
@@ -550,11 +550,11 @@ export function HistoryContent({
                       item={item} 
                       index={index} 
                     />
-                  )).filter(Boolean)
+                  ))
                 ) : (
-                  <div className="p-12 text-center text-muted-foreground">
-                    <p className="mb-1 text-sm">No history data available</p>
-                    <p className="text-xs">Try adjusting your filters or selecting a different time range</p>
+                  <div className="p-12 text-center">
+                    <p className="mb-1 text-sm font-medium">No history data available</p>
+                    <p className="text-xs text-muted-foreground">Try adjusting your filters or selecting a different time range</p>
                   </div>
                 )}
               </div>

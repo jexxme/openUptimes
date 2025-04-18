@@ -96,13 +96,24 @@ export function AdvancedTab({
 
   return (
     <>
+      <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 rounded-md mb-6 text-sm text-blue-700 dark:text-blue-400">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4"/>
+          <path d="M12 8h.01"/>
+        </svg>
+        <p>
+          Use the <strong>Preview</strong> button at the top of the page to see how your changes will look before making them live.
+        </p>
+      </div>
+      
       <p className="mb-4 text-sm text-muted-foreground">
         Advanced customization options for your status page
       </p>
       
       <div className="space-y-6">
         {/* Custom CSS Section */}
-        <div className="rounded-lg border bg-card p-6">
+        <div className="rounded-lg border border-border bg-card p-6">
           <h3 className="font-medium mb-3 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
               <path d="m18 16 4-4-4-4"/>
@@ -114,7 +125,7 @@ export function AdvancedTab({
           <p className="text-sm text-muted-foreground mb-4">Enhance the appearance of your status page with custom CSS styles</p>
           
           {/* Example CSS */}
-          <div className="mb-4 p-3 bg-muted/50 rounded-md border">
+          <div className="mb-4 p-3 bg-muted/50 rounded-md border border-border">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium">Example: Change Header Color</h4>
               <Button 
@@ -138,20 +149,20 @@ export function AdvancedTab({
             </pre>
           </div>
           
-          <div className="grid gap-2 max-w-full">
+          <div className="grid gap-2 w-full">
             <div className="relative">
               <textarea
                 value={customCss}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomCss(e.target.value)}
                 placeholder="/* Add your custom CSS here */"
-                className="min-h-[180px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                className="min-h-[180px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
           </div>
         </div>
         
         {/* Custom Header Section */}
-        <div className="rounded-lg border bg-card p-6">
+        <div className="rounded-lg border border-border bg-card p-6">
           <h3 className="font-medium mb-3 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -161,7 +172,7 @@ export function AdvancedTab({
           <p className="text-sm text-muted-foreground mb-4">Add custom HTML to the head section of your status page for analytics, meta tags, or font imports</p>
           
           {/* Example HTML */}
-          <div className="mb-4 p-3 bg-muted/50 rounded-md border">
+          <div className="mb-4 p-3 bg-muted/50 rounded-md border border-border">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium">Example: Custom Font Import</h4>
               <Button 
@@ -184,20 +195,20 @@ export function AdvancedTab({
             </pre>
           </div>
           
-          <div className="grid gap-2 max-w-full">
+          <div className="grid gap-2 w-full">
             <div className="relative">
               <textarea
                 value={customHeader}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomHeader(e.target.value)}
                 placeholder="<!-- Add your custom HTML here -->"
-                className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
           </div>
         </div>
         
         {/* Pre-made Examples Section */}
-        <div className="rounded-lg border bg-card p-6">
+        <div className="rounded-lg border border-border bg-card p-6">
           <h3 className="font-medium mb-3">Pre-made Examples</h3>
           <p className="text-sm text-muted-foreground mb-4">Ready-to-use templates you can easily add to your status page</p>
           
@@ -212,7 +223,7 @@ export function AdvancedTab({
                 {CSS_EXAMPLES.map((example) => (
                   <div 
                     key={example.id} 
-                    className="border rounded-md p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                    className="border border-border rounded-md p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                     onClick={() => setSelectedExample(example)}
                   >
                     <h4 className="font-medium">{example.name}</h4>
@@ -227,7 +238,7 @@ export function AdvancedTab({
                 {HTML_EXAMPLES.map((example) => (
                   <div 
                     key={example.id} 
-                    className="border rounded-md p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                    className="border border-border rounded-md p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                     onClick={() => setSelectedExample(example)}
                   >
                     <h4 className="font-medium">{example.name}</h4>
@@ -239,7 +250,7 @@ export function AdvancedTab({
           </Tabs>
           
           {selectedExample && (
-            <div className="mt-6 border rounded-md p-4">
+            <div className="mt-6 border border-border rounded-md p-4">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-medium">{selectedExample.name}</h4>
                 <div className="flex gap-2">
@@ -262,20 +273,20 @@ export function AdvancedTab({
                   </Button>
                 </div>
               </div>
-              <pre className="text-xs font-mono bg-muted p-3 rounded overflow-x-auto">
+              <pre className="text-xs font-mono bg-muted p-3 rounded overflow-x-auto w-full max-w-full whitespace-pre-wrap break-all">
                 {selectedExample.content}
               </pre>
             </div>
           )}
         </div>
         
-        <div className="flex items-start gap-2 text-xs text-info bg-blue-50 border border-blue-100 rounded-md p-3 mt-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-blue-600">
+        <div className="flex items-start gap-2 text-xs text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30 rounded-md p-3 mt-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 16v-4"/>
             <path d="M12 8h.01"/>
           </svg>
-          <div className="text-blue-700">
+          <div>
             <p>Custom code is applied directly to your status page. Use the preview feature to test your changes before making them live.</p>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Github, Key, Clock, ExternalLink, Copy, Check, ChevronDown, ChevronUp, Info, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -291,9 +292,9 @@ export function GeneralSettings({
   return (
     <div>
       {fetchError && (
-        <div className="p-4 mb-6 bg-red-50 border border-red-100 rounded-md flex items-start">
-          <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-          <p className="text-sm text-red-600">{fetchError}</p>
+        <div className="p-4 mb-6 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-md flex items-start">
+          <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mr-2 mt-0.5" />
+          <p className="text-sm text-red-600 dark:text-red-400">{fetchError}</p>
         </div>
       )}
       
@@ -301,7 +302,7 @@ export function GeneralSettings({
       <Dialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
+            <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
               <AlertTriangle className="h-5 w-5" />
               Regenerate API Key?
             </DialogTitle>
@@ -310,8 +311,8 @@ export function GeneralSettings({
               Any services using the current key will stop working until updated with the new key.
             </DialogDescription>
           </DialogHeader>
-          <div className="bg-amber-50 p-3 rounded-md border border-amber-100 mt-2">
-            <p className="text-sm text-amber-800 flex items-center gap-2">
+          <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-100 dark:border-amber-900/30 mt-2">
+            <p className="text-sm text-amber-800 dark:text-amber-400 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <span>You will need to update the secret in your GitHub repository with the new key.</span>
             </p>
@@ -327,7 +328,7 @@ export function GeneralSettings({
             <Button 
               variant="default" 
               onClick={confirmRegenerateKey}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 dark:text-white"
             >
               Yes, Generate New Key
             </Button>
@@ -349,8 +350,16 @@ export function GeneralSettings({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className={`ml-auto px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help ${isGithubEnabled ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                      <div className={`w-2 h-2 rounded-full ${isGithubEnabled ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+                    <div className={cn(
+                      "ml-auto px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help",
+                      isGithubEnabled 
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" 
+                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                    )}>
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        isGithubEnabled ? "bg-blue-500 dark:bg-blue-400" : "bg-gray-400 dark:bg-gray-500"
+                      )}></div>
                       <span>{isGithubEnabled ? 'Actions Enabled' : 'Actions Disabled'}</span>
                     </div>
                   </TooltipTrigger>
@@ -369,24 +378,26 @@ export function GeneralSettings({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className={`px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help
-                        ${!repository 
-                          ? 'bg-amber-100 text-amber-800' 
+                      <div className={cn(
+                        "px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help",
+                        !repository 
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400" 
                           : isValidatingRepo
-                            ? 'bg-blue-100 text-blue-700'
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
                             : isRepoValid
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-amber-100 text-amber-800'
-                        }`}>
-                        <div className={`w-2 h-2 rounded-full
-                          ${!repository 
-                            ? 'bg-amber-500' 
+                              ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
+                      )}>
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          !repository 
+                            ? "bg-amber-500 dark:bg-amber-400" 
                             : isValidatingRepo
-                              ? 'bg-blue-500'
+                              ? "bg-blue-500 dark:bg-blue-400"
                               : isRepoValid
-                                ? 'bg-green-500'
-                                : 'bg-amber-500'
-                          }`}></div>
+                                ? "bg-green-500 dark:bg-green-400"
+                                : "bg-amber-500 dark:bg-amber-400"
+                        )}></div>
                         <span>
                           {!repository 
                             ? 'Missing' 
@@ -430,8 +441,16 @@ export function GeneralSettings({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className={`ml-auto px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help ${apiKey ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                      <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                    <div className={cn(
+                      "ml-auto px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help",
+                      apiKey 
+                        ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400" 
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
+                    )}>
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        apiKey ? "bg-green-500 dark:bg-green-400" : "bg-amber-500 dark:bg-amber-400"
+                      )}></div>
                       <span>{apiKey ? 'Configured' : 'Not Configured'}</span>
                     </div>
                   </TooltipTrigger>
@@ -445,8 +464,8 @@ export function GeneralSettings({
             </h3>
             
             <div className="space-y-6">
-              <div className="bg-amber-50 p-3 rounded-md border border-amber-100">
-                <p className="text-sm text-amber-800 flex items-center gap-2">
+              <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-100 dark:border-amber-900/30">
+                <p className="text-sm text-amber-800 dark:text-amber-400 flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <span>You must add both <strong>API Key</strong> as a Secret and <strong>APP_URL</strong> as a Variable in your GitHub repository for monitoring to work.</span>
                 </p>
@@ -455,7 +474,7 @@ export function GeneralSettings({
               {/* Required Secrets & Variables Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* API Key Section */}
-                <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <div className="space-y-3 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-medium">
                       <span>1. API Key</span>
@@ -507,7 +526,7 @@ export function GeneralSettings({
                       href={repository ? `https://github.com/${repository}/settings/secrets/actions` : 'https://github.com/settings/secrets'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
                     >
                       Add Secret <ExternalLink className="h-3 w-3" />
                     </a>
@@ -525,7 +544,7 @@ export function GeneralSettings({
                 </div>
 
                 {/* APP_URL Section */}
-                <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <div className="space-y-3 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-medium">
                       <span>2. APP_URL</span>
@@ -537,7 +556,7 @@ export function GeneralSettings({
                       <Input
                         value={window.location.origin}
                         readOnly
-                        className="bg-gray-100"
+                        className="bg-gray-100 dark:bg-gray-800"
                       />
                     </div>
                     <Button 
@@ -559,13 +578,13 @@ export function GeneralSettings({
                   
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">
-                      Add to GitHub as a <strong>Variable</strong> named <code className="bg-gray-200 px-1 py-0.5 rounded">APP_URL</code>
+                      Add to GitHub as a <strong>Variable</strong> named <code className="bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded">APP_URL</code>
                     </p>
                     <a 
                       href={repository ? `https://github.com/${repository}/settings/variables/actions` : 'https://github.com/settings/variables'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
                     >
                       Add Variable <ExternalLink className="h-3 w-3" />
                     </a>
@@ -577,37 +596,37 @@ export function GeneralSettings({
               <CollapsibleInfo title="Setup instructions">
                 <div className="space-y-5">
                   <div className="flex items-start gap-2">
-                    <div className="bg-blue-100 text-blue-800 rounded-full p-1 flex-shrink-0 mt-0.5">
+                    <div className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400 rounded-full p-1 flex-shrink-0 mt-0.5">
                       <span className="h-4 w-4 font-medium flex items-center justify-center text-xs">1</span>
                     </div>
                     <div>
                       <p className="font-medium">Add API Key as a Secret</p>
                       <ol className="list-decimal ml-4 mt-1 space-y-1 text-sm">
-                        <li>Navigate to <span className="text-xs bg-gray-100 px-1 rounded">github.com/{repository || '[your-repo]'}/settings/secrets/actions</span></li>
+                        <li>Navigate to <span className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">github.com/{repository || '[your-repo]'}/settings/secrets/actions</span></li>
                         <li>Click <strong>New repository secret</strong></li>
-                        <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">{secretName}</code> as the name</li>
+                        <li>Enter <code className="bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded">{secretName}</code> as the name</li>
                         <li>Paste your API key as the value</li>
                       </ol>
                     </div>
                   </div>
                   
                   <div className="flex items-start gap-2">
-                    <div className="bg-blue-100 text-blue-800 rounded-full p-1 flex-shrink-0 mt-0.5">
+                    <div className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400 rounded-full p-1 flex-shrink-0 mt-0.5">
                       <span className="h-4 w-4 font-medium flex items-center justify-center text-xs">2</span>
                     </div>
                     <div>
                       <p className="font-medium">Add APP_URL as a Variable</p>
                       <ol className="list-decimal ml-4 mt-1 space-y-1 text-sm">
-                        <li>Navigate to <span className="text-xs bg-gray-100 px-1 rounded">github.com/{repository || '[your-repo]'}/settings/variables/actions</span></li>
+                        <li>Navigate to <span className="text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">github.com/{repository || '[your-repo]'}/settings/variables/actions</span></li>
                         <li>Click <strong>New repository variable</strong></li>
-                        <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">APP_URL</code> as the name</li>
-                        <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">{window.location.origin}</code> as the value</li>
+                        <li>Enter <code className="bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded">APP_URL</code> as the name</li>
+                        <li>Enter <code className="bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded">{window.location.origin}</code> as the value</li>
                       </ol>
                     </div>
                   </div>
                   
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium">Important:</p>
                       <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
@@ -631,7 +650,7 @@ export function GeneralSettings({
             </h3>
             
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Set how frequently GitHub Actions will check your services. GitHub enforces a minimum interval of 5 minutes.
               </p>
               
@@ -644,11 +663,12 @@ export function GeneralSettings({
                       key={option.value}
                       type="button"
                       onClick={() => setSchedule(option.value)}
-                      className={`px-3 py-2 text-xs font-medium rounded-md transition-colors text-left ${
+                      className={cn(
+                        "px-3 py-2 text-xs font-medium rounded-md transition-colors text-left",
                         schedule === option.value
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                      }`}
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300"
+                      )}
                     >
                       {option.label}
                     </button>
@@ -665,11 +685,11 @@ export function GeneralSettings({
                     />
                     <div className="absolute right-0 top-0 h-full px-3 flex items-center">
                       {isSchedulePreset ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                        <span className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400 px-2 py-0.5 rounded text-xs">
                           {formatCronSchedule(schedule)}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-500">custom</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">custom</span>
                       )}
                     </div>
                   </div>
@@ -681,20 +701,20 @@ export function GeneralSettings({
                 >
                   <div className="space-y-3">
                     <div className="flex items-start gap-2">
-                      <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <Info className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-medium">Common cron patterns:</p>
                         <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
-                          <div><code className="bg-gray-200 px-1 rounded">*/5 * * * *</code> = Every 5 minutes</div>
-                          <div><code className="bg-gray-200 px-1 rounded">0 */1 * * *</code> = Every hour</div>
-                          <div><code className="bg-gray-200 px-1 rounded">0 0 * * *</code> = Once daily (midnight)</div>
-                          <div><code className="bg-gray-200 px-1 rounded">0 0 * * 1-5</code> = Weekdays only</div>
+                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">*/5 * * * *</code> = Every 5 minutes</div>
+                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">0 */1 * * *</code> = Every hour</div>
+                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">0 0 * * *</code> = Once daily (midnight)</div>
+                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">0 0 * * 1-5</code> = Weekdays only</div>
                         </div>
                       </div>
                     </div>
                     
                     <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-medium">Important Note About Scheduling:</p>
                         <p className="mt-1">This schedule setting is only used for configuration validation and logging. The actual ping frequency is determined by when GitHub Actions runs your workflow.</p>
@@ -707,7 +727,12 @@ export function GeneralSettings({
                         href={repository ? `https://github.com/${repository}/edit/main/.github/workflows/ping.yml` : 'https://github.com'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded ${repository ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}
+                        className={cn(
+                          "inline-flex items-center gap-1 text-xs px-2 py-1 rounded",
+                          repository 
+                            ? "bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-900/40" 
+                            : "bg-gray-100 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400"
+                        )}
                         onClick={e => !repository && e.preventDefault()}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -719,7 +744,7 @@ export function GeneralSettings({
                         href="https://crontab.guru" 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-900/40"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -741,7 +766,7 @@ export function GeneralSettings({
             </div>
             <Link 
               href="/debug/ping/github" 
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
             >
               <span>Advanced GitHub Setup</span>
               <ExternalLink className="h-4 w-4" />

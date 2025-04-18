@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Lock, RefreshCw, AlertCircle, Database, Copy } from "lucide-react";
 import { Label } from "../../ui/label";
+import { cn } from "@/lib/utils";
 import { 
   Card,
   CardContent,
@@ -258,9 +259,9 @@ export function SecuritySettings() {
         </CardHeader>
         <CardContent>
           {passwordError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-md flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-600">{passwordError}</p>
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-md flex items-start">
+              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p>
             </div>
           )}
           
@@ -278,7 +279,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showCurrentPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -302,7 +303,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showNewPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -329,7 +330,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -375,7 +376,7 @@ export function SecuritySettings() {
           <div className="flex justify-end">
             <Button 
               variant="outline"
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
               onClick={() => setIsResetDialogOpen(true)}
             >
               Reset Password
@@ -401,7 +402,7 @@ export function SecuritySettings() {
             Authenticate with your admin password to view the full URL.
           </p>
           
-          <div className="p-3 bg-slate-50 rounded-md mb-4">
+          <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-md mb-4">
             <div className="flex items-center">
               <div className="flex-1 font-mono text-sm overflow-hidden">
                 redis://****:****@****.***:****
@@ -436,9 +437,9 @@ export function SecuritySettings() {
           </DialogHeader>
           
           {resetError && (
-            <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-600">{resetError}</p>
+            <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-md flex items-start">
+              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{resetError}</p>
             </div>
           )}
           
@@ -470,7 +471,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(!showResetPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showResetPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -497,7 +498,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmResetPassword(!showConfirmResetPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showConfirmResetPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -549,9 +550,9 @@ export function SecuritySettings() {
           </DialogHeader>
           
           {redisUrlError && (
-            <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-600">{redisUrlError}</p>
+            <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-md flex items-start">
+              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{redisUrlError}</p>
             </div>
           )}
           
@@ -570,7 +571,7 @@ export function SecuritySettings() {
                   <button
                     type="button"
                     onClick={() => setShowVerificationPassword(!showVerificationPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                   >
                     {showVerificationPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -600,19 +601,19 @@ export function SecuritySettings() {
               <div className="space-y-2">
                 <Label htmlFor="redis-url-display">Redis URL</Label>
                 <div className="relative">
-                  <div className="p-3 bg-slate-50 rounded-md font-mono text-sm break-all">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-md font-mono text-sm break-all">
                     {savedRedisUrl}
                   </div>
                   <button
                     type="button"
                     onClick={copyRedisUrlToClipboard}
-                    className="absolute top-2 right-2 p-1 rounded-md bg-white border border-gray-200 hover:bg-gray-50"
+                    className="absolute top-2 right-2 p-1 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                     title="Copy to clipboard"
                   >
-                    <Copy className="h-4 w-4 text-gray-500" />
+                    <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   </button>
                 </div>
-                <p className="text-xs text-red-500 font-medium">
+                <p className="text-xs text-red-500 dark:text-red-400 font-medium">
                   Keep this information secure and never share it with unauthorized individuals.
                 </p>
               </div>

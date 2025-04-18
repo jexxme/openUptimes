@@ -101,12 +101,12 @@ export function AdminServices({
   const renderErrorMessage = () => {
     if (servicesConfigError) {
       return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md mt-6">
-          <h3 className="text-red-700 font-medium mb-1">Error Loading Services Configuration</h3>
-          <p className="text-sm text-red-600 mb-2">{servicesConfigError}</p>
+        <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-md mt-6">
+          <h3 className="text-red-700 dark:text-red-400 font-medium mb-1">Error Loading Services Configuration</h3>
+          <p className="text-sm text-red-600 dark:text-red-400 mb-2">{servicesConfigError}</p>
           <button 
             onClick={() => refreshServicesConfig()} 
-            className="px-3 py-1 bg-white border border-red-300 text-red-700 rounded-md text-sm hover:bg-red-50"
+            className="px-3 py-1 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-900/50 text-red-700 dark:text-red-400 rounded-md text-sm hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors"
           >
             Try Again
           </button>
@@ -116,12 +116,12 @@ export function AdminServices({
     
     if (statusError) {
       return (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-md mt-6">
-          <h3 className="text-amber-700 font-medium mb-1">Error Loading Services Status</h3>
-          <p className="text-sm text-amber-600 mb-2">{statusError}</p>
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md mt-6">
+          <h3 className="text-amber-700 dark:text-amber-400 font-medium mb-1">Error Loading Services Status</h3>
+          <p className="text-sm text-amber-600 dark:text-amber-500 mb-2">{statusError}</p>
           <button 
             onClick={refresh} 
-            className="px-3 py-1 bg-white border border-amber-300 text-amber-700 rounded-md text-sm hover:bg-amber-50"
+            className="px-3 py-1 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 rounded-md text-sm hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors"
           >
             Try Again
           </button>
@@ -143,17 +143,17 @@ export function AdminServices({
             </div>
             <div className="flex items-center gap-3">
               <div className="flex flex-wrap gap-3">
-                <div className="flex items-center px-3 py-1 rounded-md bg-muted/40 border">
-                  <span className="text-sm font-medium">{displayServicesConfig?.length || 0}</span>
-                  <span className="text-sm ml-1.5">Total</span>
+                <div className="flex items-center px-3 py-1 rounded-md bg-muted/40 dark:bg-muted/20 border dark:border-slate-700">
+                  <span className="text-sm font-medium dark:text-slate-300">{displayServicesConfig?.length || 0}</span>
+                  <span className="text-sm ml-1.5 dark:text-slate-400">Total</span>
                 </div>
-                <div className="flex items-center px-3 py-1 rounded-md bg-emerald-50 border border-emerald-200">
-                  <span className="text-sm font-medium text-emerald-700">{displayServices?.filter((s: any) => s?.currentStatus?.status === "up")?.length || 0}</span>
-                  <span className="text-sm text-emerald-700 ml-1.5">Online</span>
+                <div className="flex items-center px-3 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50">
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{displayServices?.filter((s: any) => s?.currentStatus?.status === "up")?.length || 0}</span>
+                  <span className="text-sm text-emerald-700 dark:text-emerald-400 ml-1.5">Online</span>
                 </div>
-                <div className="flex items-center px-3 py-1 rounded-md bg-red-50 border border-red-200">
-                  <span className="text-sm font-medium text-red-700">{displayServices?.filter((s: any) => s?.currentStatus?.status === "down")?.length || 0}</span>
-                  <span className="text-sm text-red-700 ml-1.5">Offline</span>
+                <div className="flex items-center px-3 py-1 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50">
+                  <span className="text-sm font-medium text-red-700 dark:text-red-400">{displayServices?.filter((s: any) => s?.currentStatus?.status === "down")?.length || 0}</span>
+                  <span className="text-sm text-red-700 dark:text-red-400 ml-1.5">Offline</span>
                 </div>
               </div>
             </div>

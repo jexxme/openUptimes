@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import GitHubActionsForm from '../../../components/github/GitHubActionsForm';
 import ManualActions from '../../../components/github/ManualActions';
 import ConfigSummary from '../../../components/github/ConfigSummary';
+import { useTheme } from '../../../context/ThemeContext';
 
 export default function GitHubActionsPage() {
   const [siteSettings, setSiteSettings] = useState<any>(null);
@@ -12,6 +13,23 @@ export default function GitHubActionsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const router = useRouter();
+  const { setTheme } = useTheme();
+
+  // Force light mode using theme context
+  useEffect(() => {
+    // Store the original theme
+    const originalTheme = localStorage.getItem("openuptimes-theme");
+    
+    // Force light theme
+    setTheme("light");
+    
+    // Restore original theme on unmount
+    return () => {
+      if (originalTheme) {
+        setTheme(originalTheme as "light" | "dark");
+      }
+    };
+  }, [setTheme]);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toISOString();

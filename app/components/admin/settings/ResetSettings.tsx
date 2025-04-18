@@ -5,6 +5,7 @@ import { useToast } from "../../ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Trash2, AlertTriangle, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { 
   Card,
   CardContent,
@@ -133,9 +134,9 @@ export function ResetSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-start">
-            <AlertTriangle className="h-5 w-5 text-red-600 mr-2 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-red-700">
+          <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/30 rounded-md flex items-start">
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-red-700 dark:text-red-400">
               <p className="font-medium mb-1">Warning: This action cannot be undone</p>
               <p>This will erase all data from Redis, including:</p>
               <ul className="list-disc pl-5 mt-1 space-y-1">
@@ -169,17 +170,17 @@ export function ResetSettings() {
           </DialogHeader>
           
           {factoryResetError && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-start">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-600 font-medium">{factoryResetError}</p>
+            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/30 rounded-md flex items-start">
+              <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mr-3 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400 font-medium">{factoryResetError}</p>
             </div>
           )}
           
           <div className="space-y-4 p-1">
             {!isPasswordVerified ? (
               <>
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
-                  <p className="text-sm text-amber-800 font-medium">
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/30 rounded-md">
+                  <p className="text-sm text-amber-800 dark:text-amber-400 font-medium">
                     To confirm, type "reset" in the field below:
                   </p>
                 </div>
@@ -196,7 +197,7 @@ export function ResetSettings() {
                 </div>
                 
                 {resetConfirmText === "reset" && (
-                  <div className="space-y-2 pt-2 border-t">
+                  <div className="space-y-2 pt-2 border-t dark:border-gray-700">
                     <div className="text-sm font-medium mb-1.5">Enter your admin password to proceed. <br /> (You may reset your password in the Security Settings):</div>
                     <Input
                       type="password"
@@ -216,9 +217,9 @@ export function ResetSettings() {
                 )}
               </>
             ) : (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-800 font-medium flex items-center">
-                  <span className="bg-green-100 text-green-700 p-1 rounded-full mr-2">✓</span>
+              <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900/30 rounded-md">
+                <p className="text-sm text-green-800 dark:text-green-400 font-medium flex items-center">
+                  <span className="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 p-1 rounded-full mr-2">✓</span>
                   Password verified. You can now proceed with the factory reset.
                 </p>
               </div>
@@ -231,7 +232,7 @@ export function ResetSettings() {
               size="lg"
               onClick={handleDialogClose.bind(null, false)}
               disabled={isResettingApplication}
-              className="h-10"
+              className={cn("h-10")}
             >
               Cancel
             </Button>
@@ -240,7 +241,7 @@ export function ResetSettings() {
               size="lg"
               onClick={handleFactoryReset}
               disabled={!isPasswordVerified || isResettingApplication}
-              className="h-10"
+              className={cn("h-10")}
             >
               {isResettingApplication ? (
                 <>

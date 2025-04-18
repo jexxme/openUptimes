@@ -620,19 +620,27 @@ export function StatusPageContent({
             <div className="flex items-center gap-2">
               <CardTitle>Status Page</CardTitle>
               {hasUnsavedChanges() && (
-                <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full font-medium">
+                <span className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-2 py-1 rounded-full font-medium border border-amber-100 dark:border-amber-900/30">
                   Unsaved Changes
                 </span>
               )}
             </div>
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusPageEnabled ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${statusPageEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+              statusPageEnabled 
+                ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900/30' 
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+            }`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${
+                statusPageEnabled 
+                  ? 'bg-green-500 dark:bg-green-400 animate-pulse' 
+                  : 'bg-gray-400 dark:bg-gray-500'
+              }`}></div>
               {statusPageEnabled ? 'Active' : 'Disabled'}
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 border-b pb-4 gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 border-b border-border pb-4 gap-4">
             <div className="flex items-center space-x-3">
               <Switch 
                 id="status-page-enabled" 
@@ -669,44 +677,44 @@ export function StatusPageContent({
           </div>
           
           <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="general" className="flex items-center gap-2">
+            <TabsList className="mb-6 bg-muted/50 dark:bg-muted/20">
+              <TabsTrigger value="general" className="flex items-center gap-2 data-[state=active]:bg-background">
                 <Globe className="h-4 w-4" />
                 <span>General</span>
                 {hasGeneralTabChanges() && (
                   <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="services" className="flex items-center gap-2">
+              <TabsTrigger value="services" className="flex items-center gap-2 data-[state=active]:bg-background">
                 <Layout className="h-4 w-4" />
                 <span>Services</span>
                 {hasServicesTabChanges() && (
                   <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="appearance" className="flex items-center gap-2">
+              <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-background">
                 <Palette className="h-4 w-4" />
                 <span>Appearance</span>
                 {hasAppearanceTabChanges() && (
                   <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="advanced" className="flex items-center gap-2">
+              <TabsTrigger value="advanced" className="flex items-center gap-2 data-[state=active]:bg-background">
                 <Sliders className="h-4 w-4" />
                 <span>Advanced</span>
                 {hasAdvancedTabChanges() && (
                   <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
                   </span>
                 )}
               </TabsTrigger>
