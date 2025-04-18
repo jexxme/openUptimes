@@ -63,7 +63,6 @@ export function ServicesTab({
                       id={`service-${service.name}`}
                       checked={service.visible}
                       onCheckedChange={() => onToggleVisibility(service.name)}
-                      disabled={statusPageEnabledUI !== true}
                     />
                   </div>
                 </div>

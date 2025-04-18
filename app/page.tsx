@@ -40,13 +40,51 @@ const StatusDot = ({ status }: { status: string }) => {
   );
 };
 
+// Custom hook to blend default appearance settings with preview settings
+function usePreviewAwareAppearance(isPreview: boolean, previewSettings: any) {
+  const { settings: savedAppearanceConfig, loading: appearanceLoading } = useAppearanceSettings();
+  const [blendedSettings, setBlendedSettings] = useState(savedAppearanceConfig);
+  
+  useEffect(() => {
+    if (isPreview && previewSettings?.appearance) {
+      setBlendedSettings({
+        ...savedAppearanceConfig,
+        ...previewSettings.appearance
+      });
+    } else {
+      setBlendedSettings(savedAppearanceConfig);
+    }
+  }, [isPreview, previewSettings, savedAppearanceConfig]);
+  
+  return { settings: blendedSettings, loading: appearanceLoading };
+}
+
 // Client component that uses search params
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isPreview = searchParams?.get('preview') === 'true';
   const forceShow = searchParams?.get('forceShow') === 'true';
+  const respectVisibility = searchParams?.get('respectVisibility') === 'true';
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Get preview settings if present
+  const previewSettingsParam = searchParams?.get('settings');
+  const [previewSettings, setPreviewSettings] = useState<any>(null);
+  
+  // Parse preview settings on mount
+  useEffect(() => {
+    if (isPreview && previewSettingsParam) {
+      try {
+        const decoded = decodeURIComponent(previewSettingsParam);
+        const parsed = JSON.parse(decoded);
+        setPreviewSettings(parsed);
+        console.log('Using preview settings:', parsed);
+      } catch (error) {
+        console.error('Error parsing preview settings:', error);
+      }
+    }
+  }, [isPreview, previewSettingsParam]);
   
   const [siteConfig, setSiteConfig] = useState<any>({
     statusPage: {
@@ -56,15 +94,43 @@ function HomeContent() {
     }
   });
   
-  // Use the shared hook for appearance settings
-  const { settings: appearanceConfig } = useAppearanceSettings();
+  // Use custom hook for appearance settings that's preview-aware
+  const { settings: appearanceConfig, loading: appearanceLoading } = usePreviewAwareAppearance(isPreview, previewSettings);
+  
+  // Override site config with preview settings if available
+  useEffect(() => {
+    if (isPreview && previewSettings) {
+      setSiteConfig((prevConfig: any) => ({
+        ...prevConfig,
+        statusPage: {
+          ...prevConfig.statusPage,
+          enabled: previewSettings.enabled ?? prevConfig.statusPage.enabled,
+          title: previewSettings.title || prevConfig.statusPage.title,
+          description: previewSettings.description || prevConfig.statusPage.description
+        }
+      }));
+    }
+  }, [isPreview, previewSettings]);
+  
+  // Convert appearance historyDays to timeRange format needed by useHistoricalData
+  // Use preview settings if available
+  const historyTimeRange = `${(isPreview && previewSettings?.appearance?.historyDays) || 
+    appearanceConfig?.historyDays || 90}d`;
+  
+  // Debug the history time range to verify it's being set correctly
+  useEffect(() => {
+    console.log('Using history time range:', historyTimeRange, 'days:', appearanceConfig?.historyDays);
+  }, [historyTimeRange, appearanceConfig?.historyDays]);
   
   const [serviceVisibility, setServiceVisibility] = useState<Record<string, boolean>>({});
-  const { data: services, loading: historyLoading, error: historyError } = useHistoricalData('90d');
+  const { data: services, loading: historyLoading, error: historyError } = useHistoricalData(historyTimeRange);
   const { setupComplete, loading: setupLoading, error: setupError } = useSetupStatus();
   
   // Fetch site settings
   useEffect(() => {
+    // Skip if using preview settings
+    if (isPreview && previewSettings) return;
+    
     let isMounted = true;
     
     async function fetchSiteConfig() {
@@ -84,12 +150,23 @@ function HomeContent() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isPreview, previewSettings]);
   
   // No need for fetchAppearanceSettings - using the hook instead
   
   // Fetch status page settings
   useEffect(() => {
+    // If preview settings with services are available, use those instead
+    if (isPreview && previewSettings && previewSettings.services) {
+      // Create a map of service name to visibility
+      const visibilityMap = (previewSettings.services || []).reduce((acc: Record<string, boolean>, service: any) => {
+        acc[service.name] = service.visible;
+        return acc;
+      }, {});
+      setServiceVisibility(visibilityMap);
+      return;
+    }
+    
     let isMounted = true;
     
     async function fetchStatusPageSettings() {
@@ -116,7 +193,7 @@ function HomeContent() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isPreview, previewSettings]);
   
   // Redirect to setup wizard if not complete
   useEffect(() => {
@@ -126,10 +203,10 @@ function HomeContent() {
   }, [setupComplete, setupLoading, router]);
   
   // Filter services based on visibility settings - consider services visible only if explicitly set to true
-  // If in preview mode with forceShow, show all services regardless of visibility
+  // In preview mode, respect visibility setting if respectVisibility=true is set
   const visibleServices = services.filter(service => {
-    if (isPreview && forceShow) {
-      return true; // Show all in preview mode
+    if (isPreview && forceShow && !respectVisibility) {
+      return true; // Show all in preview mode unless respectVisibility is set
     }
     // Only show services explicitly marked as visible
     return serviceVisibility[service.name] === true;
@@ -218,14 +295,30 @@ function HomeContent() {
   }
   
   // If in preview mode with forceShow, show a preview banner
-  const showPreviewBanner = isPreview && forceShow && siteConfig?.statusPage?.enabled === false;
+  const showPreviewBanner = isPreview && forceShow;
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
       {showPreviewBanner && (
-        <div className="bg-amber-50 border-b border-amber-100 py-2 px-4 text-center text-amber-800 text-sm">
-          <span className="font-medium">Preview Mode</span> — This is a preview of how your status page will look when enabled. 
-          It is currently disabled for public viewing.
+        <div className="bg-amber-50 border-b border-amber-100 py-3 px-4 text-center text-amber-800 text-sm">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <span className="font-medium text-base">Preview Mode</span>
+            {previewSettings && (
+              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
+                Unsaved Changes
+              </span>
+            )}
+          </div>
+          <p>
+            This is a preview of how your status page will look.
+            {siteConfig?.statusPage?.enabled === false && " It is currently disabled for public viewing."}
+            {previewSettings && " Changes you've made are reflected here but not saved yet."}
+          </p>
+          {!siteConfig?.statusPage?.enabled && (
+            <div className="mt-1 text-xs">
+              <span className="font-medium">Note:</span> You can edit all settings and preview them here even if the status page is disabled.
+            </div>
+          )}
         </div>
       )}
       
@@ -317,6 +410,7 @@ function HomeContent() {
                     url={service.url}
                     showServiceUrls={appearanceConfig?.showServiceUrls !== false}
                     showServiceDescription={appearanceConfig?.showServiceDescription !== false}
+                    historyDays={appearanceConfig?.historyDays || 90}
                   />
                 ))
               ) : (

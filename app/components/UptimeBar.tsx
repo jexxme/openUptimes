@@ -18,6 +18,9 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
   // Sort history by timestamp (oldest first)
   const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
   
+  // Calculate the number of days in the history period
+  const daysDuration = Math.round((endTime - startTime) / (24 * 60 * 60 * 1000));
+  
   // Format date for tooltip
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString(undefined, {
@@ -103,10 +106,19 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
     return 'unknown';
   };
   
-  // Generate a fixed number of bars (90) for the 90-day timeline
+  // Calculate number of bars to display based on the time range
+  // Limit to a reasonable number for UI
+  const getOptimalBarCount = () => {
+    // For shorter periods, show more detailed view
+    if (daysDuration <= 14) return daysDuration; // 1:1 mapping for short periods
+    if (daysDuration <= 30) return 30; // For ~month, keep about 1 bar per day
+    if (daysDuration <= 90) return 60; // For 3 months, about 2 days per bar
+    return 90; // Cap at 90 bars for longer periods
+  };
+  
+  // Generate a dynamic number of bars based on the date range
   const generateBars = () => {
-    const bars = [];
-    const totalBars = 90;
+    const totalBars = getOptimalBarCount();
     const barWidth = 3;
     const barSpacing = 2;
     const totalWidth = totalBars * (barWidth + barSpacing) - barSpacing;
@@ -114,14 +126,22 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
     // Calculate duration between start and end
     const timeRangeDuration = endTime - startTime;
     
-    // Calculate the timestamp for a given day index
-    const getTimestampForDay = (dayIndex: number) => {
-      return startTime + (dayIndex * (timeRangeDuration / totalBars));
+    // Calculate the timestamp for a given bar index
+    const getTimestampForBar = (barIndex: number) => {
+      return startTime + (barIndex * (timeRangeDuration / totalBars));
+    };
+    
+    // Calculate the day index for a given bar
+    const getDayIndexForBar = (barIndex: number) => {
+      const timestamp = getTimestampForBar(barIndex);
+      return Math.floor((timestamp - startTime) / (24 * 60 * 60 * 1000));
     };
     
     // Generate the SVG rectangles
+    const bars = [];
     for (let i = 0; i < totalBars; i++) {
-      const status = getDayStatus(i);
+      const dayIndex = getDayIndexForBar(i);
+      const status = getDayStatus(dayIndex);
       
       // Determine fill color based on status
       let fillColor = "#6b7280"; // Default gray for unknown
@@ -149,7 +169,7 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
           className="uptime-day"
           data-html="true"
           tabIndex={i === 0 ? 0 : -1}
-          aria-label={`Day ${i+1}: ${status}`}
+          aria-label={`Day ${dayIndex+1}: ${status}`}
           onMouseEnter={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             setTooltipPosition({ 
@@ -163,10 +183,10 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
       );
     }
     
-    return { bars, totalWidth, getTimestampForDay };
+    return { bars, totalWidth, getTimestampForBar };
   };
   
-  const { bars, totalWidth, getTimestampForDay } = generateBars();
+  const { bars, totalWidth, getTimestampForBar } = generateBars();
   
   return (
     <div className="w-full">
@@ -184,15 +204,15 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
         <UptimeBarTooltip
           visible={hoveredBar !== null}
           position={tooltipPosition}
-          date={hoveredBar !== null ? formatDate(getTimestampForDay(hoveredBar)) : ''}
-          status={hoveredBar !== null ? getDayStatus(hoveredBar) : ''}
-          statusColor={hoveredBar !== null ? getStatusColor(getDayStatus(hoveredBar)) : ''}
-          statusLabel={hoveredBar !== null ? getStatusLabel(getDayStatus(hoveredBar)) : ''}
-          uptimePercentage={hoveredBar !== null ? getDailyUptimePercentage(hoveredBar) : null}
+          date={hoveredBar !== null ? formatDate(getTimestampForBar(hoveredBar)) : ''}
+          status={hoveredBar !== null ? getDayStatus(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000))) : ''}
+          statusColor={hoveredBar !== null ? getStatusColor(getDayStatus(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000)))) : ''}
+          statusLabel={hoveredBar !== null ? getStatusLabel(getDayStatus(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000)))) : ''}
+          uptimePercentage={hoveredBar !== null ? getDailyUptimePercentage(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000))) : null}
         />
       </div>
       <div className="flex justify-between text-xs text-gray-500 mt-2.5 px-1">
-        <div className="text-xs font-normal text-gray-500">90 days ago</div>
+        <div className="text-xs font-normal text-gray-500">{daysDuration} days ago</div>
         <div className="text-xs font-medium text-gray-700">{uptimePercentage.toFixed(2)}% uptime</div>
         <div className="text-xs font-normal text-gray-500">Today</div>
       </div>

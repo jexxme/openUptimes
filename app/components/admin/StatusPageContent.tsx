@@ -31,12 +31,14 @@ interface StatusPageContentProps {
   activeSection?: string;
   preloadedStatusPageData?: any;
   preloadedAppearanceData?: any;
+  setActiveTab?: (tab: string) => void;
 }
 
 export function StatusPageContent({ 
   activeSection = "general",
   preloadedStatusPageData,
-  preloadedAppearanceData
+  preloadedAppearanceData,
+  setActiveTab
 }: StatusPageContentProps) {
   const { toast } = useToast();
   
@@ -74,6 +76,9 @@ export function StatusPageContent({
   );
   const [showServiceDescription, setShowServiceDescription] = useState(
     preloadedAppearanceData?.showServiceDescription !== false
+  );
+  const [historyDays, setHistoryDays] = useState(
+    preloadedAppearanceData?.historyDays || 90
   );
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
   const [isLoadingAppearance, setIsLoadingAppearance] = useState(false);
@@ -187,6 +192,7 @@ export function StatusPageContent({
         setLogoUrl(data.logoUrl || "");
         setShowServiceUrls(data.showServiceUrls !== false);
         setShowServiceDescription(data.showServiceDescription !== false);
+        setHistoryDays(data.historyDays || 90);
         setCustomCss(data.customCSS || ""); 
         setCustomHeader(data.customHeader || ""); 
       } catch (err) {
@@ -277,6 +283,7 @@ export function StatusPageContent({
         logoUrl,
         showServiceUrls,
         showServiceDescription,
+        historyDays,
         // Preserve any existing custom CSS to prevent it from being removed
         customCSS: customCss
       };
@@ -371,6 +378,168 @@ export function StatusPageContent({
     setPreviewDialogOpen(true);
   };
 
+  // Collect all unsaved settings for preview
+  const unsavedSettings = {
+    statusPageEnabledUI,
+    statusPageTitle,
+    statusPageDescription,
+    serviceVisibility,
+    appearanceSettings: {
+      logoUrl,
+      showServiceUrls,
+      showServiceDescription,
+      historyDays,
+      customCSS: customCss,
+      customHeader
+    }
+  };
+  
+  // Check if there are any unsaved changes
+  const hasUnsavedChanges = () => {
+    return hasGeneralTabChanges() || hasServicesTabChanges() || hasAppearanceTabChanges() || hasAdvancedTabChanges();
+  };
+
+  // Check for changes in the General tab
+  const hasGeneralTabChanges = () => {
+    // Check statusPage toggle
+    if (statusPageEnabled !== statusPageEnabledUI) {
+      return true;
+    }
+    
+    // Initial settings from server
+    const originalTitle = preloadedStatusPageData?.settings?.title || "Service Status";
+    const originalDescription = preloadedStatusPageData?.settings?.description || "Current status of our services";
+    
+    // Check for title and description changes
+    if (statusPageTitle !== originalTitle || statusPageDescription !== originalDescription) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Check for changes in the Services tab
+  const hasServicesTabChanges = () => {
+    // Check for service visibility changes
+    const originalServices = preloadedStatusPageData?.services || [];
+    if (serviceVisibility.length !== originalServices.length) {
+      return true;
+    }
+    
+    // Check each service visibility setting
+    for (let i = 0; i < serviceVisibility.length; i++) {
+      const currentService = serviceVisibility[i];
+      const originalService = originalServices.find((s: {name: string, visible: boolean}) => s.name === currentService.name);
+      
+      if (!originalService || originalService.visible !== currentService.visible) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Check for changes in the Appearance tab
+  const hasAppearanceTabChanges = () => {
+    const originalLogoUrl = preloadedAppearanceData?.logoUrl || "";
+    const originalShowServiceUrls = preloadedAppearanceData?.showServiceUrls !== false;
+    const originalShowServiceDescription = preloadedAppearanceData?.showServiceDescription !== false;
+    const originalHistoryDays = preloadedAppearanceData?.historyDays || 90;
+    
+    if (logoUrl !== originalLogoUrl || 
+        showServiceUrls !== originalShowServiceUrls || 
+        showServiceDescription !== originalShowServiceDescription || 
+        historyDays !== originalHistoryDays) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Check for changes in the Advanced tab
+  const hasAdvancedTabChanges = () => {
+    const originalCustomCss = preloadedAppearanceData?.customCSS || "";
+    const originalCustomHeader = preloadedAppearanceData?.customHeader || "";
+    
+    if (customCss !== originalCustomCss || customHeader !== originalCustomHeader) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Setup beforeunload event to prompt user before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        // Standard way to show a confirmation dialog before page unload
+        e.preventDefault();
+        const message = "You have unsaved changes. Are you sure you want to leave?";
+        e.returnValue = message; // Required for Chrome
+        return message; // Required for other browsers
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [statusPageEnabledUI, statusPageTitle, statusPageDescription, serviceVisibility, 
+      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader]);
+
+  // Modify page title to indicate unsaved changes
+  useEffect(() => {
+    const hasChanges = hasUnsavedChanges();
+    const originalTitle = document.title;
+    
+    if (hasChanges) {
+      document.title = "* " + originalTitle;
+    }
+    
+    return () => {
+      document.title = originalTitle;
+    };
+  }, [statusPageEnabledUI, statusPageTitle, statusPageDescription, serviceVisibility, 
+      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader]);
+
+  // Function to show a warning when user tries to navigate away with unsaved changes
+  const handleNavigation = () => {
+    if (hasUnsavedChanges()) {
+      return window.confirm("You have unsaved changes. Are you sure you want to leave?");
+    }
+    return true;
+  };
+
+  // Add "leave confirmation" dialog for navigation links
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isNavigationLink = 
+        target.tagName === 'A' || 
+        target.closest('a') || 
+        target.classList.contains('sidebar-item') || 
+        target.closest('.sidebar-item');
+      
+      if (isNavigationLink && hasUnsavedChanges()) {
+        const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+        if (!confirmed) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+    
+    document.addEventListener('click', handleClick, true);
+    
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+    };
+  }, [statusPageEnabledUI, statusPageTitle, statusPageDescription, serviceVisibility, 
+      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader]);
+
   if (!initialLoadComplete) {
     return (
       <Card className="h-full">
@@ -392,7 +561,7 @@ export function StatusPageContent({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CardTitle>Status Page</CardTitle>
-            {statusPageEnabled !== statusPageEnabledUI && (
+            {hasUnsavedChanges() && (
               <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full font-medium">
                 Unsaved Changes
               </span>
@@ -446,18 +615,42 @@ export function StatusPageContent({
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />
               <span>General</span>
+              {hasGeneralTabChanges() && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="services" className="flex items-center gap-2">
               <Layout className="h-4 w-4" />
               <span>Services</span>
+              {hasServicesTabChanges() && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="appearance" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               <span>Appearance</span>
+              {hasAppearanceTabChanges() && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="advanced" className="flex items-center gap-2">
               <Sliders className="h-4 w-4" />
               <span>Advanced</span>
+              {hasAdvancedTabChanges() && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
           
@@ -493,6 +686,8 @@ export function StatusPageContent({
               setShowServiceUrls={setShowServiceUrls}
               showServiceDescription={showServiceDescription}
               setShowServiceDescription={setShowServiceDescription}
+              historyDays={historyDays}
+              setHistoryDays={setHistoryDays}
               isLoading={isLoadingAppearance}
               isSaving={isSavingAppearance}
               onSave={handleSaveAppearanceSettings}
@@ -516,6 +711,8 @@ export function StatusPageContent({
           open={previewDialogOpen}
           setOpen={setPreviewDialogOpen}
           statusPageEnabled={statusPageEnabled}
+          unsavedSettings={unsavedSettings}
+          hasUnsavedChanges={hasUnsavedChanges()}
         />
       </CardContent>
     </Card>

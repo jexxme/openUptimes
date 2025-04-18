@@ -7,7 +7,8 @@ const defaultAppearanceSettings = {
   showServiceUrls: true,
   showServiceDescription: true,
   customCSS: "",
-  customHeader: ""
+  customHeader: "",
+  historyDays: 90 // Default history range in days
 };
 
 // Global cache for appearance settings
