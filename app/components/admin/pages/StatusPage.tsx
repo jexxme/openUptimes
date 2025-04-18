@@ -7,12 +7,14 @@ interface AdminStatusPageProps {
   preloadedStatusPageData?: any;
   preloadedAppearanceData?: any;
   setActiveTab?: (tab: string) => void;
+  registerUnsavedChangesCallback?: (key: string, callback: () => boolean) => void;
 }
 
 export function AdminStatusPage({
   preloadedStatusPageData,
   preloadedAppearanceData,
-  setActiveTab
+  setActiveTab,
+  registerUnsavedChangesCallback
 }: AdminStatusPageProps) {
   const [statusPageSection, setStatusPageSection] = useState("general");
   const [initialized, setInitialized] = useState(false);
@@ -52,6 +54,7 @@ export function AdminStatusPage({
       preloadedStatusPageData={cachedStatusPageData}
       preloadedAppearanceData={cachedAppearanceData}
       setActiveTab={setActiveTab}
+      registerUnsavedChangesCallback={registerUnsavedChangesCallback}
     />
   );
 }

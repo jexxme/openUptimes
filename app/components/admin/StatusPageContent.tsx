@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
@@ -29,18 +29,56 @@ import { StatusPagePreviewDialog } from "@/app/components/admin/status-page/Stat
 import { PageTitle } from "../PageTitle";
 import { StatusPageTabs } from "@/app/components/admin/status-page/StatusPageTabs";
 
+// Custom UnsavedChangesDialog component
+interface UnsavedChangesDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  message?: string;
+}
+
+function UnsavedChangesDialog({
+  open,
+  onClose,
+  onConfirm,
+  message = "You have unsaved changes. Are you sure you want to leave?"
+}: UnsavedChangesDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Unsaved Changes</DialogTitle>
+          <DialogDescription>
+            {message}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={onConfirm}>
+            Discard Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface StatusPageContentProps {
   activeSection?: string;
   preloadedStatusPageData?: any;
   preloadedAppearanceData?: any;
   setActiveTab?: (tab: string) => void;
+  registerUnsavedChangesCallback?: (key: string, callback: () => boolean) => void;
 }
 
 export function StatusPageContent({ 
   activeSection = "general",
   preloadedStatusPageData,
   preloadedAppearanceData,
-  setActiveTab
+  setActiveTab,
+  registerUnsavedChangesCallback
 }: StatusPageContentProps) {
   const { toast } = useToast();
   
@@ -53,6 +91,9 @@ export function StatusPageContent({
   const [statusPageEnabledUI, setStatusPageEnabledUI] = useState<boolean | null>(
     preloadedStatusPageData?.settings?.enabled !== false ? true : false
   );
+  
+  // Track if navigation is approved via our custom dialog
+  const navigationApprovedRef = useRef(false);
   
   const [statusPageTitle, setStatusPageTitle] = useState(
     preloadedStatusPageData?.settings?.title || "Service Status"
@@ -97,6 +138,10 @@ export function StatusPageContent({
   
   // Preview dialog state
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  
+  // Unsaved changes dialog state
+  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
+  const pendingNavigationRef = useRef<{ destination: string } | null>(null);
 
   // Map section to tab value
   const getSectionTabValue = (section: string): string => {
@@ -114,11 +159,176 @@ export function StatusPageContent({
   
   // Current selected tab - use memoized value
   const [currentTab, setCurrentTab] = useState(sectionTabValue);
+  // Track the last user-selected tab to prevent unwanted reversions
+  const [userSelectedTab, setUserSelectedTab] = useState<string | null>(null);
 
-  // Update current tab when activeSection changes - simplified with the memoized value
+  // Check if there are any unsaved changes
+  const hasUnsavedChanges = () => {
+    return hasGeneralTabChanges() || hasServicesTabChanges() || hasAppearanceTabChanges() || hasAdvancedTabChanges();
+  };
+
+  // Check for changes in the General tab
+  const hasGeneralTabChanges = () => {
+    // Check statusPage toggle
+    if (statusPageEnabled !== statusPageEnabledUI) {
+      return true;
+    }
+    
+    // Initial settings from server
+    const originalTitle = preloadedStatusPageData?.settings?.title || "Service Status";
+    const originalDescription = preloadedStatusPageData?.settings?.description || "Current status of our services";
+    const originalHistoryDays = preloadedAppearanceData?.historyDays || 90;
+    
+    // Check for title, description and history days changes
+    if (statusPageTitle !== originalTitle || 
+        statusPageDescription !== originalDescription ||
+        historyDays !== originalHistoryDays) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Check for changes in the Services tab
+  const hasServicesTabChanges = () => {
+    // Check for service visibility changes
+    const originalServices = preloadedStatusPageData?.services || [];
+    if (serviceVisibility.length !== originalServices.length) {
+      return true;
+    }
+    
+    // Check each service visibility setting
+    for (let i = 0; i < serviceVisibility.length; i++) {
+      const currentService = serviceVisibility[i];
+      const originalService = originalServices.find((s: {name: string, visible: boolean}) => s.name === currentService.name);
+      
+      if (!originalService || originalService.visible !== currentService.visible) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Check for changes in the Appearance tab
+  const hasAppearanceTabChanges = () => {
+    const originalLogoUrl = preloadedAppearanceData?.logoUrl || "";
+    const originalShowServiceUrls = preloadedAppearanceData?.showServiceUrls !== false;
+    const originalShowServiceDescription = preloadedAppearanceData?.showServiceDescription !== false;
+    // historyDays is now checked in the General tab
+    
+    if (logoUrl !== originalLogoUrl || 
+        showServiceUrls !== originalShowServiceUrls || 
+        showServiceDescription !== originalShowServiceDescription) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Check for changes in the Advanced tab
+  const hasAdvancedTabChanges = () => {
+    const originalCustomCss = preloadedAppearanceData?.customCSS || "";
+    const originalCustomHeader = preloadedAppearanceData?.customHeader || "";
+    
+    if (customCss !== originalCustomCss || customHeader !== originalCustomHeader) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Complete the tab change after confirmation
+  const completeTabChange = useCallback((newTab: string, isUserAction = false) => {
+    console.log("completeTabChange called with tab:", newTab, "isUserAction:", isUserAction);
+    setCurrentTab(newTab);
+    
+    // If this is a user-initiated change, remember it to prevent unwanted reversions
+    if (isUserAction) {
+      setUserSelectedTab(newTab);
+    }
+    
+    // Update the URL to reflect the current tab
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('section', newTab);
+      window.history.pushState({}, '', url.toString());
+      
+      // Also update parent's activeTab if available
+      if (setActiveTab) {
+        setActiveTab("statuspage");
+      }
+    }
+  }, [setActiveTab]);
+
+  // Handle tab change with custom dialog - no need to check for unsaved changes
+  const attemptTabChange = useCallback((newTab: string) => {
+    console.log("attemptTabChange called with tab:", newTab);
+    // No need to check for unsaved changes when changing tabs
+    // as they are saved locally within the same page
+    completeTabChange(newTab, true);  // Mark this as a user action
+  }, [completeTabChange]);
+
+  // Dialog handlers
+  const handleDialogClose = useCallback(() => {
+    setUnsavedChangesDialogOpen(false);
+    pendingNavigationRef.current = null;
+  }, []);
+
+  const handleDialogConfirm = useCallback(() => {
+    if (pendingNavigationRef.current) {
+      // Set flag to prevent browser beforeunload dialog
+      navigationApprovedRef.current = true;
+      
+      const destination = pendingNavigationRef.current.destination as string;
+      
+      try {
+        // Parse the URL to get tab and section parameters
+        const url = new URL(destination, window.location.origin);
+        const tab = url.searchParams.get('tab');
+        
+        // If this is an internal admin page navigation
+        if (url.pathname === '/admin' && tab) {
+          // Update the active tab state
+          if (setActiveTab) {
+            setActiveTab(tab);
+          }
+          
+          // Update URL without reload
+          window.history.pushState({}, '', destination);
+        } else {
+          // External navigation or different page, use direct navigation
+          window.location.href = destination;
+        }
+      } catch (error) {
+        // Fallback to direct navigation if URL parsing fails
+        window.location.href = destination;
+      }
+      
+      pendingNavigationRef.current = null;
+    }
+    setUnsavedChangesDialogOpen(false);
+  }, [setActiveTab]);
+
+  // Update current tab when activeSection changes
   useEffect(() => {
-    setCurrentTab(sectionTabValue);
-  }, [sectionTabValue]);
+    console.log("activeSection useEffect triggered", {
+      activeSection,
+      currentTab,
+      sectionTabValue,
+      userSelectedTab
+    });
+    
+    // Only update from URL/activeSection if:
+    // 1. The current tab doesn't match the URL section AND
+    // 2. Either this is initial load (no user selection) OR the URL section matches the user selection
+    if (currentTab !== sectionTabValue && 
+        (userSelectedTab === null || userSelectedTab === sectionTabValue)) {
+      console.log("Updating current tab from activeSection/sectionTabValue");
+      completeTabChange(sectionTabValue);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionTabValue, currentTab, userSelectedTab]);
 
   // Fetch status page settings only if not preloaded
   useEffect(() => {
@@ -447,86 +657,15 @@ export function StatusPageContent({
       customHeader
     }
   };
-  
-  // Check if there are any unsaved changes
-  const hasUnsavedChanges = () => {
-    return hasGeneralTabChanges() || hasServicesTabChanges() || hasAppearanceTabChanges() || hasAdvancedTabChanges();
-  };
-
-  // Check for changes in the General tab
-  const hasGeneralTabChanges = () => {
-    // Check statusPage toggle
-    if (statusPageEnabled !== statusPageEnabledUI) {
-      return true;
-    }
-    
-    // Initial settings from server
-    const originalTitle = preloadedStatusPageData?.settings?.title || "Service Status";
-    const originalDescription = preloadedStatusPageData?.settings?.description || "Current status of our services";
-    const originalHistoryDays = preloadedAppearanceData?.historyDays || 90;
-    
-    // Check for title, description and history days changes
-    if (statusPageTitle !== originalTitle || 
-        statusPageDescription !== originalDescription ||
-        historyDays !== originalHistoryDays) {
-      return true;
-    }
-    
-    return false;
-  };
-
-  // Check for changes in the Services tab
-  const hasServicesTabChanges = () => {
-    // Check for service visibility changes
-    const originalServices = preloadedStatusPageData?.services || [];
-    if (serviceVisibility.length !== originalServices.length) {
-      return true;
-    }
-    
-    // Check each service visibility setting
-    for (let i = 0; i < serviceVisibility.length; i++) {
-      const currentService = serviceVisibility[i];
-      const originalService = originalServices.find((s: {name: string, visible: boolean}) => s.name === currentService.name);
-      
-      if (!originalService || originalService.visible !== currentService.visible) {
-        return true;
-      }
-    }
-    
-    return false;
-  };
-
-  // Check for changes in the Appearance tab
-  const hasAppearanceTabChanges = () => {
-    const originalLogoUrl = preloadedAppearanceData?.logoUrl || "";
-    const originalShowServiceUrls = preloadedAppearanceData?.showServiceUrls !== false;
-    const originalShowServiceDescription = preloadedAppearanceData?.showServiceDescription !== false;
-    // historyDays is now checked in the General tab
-    
-    if (logoUrl !== originalLogoUrl || 
-        showServiceUrls !== originalShowServiceUrls || 
-        showServiceDescription !== originalShowServiceDescription) {
-      return true;
-    }
-    
-    return false;
-  };
-
-  // Check for changes in the Advanced tab
-  const hasAdvancedTabChanges = () => {
-    const originalCustomCss = preloadedAppearanceData?.customCSS || "";
-    const originalCustomHeader = preloadedAppearanceData?.customHeader || "";
-    
-    if (customCss !== originalCustomCss || customHeader !== originalCustomHeader) {
-      return true;
-    }
-    
-    return false;
-  };
 
   // Setup beforeunload event to prompt user before leaving page with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Skip the confirmation if navigation was approved via our custom dialog
+      if (navigationApprovedRef.current) {
+        return;
+      }
+      
       if (hasUnsavedChanges()) {
         // Standard way to show a confirmation dialog before page unload
         e.preventDefault();
@@ -561,30 +700,56 @@ export function StatusPageContent({
   }, [statusPageEnabledUI, statusPageTitle, statusPageDescription, serviceVisibility, 
       logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader]);
 
-  // Function to show a warning when user tries to navigate away with unsaved changes
-  const handleNavigation = () => {
-    if (hasUnsavedChanges()) {
-      return window.confirm("You have unsaved changes. Are you sure you want to leave?");
-    }
-    return true;
-  };
-
   // Add "leave confirmation" dialog for navigation links
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const isNavigationLink = 
-        target.tagName === 'A' || 
-        target.closest('a') || 
-        target.classList.contains('sidebar-item') || 
-        target.closest('.sidebar-item');
+      // Skip if no unsaved changes
+      if (!hasUnsavedChanges()) {
+        return;
+      }
       
-      if (isNavigationLink && hasUnsavedChanges()) {
-        const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
-        if (!confirmed) {
-          e.preventDefault();
-          e.stopPropagation();
+      const target = e.target as HTMLElement;
+      
+      // Check if it's a sidebar navigation item
+      const isSidebarNavItem = 
+        target.closest('.sidebar-nav-button') || 
+        (target.closest('button') && 
+         (target.closest('button')?.getAttribute('data-tab') !== null ||
+          target.classList.contains('sidebar-nav-button')));
+      
+      // If it's a sidebar navigation item or an external link (not within the current page)
+      if (isSidebarNavItem || 
+          (target.tagName === 'A' && !target.getAttribute('href')?.startsWith('#'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Store the destination for later navigation
+        let destination: string;
+        
+        if (isSidebarNavItem) {
+          // Get tab from data attribute or parent
+          const button = target.closest('button');
+          const tab = button?.getAttribute('data-tab');
+          if (tab) {
+            destination = `/admin?tab=${tab}`;
+          } else {
+            // Default to current URL if we couldn't determine the tab
+            destination = window.location.href;
+          }
+        } else if (target.tagName === 'A' || target.closest('a')) {
+          // Get href from anchor tag
+          const anchor = target.tagName === 'A' ? target as HTMLAnchorElement : target.closest('a') as HTMLAnchorElement;
+          destination = anchor.href;
+        } else {
+          // Default to current URL if all checks fail
+          destination = window.location.href;
         }
+        
+        // Set pending navigation destination
+        pendingNavigationRef.current = { destination };
+        
+        // Show dialog
+        setUnsavedChangesDialogOpen(true);
       }
     };
     
@@ -593,8 +758,38 @@ export function StatusPageContent({
     return () => {
       document.removeEventListener('click', handleClick, true);
     };
-  }, [statusPageEnabledUI, statusPageTitle, statusPageDescription, serviceVisibility, 
-      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader]);
+  }, [hasUnsavedChanges]);
+
+  // Reset navigation approved ref when component unmounts
+  useEffect(() => {
+    return () => {
+      navigationApprovedRef.current = false;
+    };
+  }, []);
+
+  // Register the hasUnsavedChanges function with parent component
+  useEffect(() => {
+    if (registerUnsavedChangesCallback) {
+      // Create a wrapper function that calls our local hasUnsavedChanges
+      const checkForUnsavedChanges = () => {
+        // Add an explicit check to prevent false positives
+        const hasChanges = hasUnsavedChanges();
+        console.log('[StatusPage] Checking for unsaved changes:', hasChanges);
+        return hasChanges;
+      };
+      
+      // Register the callback
+      registerUnsavedChangesCallback('statusPage', checkForUnsavedChanges);
+      
+      // Return cleanup function to unregister when component unmounts
+      return () => {
+        if (registerUnsavedChangesCallback) {
+          // Use an empty function that always returns false to clear the callback
+          registerUnsavedChangesCallback('statusPage', () => false);
+        }
+      };
+    }
+  }, [registerUnsavedChangesCallback, hasUnsavedChanges]);
 
   if (!initialLoadComplete) {
     return (
@@ -677,14 +872,14 @@ export function StatusPageContent({
             </div>
           </div>
           
-          <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+          <Tabs value={currentTab} onValueChange={attemptTabChange} className="w-full">
             <StatusPageTabs 
               currentTab={currentTab}
               hasGeneralTabChanges={hasGeneralTabChanges()}
               hasServicesTabChanges={hasServicesTabChanges()}
               hasAppearanceTabChanges={hasAppearanceTabChanges()}
               hasAdvancedTabChanges={hasAdvancedTabChanges()}
-              onTabChange={setCurrentTab}
+              onTabChange={attemptTabChange}
               variant="outline"
             />
             
@@ -750,6 +945,13 @@ export function StatusPageContent({
           />
         </CardContent>
       </Card>
+      
+      {/* Unsaved changes dialog */}
+      <UnsavedChangesDialog 
+        open={unsavedChangesDialogOpen}
+        onClose={handleDialogClose}
+        onConfirm={handleDialogConfirm}
+      />
     </>
   );
 } 

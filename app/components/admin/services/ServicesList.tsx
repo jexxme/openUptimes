@@ -16,7 +16,12 @@ import {
   ChevronUp,
   Clock,
   Calendar,
-  EyeOff
+  EyeOff,
+  BarChart3,
+  Info,
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -95,6 +100,8 @@ export function ServicesList({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [expandedServices, setExpandedServices] = useState<Record<string, boolean>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [responseTimeSpans, setResponseTimeSpans] = useState<Record<string, number>>({});
+  const [showChartInfo, setShowChartInfo] = useState<Record<string, boolean>>({});
 
   // Update processedServices when services prop changes
   useEffect(() => {
@@ -234,6 +241,34 @@ export function ServicesList({
   const activeServices = services.filter(service => service.currentStatus?.status === "up").length;
   const offlineServices = services.filter(service => service.currentStatus?.status === "down").length;
   const unknownServices = services.filter(service => !service.currentStatus || service.currentStatus?.status === "unknown").length;
+
+  // Function to change the time span for response time chart
+  const changeTimeSpan = (serviceName: string, direction: 'prev' | 'next') => {
+    const currentSpan = responseTimeSpans[serviceName] || 10;
+    const spans = [5, 10, 15, 20, 25];
+    const currentIndex = spans.indexOf(currentSpan);
+    let newIndex;
+    
+    if (direction === 'prev') {
+      newIndex = currentIndex <= 0 ? spans.length - 1 : currentIndex - 1;
+    } else {
+      newIndex = currentIndex >= spans.length - 1 ? 0 : currentIndex + 1;
+    }
+    
+    setResponseTimeSpans(prev => ({
+      ...prev,
+      [serviceName]: spans[newIndex]
+    }));
+  };
+
+  // Toggle chart info popup
+  const toggleChartInfo = (serviceName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowChartInfo(prev => ({
+      ...prev,
+      [serviceName]: !prev[serviceName]
+    }));
+  };
 
   return (
     <div className="w-full">
@@ -469,45 +504,6 @@ export function ServicesList({
                             </div>
                           )}
 
-                          {/* Average Response Time - calculated from history */}
-                          {statusData?.history && statusData.history.length > 0 && (
-                            <div className="flex justify-between py-0.5">
-                              <span className="text-slate-600 dark:text-slate-400 mr-2">Avg Response Time:</span>
-                              <span className="font-medium dark:text-slate-300">
-                                {(() => {
-                                  const validTimes = statusData.history
-                                    .map((c: any) => c.responseTime)
-                                    .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
-                                  
-                                  if (validTimes.length === 0) return 'N/A';
-                                  
-                                  const avgTime = validTimes.reduce((sum: number, time: number) => sum + time, 0) / validTimes.length;
-                                  return `${Math.round(avgTime)}ms`;
-                                })()}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Response Time Range */}
-                          {statusData?.history && statusData.history.length > 0 && (
-                            <div className="flex justify-between py-0.5">
-                              <span className="text-slate-600 dark:text-slate-400 mr-2">Response Range:</span>
-                              <span className="font-medium dark:text-slate-300">
-                                {(() => {
-                                  const validTimes = statusData.history
-                                    .map((c: any) => c.responseTime)
-                                    .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
-                                  
-                                  if (validTimes.length === 0) return 'N/A';
-                                  
-                                  const minTime = Math.min(...validTimes);
-                                  const maxTime = Math.max(...validTimes);
-                                  return `${minTime}ms - ${maxTime}ms`;
-                                })()}
-                              </span>
-                            </div>
-                          )}
-                          
                           {/* Total Checks */}
                           {statusData?.history && (
                             <div className="flex justify-between py-0.5">
@@ -582,6 +578,75 @@ export function ServicesList({
                             </div>
                           )}
                           
+                          {/* Availability Metric */}
+                          {statusData?.history && statusData.history.length > 0 && (
+                            <div className="flex justify-between py-0.5 text-xs">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Availability (24h):</span>
+                              <span className={`font-medium ${
+                                uptimePercentage === null ? 'text-slate-600 dark:text-slate-400' :
+                                uptimePercentage > 99 ? 'text-emerald-600 dark:text-emerald-400' : 
+                                uptimePercentage > 95 ? 'text-green-600 dark:text-green-400' : 
+                                uptimePercentage > 90 ? 'text-yellow-600 dark:text-yellow-400' : 
+                                'text-red-600 dark:text-red-400'
+                              }`}>
+                                {(() => {
+                                  // Get checks within the last 24 hours
+                                  const now = new Date();
+                                  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                                  const recentChecks = statusData.history.filter((check: any) => 
+                                    new Date(check.timestamp) >= dayAgo
+                                  );
+                                  
+                                  if (recentChecks.length === 0) return 'N/A';
+                                  
+                                  const upChecks = recentChecks.filter((check: any) => check.status === 'up').length;
+                                  const availability = (upChecks / recentChecks.length) * 100;
+                                  
+                                  return `${availability.toFixed(2)}%`;
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Average Response Time - moved from Metadata */}
+                          {statusData?.history && statusData.history.length > 0 && (
+                            <div className="flex justify-between py-0.5 text-xs">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Avg Response Time:</span>
+                              <span className="font-medium dark:text-slate-300">
+                                {(() => {
+                                  const validTimes = statusData.history
+                                    .map((c: any) => c.responseTime)
+                                    .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                                  
+                                  if (validTimes.length === 0) return 'N/A';
+                                  
+                                  const avgTime = validTimes.reduce((sum: number, time: number) => sum + time, 0) / validTimes.length;
+                                  return `${Math.round(avgTime)}ms`;
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Response Time Range - moved from Metadata */}
+                          {statusData?.history && statusData.history.length > 0 && (
+                            <div className="flex justify-between py-0.5 text-xs">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Response Range:</span>
+                              <span className="font-medium dark:text-slate-300">
+                                {(() => {
+                                  const validTimes = statusData.history
+                                    .map((c: any) => c.responseTime)
+                                    .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                                  
+                                  if (validTimes.length === 0) return 'N/A';
+                                  
+                                  const minTime = Math.min(...validTimes);
+                                  const maxTime = Math.max(...validTimes);
+                                  return `${minTime}ms - ${maxTime}ms`;
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                          
                           {/* Online Status Section */}
                           {status === "up" && onlineSince && (
                             <div className="mt-3 p-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
@@ -604,85 +669,227 @@ export function ServicesList({
                               </div>
                             </div>
                           )}
+                        </div>
+                      </div>
+
+                      {/* New dedicated Response Time Chart card - spans full width in both grid layouts */}
+                      <div className="bg-white dark:bg-slate-800 p-4 rounded-md w-full border border-slate-200 dark:border-slate-700 shadow-sm md:col-span-2">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                            <span className="w-1 h-4 bg-indigo-500 dark:bg-indigo-400 rounded-full mr-2"></span>
+                            Response Time Chart
+                          </h4>
                           
-                          {/* Response Time Chart Section */}
-                          <div className="mt-3 p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                            <div className="flex items-center justify-between text-[10px] mb-2">
-                              <span className="text-slate-700 dark:text-slate-300 font-medium">Response Time (Last 10 checks)</span>
-                              <button
-                                className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onViewHistory?.(service.name);
-                                }}
+                          <div className="flex items-center space-x-2">
+                            <div className="relative">
+                              <button 
+                                onClick={(e) => toggleChartInfo(service.name, e)}
+                                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                aria-label="Chart information"
                               >
-                                Details
+                                <HelpCircle className="h-3.5 w-3.5 text-slate-500" />
                               </button>
+                              
+                              {showChartInfo[service.name] && (
+                                <div className="absolute right-0 top-6 z-10 w-64 p-3 text-xs bg-white dark:bg-slate-900 shadow-lg rounded-md border border-slate-200 dark:border-slate-700">
+                                  <h5 className="font-medium mb-1.5 text-slate-800 dark:text-slate-200">About Response Time Chart</h5>
+                                  <p className="text-slate-600 dark:text-slate-400 mb-2">
+                                    This chart shows the response time trend for recent checks. 
+                                    Higher bars indicate longer response times.
+                                  </p>
+                                  <ul className="space-y-1.5 mt-2">
+                                    <li className="flex items-center">
+                                      <span className="block w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
+                                      <span>Green: Service online</span>
+                                    </li>
+                                    <li className="flex items-center">
+                                      <span className="block w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                                      <span>Red: Service offline</span>
+                                    </li>
+                                    <li className="flex items-center">
+                                      <span className="block w-2 h-2 rounded-full bg-slate-400 mr-2"></span>
+                                      <span>Gray: Status unknown</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                             
-                            {/* Response Time Chart */}
-                            {statusData?.history && statusData.history.length > 0 ? (
-                              <div className="rounded-md bg-white dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700 mt-1">
-                                {/* Bar Chart Section */}
-                                <div className="h-10 flex items-end justify-between px-0.5 pt-2 pb-1">
-                                  {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => {
-                                    // Get valid response times only
-                                    const validTimes = statusData.history
-                                      .slice(0, 10)
-                                      .map((c: any) => c.responseTime)
-                                      .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
-                                    
-                                    // Calculate max for normalization, with a reasonable default
-                                    const maxTime = validTimes.length > 0 
-                                      ? Math.max(...validTimes) 
-                                      : 1000;
-                                    
-                                    // Calculate height percentage (10% min to 90% max)
-                                    const hasResponseTime = typeof check.responseTime === 'number' && !isNaN(check.responseTime);
-                                    const heightPx = hasResponseTime 
-                                      ? Math.max(5, Math.min(24, (check.responseTime / maxTime) * 24))
-                                      : 4;
-                                    
-                                    return (
-                                      <div key={index} className="flex-1 flex flex-col items-center justify-end group relative">
-                                        <div className="text-[8px] text-slate-800 dark:text-slate-200 font-medium text-center absolute -mt-6 opacity-0 group-hover:opacity-100 transition-opacity duration-100 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">
-                                          {hasResponseTime ? `${check.responseTime}ms` : 'N/A'}
-                                        </div>
-                                        
-                                        {/* Bar */}
-                                        <div 
-                                          className={`w-[4px] rounded-t-sm group-hover:w-[6px] transition-all ${
-                                            check.status === 'up' 
-                                              ? 'bg-emerald-500' 
-                                              : check.status === 'down' 
-                                                ? 'bg-red-500' 
-                                                : 'bg-slate-400'
-                                          }`}
-                                          style={{ height: `${heightPx}px` }}
-                                        />
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                
-                                {/* Timestamp Labels Section - Separated from chart */}
-                                <div className="flex items-center justify-between px-0.5 pt-0.5 pb-0.5 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                                  {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => (
-                                    <div key={`time-${index}`} className="flex-1 text-center">
-                                      <div className="text-[6px] text-slate-500 dark:text-slate-400 truncate px-0.5">
-                                        {new Date(check.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-center justify-center h-12 bg-white dark:bg-slate-800 rounded-md p-1 border border-slate-200 dark:border-slate-700">
-                                <div className="text-[10px] text-slate-500 dark:text-slate-400">No response time data available</div>
-                              </div>
-                            )}
+                            <button
+                              className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onViewHistory?.(service.name);
+                              }}
+                            >
+                              Full History
+                            </button>
                           </div>
                         </div>
+                        
+                        {/* Time span selector */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            Last <span className="font-medium text-slate-700 dark:text-slate-300">{responseTimeSpans[service.name] || 10}</span> checks
+                          </div>
+                          
+                          <div className="flex items-center space-x-1">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                changeTimeSpan(service.name, 'next');
+                              }}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                              aria-label="Show fewer checks"
+                            >
+                              <ChevronLeft className="h-4 w-4 text-slate-500" />
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                changeTimeSpan(service.name, 'prev');
+                              }}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                              aria-label="Show more checks"
+                            >
+                              <ChevronRight className="h-4 w-4 text-slate-500" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Enhanced Response Time Chart */}
+                        {statusData?.history && statusData.history.length > 0 ? (
+                          <div className="rounded-md bg-white dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700">
+                            {/* Bar Chart Section - enhanced height */}
+                            <div className="h-16 flex items-end justify-between px-1 py-2 relative">
+                              {/* Grid lines */}
+                              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-700/30"></div>
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-700/30"></div>
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-700/30"></div>
+                              </div>
+                              
+                              {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
+                                // Get valid response times only
+                                const validTimes = statusData.history
+                                  .slice(0, responseTimeSpans[service.name] || 10)
+                                  .map((c: any) => c.responseTime)
+                                  .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                                
+                                // Calculate max for normalization with minimum ceiling
+                                const maxTime = validTimes.length > 0 
+                                  ? Math.max(...validTimes, 500) 
+                                  : 1000;
+                                
+                                // Calculate height percentage 
+                                const hasResponseTime = typeof check.responseTime === 'number' && !isNaN(check.responseTime);
+                                const heightPx = hasResponseTime 
+                                  ? Math.max(6, Math.min(48, (check.responseTime / maxTime) * 48))
+                                  : 5;
+                                
+                                return (
+                                  <div key={index} className="flex-1 flex flex-col items-center justify-end group relative h-full">
+                                    {/* Enhanced tooltip with more info - centered */}
+                                    <div className="fixed transform -translate-y-full -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-50 w-max pointer-events-none" style={{top: 'calc(var(--y, 0) - 10px)', left: 'var(--x, 0)'}}>
+                                      <div className="bg-slate-800 dark:bg-slate-900 text-white text-xs rounded px-3 py-2 shadow-lg">
+                                        <div className="font-medium text-center">{hasResponseTime ? `${check.responseTime}ms` : 'No data'}</div>
+                                        <div className="text-slate-300 text-center">{new Date(check.timestamp).toLocaleString()}</div>
+                                      </div>
+                                      <div className="w-3 h-3 transform rotate-45 bg-slate-800 dark:bg-slate-900 absolute -bottom-1.5 left-1/2 -translate-x-1/2"></div>
+                                    </div>
+                                    
+                                    {/* Bar with adjusted width */}
+                                    <div 
+                                      className={`w-[5px] rounded-t-sm group-hover:w-[7px] group-hover:brightness-110 transition-all relative ${
+                                        check.status === 'up' 
+                                          ? 'bg-emerald-500 dark:bg-emerald-400' 
+                                          : check.status === 'down' 
+                                            ? 'bg-red-500 dark:bg-red-400' 
+                                            : 'bg-slate-400 dark:bg-slate-500'
+                                      }`}
+                                      style={{ height: `${heightPx}px` }}
+                                      onMouseMove={(e) => {
+                                        const el = e.currentTarget;
+                                        const rect = el.getBoundingClientRect();
+                                        const centerX = rect.left + rect.width / 2;
+                                        const y = rect.top;
+                                        el.parentElement!.style.setProperty('--x', `${centerX}px`);
+                                        el.parentElement!.style.setProperty('--y', `${y}px`);
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Timestamp Labels Section - Simplified */}
+                            <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                              {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
+                                const date = new Date(check.timestamp);
+                                const now = new Date();
+                                const isToday = date.toDateString() === now.toDateString();
+                                
+                                return (
+                                  <div key={`time-${index}`} className="flex-1 text-center">
+                                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate px-0.5 font-medium">
+                                      {isToday 
+                                        ? date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                                        : date.toLocaleDateString([], {month: 'numeric', day: 'numeric'})
+                                      }
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-28 bg-white dark:bg-slate-800 rounded-md p-4 border border-slate-200 dark:border-slate-700">
+                            <div className="text-[12px] text-slate-500 dark:text-slate-400 mb-2">No response time data available</div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                              Response time history will appear here after checks are performed
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Chart metrics summary - simplified */}
+                        {statusData?.history && statusData.history.length > 0 && (
+                          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {(() => {
+                              const validTimes = statusData.history
+                                .slice(0, responseTimeSpans[service.name] || 10)
+                                .map((c: any) => c.responseTime)
+                                .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                              
+                              if (validTimes.length === 0) return null;
+                              
+                              const avgTime = validTimes.reduce((sum: number, time: number) => sum + time, 0) / validTimes.length;
+                              const minTime = Math.min(...validTimes);
+                              const maxTime = Math.max(...validTimes);
+                              const p90Time = validTimes.sort((a: number, b: number) => a - b)[Math.floor(validTimes.length * 0.9)];
+                              
+                              return (
+                                <>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Average</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{Math.round(avgTime)}ms</div>
+                                  </div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Minimum</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{minTime}ms</div>
+                                  </div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Maximum</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{maxTime}ms</div>
+                                  </div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">90th Percentile</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p90Time}ms</div>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

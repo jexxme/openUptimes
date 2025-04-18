@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 import dynamic from 'next/dynamic';
@@ -73,6 +73,45 @@ const AdminPageClient = () => {
 
   // Determine if this is a development environment
   const isDev = process.env.NODE_ENV === 'development';
+
+  // Add ref to track unsaved changes callbacks from different content components
+  const unsavedChangesCallbacksRef = useRef<Record<string, () => boolean>>({});
+
+  // Function to register an unsaved changes callback
+  const registerUnsavedChangesCallback = useCallback((key: string, callback: () => boolean) => {
+    console.log(`[Admin] Registering callback for ${key}`);
+    unsavedChangesCallbacksRef.current[key] = callback;
+  }, []);
+
+  // Function to check if there are any unsaved changes
+  const hasUnsavedChanges = useCallback(() => {
+    // Check all registered callbacks
+    const keys = Object.keys(unsavedChangesCallbacksRef.current);
+    console.log(`[Admin] Checking unsaved changes, ${keys.length} callbacks registered:`, keys);
+    
+    for (const key in unsavedChangesCallbacksRef.current) {
+      const callback = unsavedChangesCallbacksRef.current[key];
+      if (callback && callback()) {
+        console.log(`[Admin] Found unsaved changes in ${key}`);
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
+  // Add a clearUnsavedChangesCallback function
+  const clearUnsavedChangesCallback = useCallback((key?: string) => {
+    if (key) {
+      console.log(`[Admin] Clearing callback for ${key}`);
+      if (unsavedChangesCallbacksRef.current[key]) {
+        delete unsavedChangesCallbacksRef.current[key];
+      }
+    } else {
+      console.log('[Admin] Clearing all callbacks');
+      // Clear all callbacks
+      unsavedChangesCallbacksRef.current = {};
+    }
+  }, []);
 
   // Handle URL parameters on component mount
   useEffect(() => {
@@ -670,6 +709,7 @@ const AdminPageClient = () => {
           preloadedStatusPageData={preloadedDataRef.current.statusPage}
           preloadedAppearanceData={preloadedDataRef.current.appearance}
           setActiveTab={setActiveTab}
+          registerUnsavedChangesCallback={registerUnsavedChangesCallback}
         />;
       case "history":
         return <AdminHistory 
@@ -680,6 +720,7 @@ const AdminPageClient = () => {
       case "settings":
         return <AdminSettings 
           setActiveTab={setActiveTab}
+          registerUnsavedChangesCallback={registerUnsavedChangesCallback}
         />;
       case "about":
         return <AdminAbout 
@@ -732,6 +773,8 @@ const AdminPageClient = () => {
             setActiveTab={setActiveTab} 
             handleLogout={handleLogout} 
             isLoggingOut={isLoggingOut} 
+            hasUnsavedChanges={hasUnsavedChanges}
+            clearUnsavedChangesCallback={clearUnsavedChangesCallback}
             {...logoProps}
           />
         </UISidebar>
@@ -752,6 +795,8 @@ const AdminPageClient = () => {
                     setActiveTab={setActiveTab} 
                     handleLogout={handleLogout} 
                     isLoggingOut={isLoggingOut} 
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    clearUnsavedChangesCallback={clearUnsavedChangesCallback}
                     {...logoProps}
                   />
                 </SheetContent>

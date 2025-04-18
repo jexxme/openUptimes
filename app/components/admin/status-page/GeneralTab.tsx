@@ -40,6 +40,24 @@ export function GeneralTab({
   const [showEditor, setShowEditor] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedText, setSelectedText] = useState("");
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  // Store initial values for change detection
+  const [initialValues] = useState({
+    title: statusPageTitle,
+    description: statusPageDescription,
+    historyDays: historyDays
+  });
+  
+  // Detect changes in form fields
+  useEffect(() => {
+    const hasChanged = 
+      initialValues.title !== statusPageTitle ||
+      initialValues.description !== statusPageDescription ||
+      initialValues.historyDays !== historyDays;
+    
+    setHasChanges(hasChanged);
+  }, [statusPageTitle, statusPageDescription, historyDays, initialValues]);
   
   // Store selection position when user selects text
   const handleSelect = () => {
@@ -361,7 +379,10 @@ export function GeneralTab({
           <Button 
             onClick={onSave} 
             disabled={isSaving || isLoading}
+            variant="default"
+            className={hasChanges ? "gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50 border border-amber-100 dark:border-amber-900/30" : ""}
           >
+            {hasChanges && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse" />}
             {isSaving ? 
               <><div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>Saving...</> : 
               "Save Changes"}

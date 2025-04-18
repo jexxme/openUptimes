@@ -22,6 +22,16 @@ export function StatusPageTabs({
   onTabChange,
   variant = "default"
 }: StatusPageTabsProps) {
+  // This will be called when a tab is clicked
+  const handleTabChange = (value: string) => {
+    console.log("StatusPageTabs: Tab clicked", value, "current tab:", currentTab);
+    console.log("onTabChange function exists:", !!onTabChange);
+    if (onTabChange) {
+      console.log("Calling onTabChange with value:", value);
+      onTabChange(value);
+    }
+  };
+
   const tabs = [
     {
       value: "general",
@@ -53,7 +63,7 @@ export function StatusPageTabs({
     <ApplicationTabs 
       tabs={tabs} 
       value={currentTab} 
-      onValueChange={onTabChange || (() => {})}
+      onValueChange={handleTabChange}
       variant={variant}
       spacing="equal"
       className="w-full"

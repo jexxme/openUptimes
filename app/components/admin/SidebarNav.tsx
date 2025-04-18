@@ -4,9 +4,17 @@ import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalL
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "../../context/ThemeContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 
 interface SidebarNavProps {
   activeTab: string;
@@ -14,6 +22,8 @@ interface SidebarNavProps {
   handleLogout: () => void;
   isLoggingOut: boolean;
   preloadedLogoUrl?: string;
+  hasUnsavedChanges?: () => boolean;
+  clearUnsavedChangesCallback?: (key?: string) => void;
 }
 
 // NavButton component
@@ -22,17 +32,20 @@ const NavButton = ({
   label, 
   isActive, 
   onClick,
-  disabled = false
+  disabled = false,
+  tab
 }: { 
   icon: React.ElementType; 
   label: string; 
   isActive?: boolean;
   onClick?: () => void;
   disabled?: boolean;
+  tab?: string;
 }) => (
   <Button
     variant={isActive ? "secondary" : "ghost"}
     className={`
+      sidebar-nav-button
       justify-start w-full text-left mb-1.5 
       transition-all duration-200 ease-out
       ${isActive 
@@ -46,6 +59,7 @@ const NavButton = ({
     `}
     onClick={onClick}
     disabled={disabled}
+    data-tab={tab}
   >
     <div className="flex items-center w-full py-0.5">
       <div className={`
@@ -73,7 +87,7 @@ const NavButton = ({
   </Button>
 );
 
-export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut, preloadedLogoUrl }: SidebarNavProps) {
+export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut, preloadedLogoUrl, hasUnsavedChanges = () => false, clearUnsavedChangesCallback }: SidebarNavProps) {
   const [logoUrl, setLogoUrl] = useState(preloadedLogoUrl || "");
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isDev, setIsDev] = useState(false);
@@ -88,6 +102,16 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
   });
   const { theme, toggleTheme } = useTheme();
   const isDarkMode = theme === "dark";
+
+  // Unsaved changes dialog state
+  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
+  const pendingNavigationRef = useRef<{ tab: string, section?: string } | null>(null);
+  
+  // Add a flag to track if we just handled a dialog confirmation
+  const [recentlyNavigated, setRecentlyNavigated] = useState(false);
+  
+  // Add a ref to track if we're currently processing a dialog action
+  const processingDialogActionRef = useRef(false);
   
   // Detect development environment
   useEffect(() => {
@@ -174,22 +198,104 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
     }
   };
 
-  // Helper function to handle navigation with sections
-  const handleNavigation = (tab: string, section?: string) => {
-    setActiveTab(tab);
-    
-    // Update URL with the new tab and optional section
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', tab);
+  // Dialog handlers
+  const handleDialogClose = () => {
+    setUnsavedChangesDialogOpen(false);
+    pendingNavigationRef.current = null;
+    // Reset the processing flag after a short delay
+    setTimeout(() => {
+      processingDialogActionRef.current = false;
+    }, 100);
+  };
+
+  const handleDialogConfirm = () => {
+    if (pendingNavigationRef.current) {
+      const { tab, section } = pendingNavigationRef.current;
       
-      if (section) {
-        url.searchParams.set('section', section);
-      } else {
-        url.searchParams.delete('section');
+      // Clear any registered callbacks to prevent further checks
+      if (clearUnsavedChangesCallback) {
+        // Clear all callbacks at once by not providing a key
+        clearUnsavedChangesCallback();
       }
       
-      window.history.pushState({}, '', url.toString());
+      // Set the flag to prevent showing the dialog again immediately
+      setRecentlyNavigated(true);
+      
+      completeNavigation(tab, section);
+      pendingNavigationRef.current = null;
+    }
+    setUnsavedChangesDialogOpen(false);
+    
+    // Reset the processing flag after a short delay
+    setTimeout(() => {
+      processingDialogActionRef.current = false;
+    }, 100);
+  };
+
+  // Add useEffect to reset dialog state when activeTab changes
+  useEffect(() => {
+    // Reset dialog state when tab changes
+    setUnsavedChangesDialogOpen(false);
+    pendingNavigationRef.current = null;
+    processingDialogActionRef.current = false;
+    setRecentlyNavigated(false);
+  }, [activeTab]);
+
+  // Update the completeNavigation function with try/catch for better error handling
+  const completeNavigation = (tab: string, section?: string) => {
+    try {
+      // Special case for logout
+      if (tab === "logout") {
+        handleLogout();
+        return;
+      }
+
+      setActiveTab(tab);
+      
+      // Update URL with the new tab and optional section
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        
+        if (section) {
+          url.searchParams.set('section', section);
+        } else {
+          url.searchParams.delete('section');
+        }
+        
+        window.history.pushState({}, '', url.toString());
+      }
+    } catch (error) {
+      console.error('Error during navigation:', error);
+      // Reset all dialog state in case of error
+      setUnsavedChangesDialogOpen(false);
+      pendingNavigationRef.current = null;
+      processingDialogActionRef.current = false;
+      setRecentlyNavigated(false);
+    }
+  };
+
+  // Helper function to handle navigation with sections
+  const handleNavigation = (tab: string, section?: string) => {
+    // If we're already processing a dialog action, don't show another dialog
+    if (processingDialogActionRef.current) {
+      return;
+    }
+    
+    // If we just navigated, don't show the dialog again
+    if (recentlyNavigated) {
+      setRecentlyNavigated(false);
+      completeNavigation(tab, section);
+      return;
+    }
+    
+    // Check if there are unsaved changes
+    if (hasUnsavedChanges()) {
+      pendingNavigationRef.current = { tab, section };
+      processingDialogActionRef.current = true;
+      setUnsavedChangesDialogOpen(true);
+    } else {
+      completeNavigation(tab, section);
     }
   };
 
@@ -276,6 +382,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Overview" 
               isActive={activeTab === "dashboard"} 
               onClick={() => handleNavigation("dashboard")}
+              tab="dashboard"
             />
           </motion.div>
           
@@ -285,6 +392,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Services" 
               isActive={activeTab === "services"}
               onClick={() => handleNavigation("services")} 
+              tab="services"
             />
           </motion.div>
           
@@ -294,6 +402,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Status Page" 
               isActive={activeTab === "statuspage"}
               onClick={() => handleNavigation("statuspage")} 
+              tab="statuspage"
             />
           </motion.div>
           
@@ -303,6 +412,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="History" 
               isActive={activeTab === "history"}
               onClick={() => handleNavigation("history")} 
+              tab="history"
             />
           </motion.div>
         </motion.div>
@@ -328,6 +438,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Settings" 
               isActive={activeTab === "settings"} 
               onClick={() => handleNavigation("settings")}
+              tab="settings"
             />
           </motion.div>
         </motion.div>
@@ -361,18 +472,28 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
           <Button
             variant="ghost"
             size="sm"
-            className="flex items-center text-muted-foreground hover:text-foreground group"
+            className="flex items-center text-muted-foreground hover:text-foreground group sidebar-nav-button"
             onClick={() => handleNavigation("about")}
+            data-tab="about"
           >
             <Info className="h-3.5 w-3.5 mr-1.5 group-hover:text-primary transition-colors" />
             <span className="text-sm">About</span>
           </Button>
         </motion.div>
         
-        <Link href="/" target="_blank" rel="noopener noreferrer" className="w-full block">
+        <Link 
+          href="/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="w-full block"
+          onClick={(e) => {
+            // No need to check for unsaved changes for external links
+            // that open in a new tab
+          }}
+        >
           <Button 
             variant="outline"
-            className="w-full justify-start bg-primary/5 hover:bg-primary/10 border-primary/10 hover:border-primary/20 transition-all duration-200 group rounded-md"
+            className="w-full justify-start bg-primary/5 hover:bg-primary/10 border-primary/10 hover:border-primary/20 transition-all duration-200 group rounded-md sidebar-nav-button"
           >
             <div className="flex items-center w-full">
               <div className="flex items-center justify-center w-5 h-5 mr-2">
@@ -386,8 +507,16 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
         
         <Button 
           variant="outline"
-          className="w-full justify-start bg-destructive/5 hover:bg-destructive/10 border-destructive/10 hover:border-destructive/20 transition-all duration-200 group rounded-md"
-          onClick={handleLogout}
+          className="w-full justify-start bg-destructive/5 hover:bg-destructive/10 border-destructive/10 hover:border-destructive/20 transition-all duration-200 group rounded-md sidebar-nav-button"
+          onClick={() => {
+            if (hasUnsavedChanges()) {
+              // Create a specific dialog for logout
+              pendingNavigationRef.current = { tab: "logout" };
+              setUnsavedChangesDialogOpen(true);
+            } else {
+              handleLogout();
+            }
+          }}
           disabled={isLoggingOut}
         >
           <div className="flex items-center w-full">
@@ -403,6 +532,36 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
           </div>
         </Button>
       </div>
+      
+      {/* Conditionally render unsaved changes dialog */}
+      {unsavedChangesDialogOpen && !processingDialogActionRef.current && (
+        <Dialog 
+          key={`dialog-${Date.now()}`} // Ensure a new instance on each render
+          open={unsavedChangesDialogOpen} 
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              handleDialogClose();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Unsaved Changes</DialogTitle>
+              <DialogDescription>
+                You have unsaved changes. Are you sure you want to leave?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={handleDialogClose}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDialogConfirm}>
+                Discard Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </motion.div>
   );
 } 

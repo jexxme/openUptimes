@@ -105,9 +105,10 @@ function SettingsTabs({ currentTab, onTabChange, tabsWithChanges }: SettingTabsP
 
 interface SettingsContentProps {
   activeSection?: string;
+  registerUnsavedChangesCallback?: (key: string, callback: () => boolean) => void;
 }
 
-export function SettingsContent({ activeSection = "general" }: SettingsContentProps) {
+export function SettingsContent({ activeSection = "general", registerUnsavedChangesCallback }: SettingsContentProps) {
   // Memoize section to tab mapping to prevent unnecessary recalculations  
   const sectionTabValue = useMemo(() => {
     return activeSection === "security" ? "security" : 
@@ -312,6 +313,30 @@ export function SettingsContent({ activeSection = "general" }: SettingsContentPr
       document.removeEventListener('click', handleClick, true);
     };
   }, [hasAnyUnsavedChanges]);
+
+  // Register the hasAnyUnsavedChanges function with parent component
+  useEffect(() => {
+    if (registerUnsavedChangesCallback) {
+      // Create a proper callback function that returns the current state of hasAnyUnsavedChanges
+      const checkForUnsavedChanges = () => {
+        // Add an explicit check to prevent false positives
+        const hasChanges = hasAnyUnsavedChanges;
+        console.log('[Settings] Checking for unsaved changes:', hasChanges);
+        return hasChanges;
+      };
+      
+      // Register the callback
+      registerUnsavedChangesCallback('settings', checkForUnsavedChanges);
+      
+      // Return cleanup function to unregister when component unmounts
+      return () => {
+        if (registerUnsavedChangesCallback) {
+          // Use an empty function that always returns false to clear the callback
+          registerUnsavedChangesCallback('settings', () => false);
+        }
+      };
+    }
+  }, [registerUnsavedChangesCallback, hasAnyUnsavedChanges]);
 
   return (
     <>
