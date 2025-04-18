@@ -775,6 +775,7 @@ export default function Home({ searchParams }: { searchParams?: Promise<{ [key: 
   );
 }
 
+// Add this global style for Safari scrolling and proper dark mode support
 function GlobalStyles() {
   return (
     <style jsx global>{`
