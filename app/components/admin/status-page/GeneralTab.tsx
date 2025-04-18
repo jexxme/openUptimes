@@ -52,7 +52,6 @@ export function GeneralTab({
                   type="text" 
                   value={statusPageTitle}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStatusPageTitle(e.target.value)}
-                  disabled={statusPageEnabledUI !== true}
                   placeholder="Service Status" 
                 />
               </div>
@@ -62,7 +61,6 @@ export function GeneralTab({
                   type="text" 
                   value={statusPageDescription}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStatusPageDescription(e.target.value)}
-                  disabled={statusPageEnabledUI !== true}
                   placeholder="Current status of our services" 
                 />
               </div>

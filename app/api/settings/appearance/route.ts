@@ -23,7 +23,8 @@ export async function GET() {
       favicon: siteConfig.favicon || null,
       logoUrl: siteConfig.logoUrl || "",
       showServiceUrls: siteConfig.showServiceUrls !== undefined ? siteConfig.showServiceUrls : true,
-      showServiceDescription: siteConfig.showServiceDescription !== undefined ? siteConfig.showServiceDescription : true
+      showServiceDescription: siteConfig.showServiceDescription !== undefined ? siteConfig.showServiceDescription : true,
+      historyDays: siteConfig.historyDays || 90 // Get historyDays or default to 90
     };
     
     return NextResponse.json(appearanceConfig);
@@ -53,6 +54,7 @@ export async function PUT(request: NextRequest) {
       description: 'Service Status Monitor',
       refreshInterval: 60000,
       historyLength: 1440,
+      historyDays: 90, // Default history days
       // Removed theme object
     };
     
@@ -92,6 +94,11 @@ export async function PUT(request: NextRequest) {
       siteConfig.showServiceDescription = updatedAppearance.showServiceDescription;
     }
     
+    // Update history days setting
+    if (updatedAppearance.historyDays !== undefined) {
+      siteConfig.historyDays = updatedAppearance.historyDays;
+    }
+    
     await client.set('config:site', JSON.stringify(siteConfig));
     
     return NextResponse.json({ 
@@ -103,7 +110,8 @@ export async function PUT(request: NextRequest) {
       favicon: siteConfig.favicon,
       logoUrl: siteConfig.logoUrl,
       showServiceUrls: siteConfig.showServiceUrls,
-      showServiceDescription: siteConfig.showServiceDescription
+      showServiceDescription: siteConfig.showServiceDescription,
+      historyDays: siteConfig.historyDays // Return historyDays in response
     });
   } catch (error) {
     console.error('Error updating appearance settings:', error);

@@ -51,6 +51,7 @@ export function AdminStatusPage({
       activeSection={statusPageSection}
       preloadedStatusPageData={cachedStatusPageData}
       preloadedAppearanceData={cachedAppearanceData}
+      setActiveTab={setActiveTab}
     />
   );
 }
