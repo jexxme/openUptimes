@@ -26,6 +26,7 @@ import { ServicesTab } from "@/app/components/admin/status-page/ServicesTab";
 import { AppearanceTab } from "@/app/components/admin/status-page/AppearanceTab";
 import { AdvancedTab } from "@/app/components/admin/status-page/AdvancedTab";
 import { StatusPagePreviewDialog } from "@/app/components/admin/status-page/StatusPagePreviewDialog";
+import { PageTitle } from "../PageTitle";
 
 interface StatusPageContentProps {
   activeSection?: string;
@@ -610,165 +611,169 @@ export function StatusPageContent({
   }
 
   return (
-    <Card className="h-full w-full max-w-full">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle>Status Page</CardTitle>
-            {hasUnsavedChanges() && (
-              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full font-medium">
-                Unsaved Changes
-              </span>
-            )}
+    <>
+      <PageTitle statusPageTitle={statusPageTitle} />
+      
+      <Card className="h-full w-full max-w-full">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle>Status Page</CardTitle>
+              {hasUnsavedChanges() && (
+                <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full font-medium">
+                  Unsaved Changes
+                </span>
+              )}
+            </div>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusPageEnabled ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${statusPageEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+              {statusPageEnabled ? 'Active' : 'Disabled'}
+            </div>
           </div>
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusPageEnabled ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${statusPageEnabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-            {statusPageEnabled ? 'Active' : 'Disabled'}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 border-b pb-4 gap-4">
-          <div className="flex items-center space-x-3">
-            <Switch 
-              id="status-page-enabled" 
-              checked={statusPageEnabledUI === null ? false : statusPageEnabledUI}
-              onCheckedChange={setStatusPageEnabledUI}
-            />
-            <Label htmlFor="status-page-enabled" className="font-medium">
-              {statusPageEnabledUI ? 'Public status page is visible' : 'Public status page is hidden'}
-            </Label>
-          </div>
-          
-          <div className="flex space-x-3">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleOpenPreview}
-              className="flex items-center gap-1.5 h-9 px-3"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              <span>Preview</span>
-            </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 border-b pb-4 gap-4">
+            <div className="flex items-center space-x-3">
+              <Switch 
+                id="status-page-enabled" 
+                checked={statusPageEnabledUI === null ? false : statusPageEnabledUI}
+                onCheckedChange={setStatusPageEnabledUI}
+              />
+              <Label htmlFor="status-page-enabled" className="font-medium">
+                {statusPageEnabledUI ? 'Public status page is visible' : 'Public status page is hidden'}
+              </Label>
+            </div>
             
-            <Button 
-              variant={statusPageEnabled ? "default" : "outline"}
-              size="sm"
-              disabled={statusPageEnabled !== true}
-              onClick={() => window.open('/', '_blank')}
-              className="flex items-center gap-1.5 h-9 px-3"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span>Open Page</span>
-            </Button>
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleOpenPreview}
+                className="flex items-center gap-1.5 h-9 px-3"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                <span>Preview</span>
+              </Button>
+              
+              <Button 
+                variant={statusPageEnabled ? "default" : "outline"}
+                size="sm"
+                disabled={statusPageEnabled !== true}
+                onClick={() => window.open('/', '_blank')}
+                className="flex items-center gap-1.5 h-9 px-3"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span>Open Page</span>
+              </Button>
+            </div>
           </div>
-        </div>
-        
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="general" className="flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              <span>General</span>
-              {hasGeneralTabChanges() && (
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="services" className="flex items-center gap-2">
-              <Layout className="h-4 w-4" />
-              <span>Services</span>
-              {hasServicesTabChanges() && (
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="appearance" className="flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              <span>Appearance</span>
-              {hasAppearanceTabChanges() && (
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center gap-2">
-              <Sliders className="h-4 w-4" />
-              <span>Advanced</span>
-              {hasAdvancedTabChanges() && (
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
           
-          <TabsContent value="general">
-            <GeneralTab 
-              statusPageTitle={statusPageTitle}
-              setStatusPageTitle={setStatusPageTitle}
-              statusPageDescription={statusPageDescription}
-              setStatusPageDescription={setStatusPageDescription}
-              historyDays={historyDays}
-              setHistoryDays={setHistoryDays}
-              statusPageEnabledUI={statusPageEnabledUI}
-              isLoading={isLoadingStatusPage}
-              isSaving={isSavingStatusPage}
-              onSave={handleSaveStatusPageSettings}
-            />
-          </TabsContent>
+          <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="general" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                <span>General</span>
+                {hasGeneralTabChanges() && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="services" className="flex items-center gap-2">
+                <Layout className="h-4 w-4" />
+                <span>Services</span>
+                {hasServicesTabChanges() && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="appearance" className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                <span>Appearance</span>
+                {hasAppearanceTabChanges() && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="flex items-center gap-2">
+                <Sliders className="h-4 w-4" />
+                <span>Advanced</span>
+                {hasAdvancedTabChanges() && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="general">
+              <GeneralTab 
+                statusPageTitle={statusPageTitle}
+                setStatusPageTitle={setStatusPageTitle}
+                statusPageDescription={statusPageDescription}
+                setStatusPageDescription={setStatusPageDescription}
+                historyDays={historyDays}
+                setHistoryDays={setHistoryDays}
+                statusPageEnabledUI={statusPageEnabledUI}
+                isLoading={isLoadingStatusPage}
+                isSaving={isSavingStatusPage}
+                onSave={handleSaveStatusPageSettings}
+              />
+            </TabsContent>
+            
+            <TabsContent value="services">
+              <ServicesTab 
+                serviceVisibility={serviceVisibility}
+                statusPageEnabledUI={statusPageEnabledUI}
+                isLoading={isLoadingStatusPage}
+                isSaving={isSavingStatusPage}
+                onToggleVisibility={handleToggleServiceVisibility}
+                onSave={handleSaveStatusPageSettings}
+              />
+            </TabsContent>
+            
+            <TabsContent value="appearance">
+              <AppearanceTab 
+                logoUrl={logoUrl}
+                setLogoUrl={setLogoUrl}
+                showServiceUrls={showServiceUrls}
+                setShowServiceUrls={setShowServiceUrls}
+                showServiceDescription={showServiceDescription}
+                setShowServiceDescription={setShowServiceDescription}
+                isLoading={isLoadingAppearance}
+                isSaving={isSavingAppearance}
+                onSave={handleSaveAppearanceSettings}
+              />
+            </TabsContent>
+            
+            <TabsContent value="advanced">
+              <AdvancedTab 
+                customCss={customCss}
+                setCustomCss={setCustomCss}
+                customHeader={customHeader}
+                setCustomHeader={setCustomHeader}
+                isLoading={isLoadingAdvanced}
+                isSaving={isSavingAdvanced}
+                onSave={handleSaveAdvancedSettings}
+              />
+            </TabsContent>
+          </Tabs>
           
-          <TabsContent value="services">
-            <ServicesTab 
-              serviceVisibility={serviceVisibility}
-              statusPageEnabledUI={statusPageEnabledUI}
-              isLoading={isLoadingStatusPage}
-              isSaving={isSavingStatusPage}
-              onToggleVisibility={handleToggleServiceVisibility}
-              onSave={handleSaveStatusPageSettings}
-            />
-          </TabsContent>
-          
-          <TabsContent value="appearance">
-            <AppearanceTab 
-              logoUrl={logoUrl}
-              setLogoUrl={setLogoUrl}
-              showServiceUrls={showServiceUrls}
-              setShowServiceUrls={setShowServiceUrls}
-              showServiceDescription={showServiceDescription}
-              setShowServiceDescription={setShowServiceDescription}
-              isLoading={isLoadingAppearance}
-              isSaving={isSavingAppearance}
-              onSave={handleSaveAppearanceSettings}
-            />
-          </TabsContent>
-          
-          <TabsContent value="advanced">
-            <AdvancedTab 
-              customCss={customCss}
-              setCustomCss={setCustomCss}
-              customHeader={customHeader}
-              setCustomHeader={setCustomHeader}
-              isLoading={isLoadingAdvanced}
-              isSaving={isSavingAdvanced}
-              onSave={handleSaveAdvancedSettings}
-            />
-          </TabsContent>
-        </Tabs>
-        
-        <StatusPagePreviewDialog 
-          open={previewDialogOpen}
-          setOpen={setPreviewDialogOpen}
-          statusPageEnabled={statusPageEnabled}
-          unsavedSettings={unsavedSettings}
-          hasUnsavedChanges={hasUnsavedChanges()}
-        />
-      </CardContent>
-    </Card>
+          <StatusPagePreviewDialog 
+            open={previewDialogOpen}
+            setOpen={setPreviewDialogOpen}
+            statusPageEnabled={statusPageEnabled}
+            unsavedSettings={unsavedSettings}
+            hasUnsavedChanges={hasUnsavedChanges()}
+          />
+        </CardContent>
+      </Card>
+    </>
   );
 } 

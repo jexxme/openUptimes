@@ -12,6 +12,7 @@ import Image from "next/image";
 import { RefreshCw } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { createPortal } from "react-dom";
+import { PageTitle } from "./components/PageTitle";
 
 // For type checking only
 interface ServiceConfig {
@@ -458,9 +459,26 @@ function HomeContent() {
     setStatusBadgeTooltipVisible(false);
   };
 
+  // Add page title component to update the document title based on status page title
+  useEffect(() => {
+    // Check if both are loaded to avoid flashing titles
+    if (contentReady && siteConfig && siteConfig.statusPage) {
+      // PageTitle will be updated via the standalone component
+      console.log("Status page title ready:", siteConfig.statusPage.title);
+    }
+  }, [contentReady, siteConfig]);
+
   // Create wrapper div with opacity transition based on content readiness
   return (
     <div className={`flex min-h-screen flex-col bg-white ${contentReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}>
+      {/* Add PageTitle component with status page title */}
+      {contentReady && siteConfig && (
+        <PageTitle 
+          statusPageTitle={siteConfig.statusPage?.title || "Service Status"} 
+          siteName={siteConfig.siteName || "OpenUptimes"}
+        />
+      )}
+      
       {showPreviewBanner && (
         <div className="bg-amber-50 border-b border-amber-100 py-3 px-4 text-center text-amber-800 text-sm">
           <div className="flex items-center justify-center gap-2 mb-1">

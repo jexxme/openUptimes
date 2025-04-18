@@ -19,6 +19,7 @@ import { Progress } from "@/components/ui/progress";
 
 // Import custom components
 import { SidebarNav } from "../components/admin/SidebarNav";
+import { PageTitle } from "../components/PageTitle";
 
 // Admin content pages - Dynamically import with SSR disabled
 const AdminDashboard = dynamic(() => import("../components/admin/pages/Dashboard").then(mod => mod.AdminDashboard), { ssr: false });
@@ -710,6 +711,13 @@ const AdminPageClient = () => {
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-background">
+        {/* Add PageTitle with preloaded data */}
+        {isLoaded && preloadedDataRef.current.statusPage && (
+          <PageTitle 
+            statusPageTitle={preloadedDataRef.current.statusPage?.settings?.title || "Service Status"} 
+          />
+        )}
+        
         {/* Sidebar for larger screens */}
         <UISidebar className="hidden md:block">
           <SidebarNav 
