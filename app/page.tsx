@@ -21,16 +21,29 @@ interface ServiceConfig {
 }
 
 // StatusDot component for animated status indicator
-const StatusDot = ({ status }: { status: string }) => {
-  const statusColor = 
-    status === "up" ? "bg-emerald-500" : 
-    status === "down" ? "bg-red-500" : 
-    "bg-gray-300";
+const StatusDot = ({ status, uptimePercentage }: { status: string; uptimePercentage?: number }) => {
+  // Determine color based on status and uptime percentage
+  let statusColor = 'bg-gray-300'; // Default color for unknown
+  
+  if (status === "up") {
+    if (uptimePercentage !== undefined) {
+      if (uptimePercentage >= 99.5) statusColor = 'bg-emerald-500'; // Fully operational - green
+      else if (uptimePercentage >= 95) statusColor = 'bg-emerald-500'; // Still very good - green
+      else if (uptimePercentage >= 70) statusColor = 'bg-yellow-400'; // Minor issues - yellow
+      else statusColor = 'bg-orange-400'; // Major issues but still up - orange
+    } else {
+      statusColor = 'bg-emerald-500'; // Default green if no percentage
+    }
+  } else if (status === "down") {
+    statusColor = 'bg-red-500'; // Complete outage - red
+  } else if (status === "degraded" || status === "partial") {
+    statusColor = 'bg-yellow-400'; // Degraded service - yellow
+  }
   
   return (
     <div className="relative flex items-center justify-center w-3 h-3">
       <div className={`w-3 h-3 rounded-full ${statusColor}`}>
-        {status === "up" && (
+        {(status === "up" && (!uptimePercentage || uptimePercentage >= 95)) && (
           <>
             <span className="absolute inset-0 rounded-full bg-emerald-500 opacity-75 animate-ping"></span>
             <span className="absolute inset-0 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -323,10 +336,10 @@ function HomeContent() {
         </div>
       )}
       
-      <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8">
         {/* Logo Section */}
         {appearanceConfig && ((appearanceConfig.logo && appearanceConfig.logo !== '') || (appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '')) && (
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-8">
             {appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '' ? (
               <img 
                 src={appearanceConfig.logoUrl} 
@@ -362,7 +375,7 @@ function HomeContent() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-5">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{siteConfig?.statusPage?.title}</h1>
                 <p 
@@ -375,34 +388,61 @@ function HomeContent() {
                   }}
                 />
               </div>
-              <button 
-                onClick={handleRefresh}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                disabled={isRefreshing}
-                title="Refresh status"
-              >
-                <RefreshCw 
-                  className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} 
-                />
-                <span>Refresh</span>
-              </button>
+              
+              {/* Single status badge section - shows only one badge based on priority */}
+              {(() => {
+                // Check if we have visible services
+                if (visibleServices.length === 0) return null;
+                
+                // Complete outage - at least one service is down
+                if (visibleServices.some(service => service.history.length > 0 && service.history[0].status === "down")) {
+                  return (
+                    <div className="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 my-auto">
+                      <StatusDot status="down" />
+                      <span>{visibleServices.every(service => service.history.length > 0 && service.history[0].status === "down") 
+                        ? "Complete system outage" 
+                        : "Service outage detected"}
+                      </span>
+                    </div>
+                  );
+                }
+                
+                // Partial outage - at least one service is degraded or has uptime < 95%
+                if (visibleServices.some(service => 
+                  (service.history.length > 0 && (service.history[0].status === "degraded" || service.history[0].status === "partial")) ||
+                  (service.history.length > 0 && service.history[0].status === "up" && service.uptimePercentage < 95)
+                )) {
+                  return (
+                    <div className="flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1.5 text-sm font-medium text-yellow-700 my-auto">
+                      <StatusDot status="degraded" />
+                      <span>Partial system degradation</span>
+                    </div>
+                  );
+                }
+                
+                // All systems operational - default state if neither of the above conditions match
+                return (
+                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 my-auto">
+                    <StatusDot status="up" uptimePercentage={100} />
+                    <span>All systems operational</span>
+                  </div>
+                );
+              })()}
             </div>
             
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {visibleServices.some(service => service.history.length > 0 && service.history[0].status === "up") && (
-                <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
-                  <StatusDot status="up" />
-                  <span>All systems operational</span>
-                </div>
-              )}
-              {visibleServices.some(service => service.history.length > 0 && service.history[0].status === "down") && (
-                <div className="flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700">
-                  <StatusDot status="down" />
-                  <span>Outage detected</span>
-                </div>
-              )}
-              <div className="ml-auto text-xs text-gray-500">
-                Last updated: {new Date().toLocaleTimeString()}
+            <div className="mb-2 flex flex-wrap items-center gap-2 justify-end">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>Last updated: {new Date().toLocaleTimeString()}</span>
+                <button 
+                  onClick={handleRefresh}
+                  className="flex items-center justify-center h-6 w-6 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  disabled={isRefreshing}
+                  title="Refresh status"
+                >
+                  <RefreshCw 
+                    className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} 
+                  />
+                </button>
               </div>
             </div>
             

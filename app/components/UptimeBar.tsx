@@ -30,84 +30,100 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
     });
   };
   
-  // Get status label for tooltip
-  const getStatusLabel = (status: string) => {
-    switch(status) {
-      case 'up': return 'Operational';
-      case 'down': return 'Outage';
-      case 'degraded': case 'partial': return 'Degraded';
-      default: return 'Unknown';
-    }
+  // Get status label for tooltip based on uptime percentage
+  const getStatusLabel = (uptimePercentage: number | null) => {
+    if (uptimePercentage === null) return 'No Data';
+    if (uptimePercentage === 100) return 'Operational';
+    if (uptimePercentage === 0) return 'Complete Outage';
+    if (uptimePercentage < 30) return 'Major Outage';
+    if (uptimePercentage < 70) return 'Partial Outage';
+    if (uptimePercentage < 100) return 'Minor Issues';
+    return 'Unknown';
   };
 
-  // Get status color for tooltip indicator
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'up': return '#3ba55c';
-      case 'down': return '#ed4245';
-      case 'degraded': case 'partial': return '#faa61a';
-      default: return '#6b7280';
+  // Get gradient color based on uptime percentage
+  const getStatusColor = (uptimePercentage: number | null) => {
+    if (uptimePercentage === null) return '#6b7280'; // Gray for no data
+    
+    if (uptimePercentage === 100) return '#3ba55c'; // Green for 100%
+    if (uptimePercentage === 0) return '#ed4245';   // Red for 0%
+    
+    // Define color stops for our gradient
+    const colorStops = [
+      { percent: 0, color: [237, 66, 69] },    // #ed4245 (red)
+      { percent: 30, color: [250, 166, 26] },  // #faa61a (orange)
+      { percent: 70, color: [253, 224, 71] },  // #fde047 (yellow)
+      { percent: 100, color: [59, 165, 92] }   // #3ba55c (green)
+    ];
+    
+    // Find the two color stops that our percentage falls between
+    let lower = colorStops[0];
+    let upper = colorStops[colorStops.length - 1];
+    
+    for (let i = 0; i < colorStops.length - 1; i++) {
+      if (uptimePercentage >= colorStops[i].percent && uptimePercentage <= colorStops[i+1].percent) {
+        lower = colorStops[i];
+        upper = colorStops[i+1];
+        break;
+      }
     }
+    
+    // Calculate the interpolation factor between the two color stops
+    const range = upper.percent - lower.percent;
+    const factor = range !== 0 ? (uptimePercentage - lower.percent) / range : 0;
+    
+    // Interpolate between the two colors
+    const r = Math.round(lower.color[0] + factor * (upper.color[0] - lower.color[0]));
+    const g = Math.round(lower.color[1] + factor * (upper.color[1] - lower.color[1]));
+    const b = Math.round(lower.color[2] + factor * (upper.color[2] - lower.color[2]));
+    
+    return `rgb(${r}, ${g}, ${b})`;
   };
   
-  // Calculate uptime percentage for a specific day
-  const getDailyUptimePercentage = (dayIndex: number) => {
-    // For this simplified version, we'll just use the status of that day
-    // In a real app, you might have multiple readings per day and calculate an actual percentage
-    const status = getDayStatus(dayIndex);
-    
-    switch(status) {
-      case 'up': return 100;
-      case 'down': return 0;
-      case 'degraded': case 'partial': return 80;
-      default: return null; // Unknown/no data
-    }
-  };
-  
-  // Get day status by index
-  const getDayStatus = (dayIndex: number) => {
-    // Calculate the timestamp for this day based on startTime
-    const dayStart = startTime + (dayIndex * 24 * 60 * 60 * 1000);
-    const dayEnd = dayStart + (24 * 60 * 60 * 1000);
-    
-    // Calculate the range for this specific day
-    const millisPerDay = 24 * 60 * 60 * 1000;
-    const dayTimestamp = startTime + (dayIndex * millisPerDay);
-    
-    // Find entries for this day - explicitly look for entries within the day range
-    const dayEntries = sortedHistory.filter(item => 
-      item.timestamp >= dayTimestamp && item.timestamp < (dayTimestamp + millisPerDay)
+  // Calculate daily uptime percentage based on events within that day
+  const calculateDailyUptimePercentage = (dayStart: number, dayEnd: number) => {
+    // Get events that occurred during this day
+    const dayEvents = sortedHistory.filter(event => 
+      event.timestamp >= dayStart && event.timestamp < dayEnd
     );
     
-    if (dayEntries.length === 0) {
+    if (dayEvents.length === 0) {
       // Check if this day is in the past (before our history starts)
       const firstHistoryTimestamp = sortedHistory.length > 0 ? sortedHistory[0].timestamp : Date.now();
       
       if (dayEnd < firstHistoryTimestamp) {
         // This day is before our first history entry, so we have no data
-        return 'unknown';
+        return null;
       }
       
       // If no entries for this day but the day is in our history range,
       // use the closest previous entry for a more accurate representation
-      const previousEntries = sortedHistory.filter(item => item.timestamp < dayTimestamp);
-      return previousEntries.length > 0 
-        ? previousEntries[previousEntries.length - 1].status 
-        : 'unknown';
+      const previousEntries = sortedHistory.filter(item => item.timestamp < dayStart);
+      if (previousEntries.length === 0) return null;
+      
+      const lastStatus = previousEntries[previousEntries.length - 1].status;
+      return lastStatus === 'up' ? 100 : lastStatus === 'down' ? 0 : lastStatus === 'degraded' || lastStatus === 'partial' ? 50 : null;
     }
     
-    // If we have entries for this day, check if any are down
-    if (dayEntries.some(entry => entry.status === 'down')) return 'down';
-    // Then check if any are degraded
-    if (dayEntries.some(entry => entry.status === 'degraded' || entry.status === 'partial')) return 'degraded';
-    // If all are up
-    if (dayEntries.every(entry => entry.status === 'up')) return 'up';
-    // Default
-    return 'unknown';
+    // Count statuses for events during this day
+    let upCount = 0;
+    let degradedCount = 0;
+    let downCount = 0;
+    
+    dayEvents.forEach(event => {
+      if (event.status === 'up') upCount++;
+      else if (event.status === 'degraded' || event.status === 'partial') degradedCount++;
+      else if (event.status === 'down') downCount++;
+    });
+    
+    const totalEvents = upCount + degradedCount + downCount;
+    if (totalEvents === 0) return null;
+    
+    // Weight degraded as 50% uptime
+    return (upCount + (degradedCount * 0.5)) / totalEvents * 100;
   };
   
-  // Calculate number of bars to display based on the time range
-  // Limit to a reasonable number for UI
+  // Calculate optimal number of bars to display
   const getOptimalBarCount = () => {
     // For shorter periods, show more detailed view
     if (daysDuration <= 14) return daysDuration; // 1:1 mapping for short periods
@@ -131,28 +147,18 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
       return startTime + (barIndex * (timeRangeDuration / totalBars));
     };
     
-    // Calculate the day index for a given bar
-    const getDayIndexForBar = (barIndex: number) => {
-      const timestamp = getTimestampForBar(barIndex);
-      return Math.floor((timestamp - startTime) / (24 * 60 * 60 * 1000));
-    };
-    
     // Generate the SVG rectangles
     const bars = [];
     for (let i = 0; i < totalBars; i++) {
-      const dayIndex = getDayIndexForBar(i);
-      const status = getDayStatus(dayIndex);
+      // Calculate time range for this bar
+      const barStartTime = getTimestampForBar(i);
+      const barEndTime = i < totalBars - 1 ? getTimestampForBar(i + 1) : endTime;
       
-      // Determine fill color based on status
-      let fillColor = "#6b7280"; // Default gray for unknown
+      // Calculate uptime percentage for this time period
+      const barUptimePercentage = calculateDailyUptimePercentage(barStartTime, barEndTime);
       
-      if (status === "up") {
-        fillColor = "#3ba55c"; // Green
-      } else if (status === "down") {
-        fillColor = "#ed4245"; // Red
-      } else if (status === "degraded" || status === "partial") {
-        fillColor = "#faa61a"; // Yellow
-      }
+      // Determine fill color based on uptime percentage
+      const fillColor = getStatusColor(barUptimePercentage);
       
       const xPosition = i * (barWidth + barSpacing);
       
@@ -169,7 +175,7 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
           className="uptime-day"
           data-html="true"
           tabIndex={i === 0 ? 0 : -1}
-          aria-label={`Day ${dayIndex+1}: ${status}`}
+          aria-label={`${formatDate(barStartTime)}: ${barUptimePercentage !== null ? `${barUptimePercentage.toFixed(0)}% uptime` : 'No data'}`}
           onMouseEnter={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             setTooltipPosition({ 
@@ -183,10 +189,14 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
       );
     }
     
-    return { bars, totalWidth, getTimestampForBar };
+    return { bars, totalWidth, getTimestampForBar, calculateUptimeForBar: (barIndex: number) => {
+      const barStartTime = getTimestampForBar(barIndex);
+      const barEndTime = barIndex < totalBars - 1 ? getTimestampForBar(barIndex + 1) : endTime;
+      return calculateDailyUptimePercentage(barStartTime, barEndTime);
+    }};
   };
   
-  const { bars, totalWidth, getTimestampForBar } = generateBars();
+  const { bars, totalWidth, getTimestampForBar, calculateUptimeForBar } = generateBars();
   
   return (
     <div className="w-full">
@@ -205,10 +215,10 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
           visible={hoveredBar !== null}
           position={tooltipPosition}
           date={hoveredBar !== null ? formatDate(getTimestampForBar(hoveredBar)) : ''}
-          status={hoveredBar !== null ? getDayStatus(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000))) : ''}
-          statusColor={hoveredBar !== null ? getStatusColor(getDayStatus(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000)))) : ''}
-          statusLabel={hoveredBar !== null ? getStatusLabel(getDayStatus(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000)))) : ''}
-          uptimePercentage={hoveredBar !== null ? getDailyUptimePercentage(Math.floor((getTimestampForBar(hoveredBar) - startTime) / (24 * 60 * 60 * 1000))) : null}
+          status={hoveredBar !== null ? '' : ''}
+          statusColor={hoveredBar !== null ? getStatusColor(calculateUptimeForBar(hoveredBar)) : ''}
+          statusLabel={hoveredBar !== null ? getStatusLabel(calculateUptimeForBar(hoveredBar)) : ''}
+          uptimePercentage={hoveredBar !== null ? calculateUptimeForBar(hoveredBar) : null}
         />
       </div>
       <div className="flex justify-between text-xs text-gray-500 mt-2.5 px-1">
