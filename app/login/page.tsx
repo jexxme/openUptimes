@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
+
+// Debug utility
+function logDebug(message: string, ...args: any[]) {
+  console.log(`[LoginClient] ${message}`, ...args);
+}
 
 // The inner component that uses useSearchParams
 function LoginForm() {
@@ -24,38 +29,87 @@ function LoginForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const from = searchParams?.get('from') || '/admin';
+  const timestamp = searchParams?.get('t');
+  
+  // Log query params on component mount
+  useEffect(() => {
+    logDebug('Component mounted with params:', { from, timestamp });
+    document.cookie.split(';').forEach(cookie => {
+      logDebug('Cookie found:', cookie.trim());
+    });
+  }, [from, timestamp]);
   
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    logDebug('Login form submitted');
     
     try {
+      logDebug('Making login API request...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify({ password }),
+        credentials: 'include' // Important to include cookies in the request
       });
       
       // Parse the response data
       const data = await response.json();
+      logDebug('Login API response received', { status: response.status, ok: response.ok });
       
       if (!response.ok) {
         throw new Error(data.error || 'Authentication failed');
       }
       
-      // Add timestamp to bust cache and prevent old redirects
-      const redirectUrl = `${from}?t=${Date.now()}`;
+      logDebug('Login successful, response:', data);
+      logDebug('Will redirect to:', from);
       
-      // Ensure cookie is set before redirect with a slight delay
-      setTimeout(() => {
+      // Check cookies after login
+      logDebug('Cookies after login:');
+      document.cookie.split(';').forEach(cookie => {
+        logDebug('Cookie:', cookie.trim());
+      });
+      
+      // Verify the session was created successfully before redirecting
+      try {
+        logDebug('Verifying session...');
+        
+        // Use a short delay to ensure cookie is set first
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const verifyResponse = await fetch('/api/auth/validate', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          credentials: 'include'
+        });
+        
+        const verifyData = await verifyResponse.json();
+        logDebug('Session verification response:', { status: verifyResponse.status, data: verifyData });
+        
+        if (!verifyData.valid) {
+          throw new Error('Session creation failed');
+        }
+        
+        // Add timestamp to bust cache and prevent old redirects
+        const redirectUrl = `${from}?t=${Date.now()}`;
+        logDebug('Redirecting to:', redirectUrl);
+        
         // Use window.location for a full page reload to ensure cookies are applied
         window.location.href = redirectUrl;
-      }, 500);
-      
+      } catch (verifyError) {
+        logDebug('Session verification failed:', verifyError);
+        throw new Error('Login succeeded but session verification failed. Please try again.');
+      }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      logDebug('Login error:', errorMessage);
+      
       if (err instanceof Error) {
         setError(err.message);
       } else {
