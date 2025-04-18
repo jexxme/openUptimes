@@ -38,10 +38,10 @@ export function CollapsibleInfo({
       
       <div 
         className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isOpen ? 'max-h-80 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'
+          isOpen ? 'max-h-[800px] opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'
         } ${contentClassName}`}
       >
-        <div className="bg-gray-50 p-3 rounded border border-gray-200 text-xs">
+        <div className="bg-gray-50 p-5 rounded border border-gray-200 text-xs">
           {children}
         </div>
       </div>

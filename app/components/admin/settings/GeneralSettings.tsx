@@ -427,66 +427,46 @@ export function GeneralSettings({
             <h3 className="font-medium mb-3 flex items-center gap-2">
               <Key className="h-4 w-4 text-muted-foreground" />
               <span>GitHub Environment</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className={`ml-auto px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help ${apiKey ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                      <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                      <span>{apiKey ? 'Configured' : 'Not Configured'}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {apiKey 
+                      ? 'API key is configured. Remember to add it to your GitHub repository.' 
+                      : 'API key is not configured. Generate a key to enable GitHub Actions integration.'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </h3>
             
             <div className="space-y-6">
-              {/* Authentication Section - Combined Secret and API Key */}
-              <div className="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                {/* Secret Name Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium">GitHub Repository Secret</h4>
-                    <a 
-                      href={repository ? `https://github.com/${repository}/settings/secrets/actions` : 'https://github.com/settings/secrets'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                    >
-                      View Secrets <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="PING_API_KEY"
-                      value={secretName}
-                      onChange={(e) => setSecretName(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Info className="h-3.5 w-3.5 text-blue-500" />
-                      <span>Name of the secret where you'll store your API key in GitHub. You may use any name you like, just update the Variable in GitHub as well.</span>
-                    </p>
-                  </div>
-                </div>
-                
+              <div className="bg-amber-50 p-3 rounded-md border border-amber-100">
+                <p className="text-sm text-amber-800 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>You must add both <strong>API Key</strong> as a Secret and <strong>APP_URL</strong> as a Variable in your GitHub repository for monitoring to work.</span>
+                </p>
+              </div>
+
+              {/* Required Secrets & Variables Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* API Key Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium flex items-center gap-1.5">
-                      <span>API Key</span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className={`px-2 py-0.5 rounded-md text-xs font-medium flex items-center gap-1 cursor-help ${apiKey ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                              <div className={`w-1.5 h-1.5 rounded-full ${apiKey ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                              <span>{apiKey ? 'Configured' : 'Missing'}</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {apiKey 
-                              ? 'API key is configured. Add this key as a GitHub repository secret.' 
-                              : 'No API key configured. Generate a key to enable GitHub Actions integration.'}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium">
+                      <span>1. API Key</span>
                     </h4>
                     <Button 
                       size="sm" 
                       variant="outline" 
                       onClick={handleGenerateKeyClick}
-                      className="h-8 text-xs"
+                      className="h-7 text-xs"
                     >
-                      Generate New Key
+                      Generate Key
                     </Button>
                   </div>
                   
@@ -519,70 +499,47 @@ export function GeneralSettings({
                     </Button>
                   </div>
                   
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    Add this API key to your repository as a secret named <code className="bg-gray-200 px-1 py-0.5 rounded">{secretName}</code>
-                  </p>
-                </div>
-
-                <CollapsibleInfo title="about API key authentication">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-2">
-                      <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Setup instructions:</p>
-                        <ol className="list-decimal ml-4 mt-1 space-y-1">
-                          <li>Generate your API key above</li>
-                          <li>Navigate to <span className="font-mono text-xs bg-gray-100 px-1 rounded">github.com/{repository}/settings/secrets/actions</span></li>
-                          <li>Click <strong>New repository secret</strong></li>
-                          <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">{secretName}</code> as the name</li>
-                          <li>Paste your API key as the value</li>
-                          <li>Click <strong>Add secret</strong></li>
-                        </ol>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Security considerations:</p>
-                        <ul className="list-disc ml-4 mt-1 space-y-1">
-                          <li>Never expose this key in public repositories or client-side code</li>
-                          <li>Only share with trusted services that need to send ping updates</li>
-                          <li>You can regenerate this key at any time if it's compromised</li>
-                          <li>When regenerated, all existing integrations using the old key will stop working</li>
-                        </ul>
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Add to GitHub as a <strong>Secret</strong>
+                    </p>
+                    <a 
+                      href={repository ? `https://github.com/${repository}/settings/secrets/actions` : 'https://github.com/settings/secrets'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      Add Secret <ExternalLink className="h-3 w-3" />
+                    </a>
                   </div>
-                </CollapsibleInfo>
-              </div>
-              
-              {/* Repository Variables Section */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium">APP_URL Variable</h4>
-                  <a 
-                    href={repository ? `https://github.com/${repository}/settings/variables/actions` : 'https://github.com/settings/variables'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                  >
-                    View Variables <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-                
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Info className="h-3.5 w-3.5 text-blue-500" />
-                    <span>Add this URL as <code className="bg-gray-200 px-1 py-0.5 rounded">APP_URL</code> variable in your GitHub repository</span>
-                  </p>
 
-                  <div className="flex items-center gap-2">
+                  <div>
+                    <h5 className="text-xs font-medium mb-1.5">Secret Name (default: PING_API_KEY)</h5>
                     <Input
-                      value={window.location.origin}
-                      readOnly
-                      className="bg-gray-50"
+                      placeholder="PING_API_KEY"
+                      value={secretName}
+                      onChange={(e) => setSecretName(e.target.value)}
+                      className="h-8 text-sm"
                     />
+                  </div>
+                </div>
+
+                {/* APP_URL Section */}
+                <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium">
+                      <span>2. APP_URL</span>
+                    </h4>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={window.location.origin}
+                        readOnly
+                        className="bg-gray-100"
+                      />
+                    </div>
                     <Button 
                       variant="outline" 
                       size="icon"
@@ -600,49 +557,69 @@ export function GeneralSettings({
                     </Button>
                   </div>
                   
-                  <CollapsibleInfo title="about the APP_URL variable">
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-2">
-                        <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium">What is the APP_URL for?</p>
-                          <p className="mt-1">This variable tells the GitHub Action where to send ping data. It should match the domain where your status page is running and must be accessible from the internet for pings to work properly.</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium">How to add the APP_URL variable:</p>
-                          <ol className="list-decimal ml-4 mt-1 space-y-1">
-                            <li>On GitHub, navigate to your repository</li>
-                            <li>Click on <strong>Settings</strong> tab</li>
-                            <li>In the left sidebar, click <strong>Secrets and variables</strong> → <strong>Actions</strong></li>
-                            <li>Click the <strong>Variables</strong> tab</li>
-                            <li>Click <strong>New repository variable</strong></li>
-                            <li>Type <code className="bg-gray-200 px-1 py-0.5 rounded">APP_URL</code> for the name</li>
-                            <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">{window.location.origin}</code></li>
-                            <li>Click <strong>Add variable</strong></li>
-                          </ol>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium">Important:</p>
-                          <ul className="list-disc ml-4 mt-1 space-y-1">
-                            <li>Do not include a trailing slash in your URL</li>
-                            <li>Use the complete URL including the protocol (https://)</li>
-                            <li>If this variable is not set, pings won't be sent to your application</li>
-                            <li>The example workflow is set to skip pings if <code className="bg-gray-200 px-1 py-0.5 rounded">APP_URL</code> is set to <code className="bg-gray-200 px-1 py-0.5 rounded">http://localhost:3000</code></li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </CollapsibleInfo>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Add to GitHub as a <strong>Variable</strong> named <code className="bg-gray-200 px-1 py-0.5 rounded">APP_URL</code>
+                    </p>
+                    <a 
+                      href={repository ? `https://github.com/${repository}/settings/variables/actions` : 'https://github.com/settings/variables'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      Add Variable <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
                 </div>
               </div>
+
+              {/* Setup Instructions Section */}
+              <CollapsibleInfo title="Setup instructions">
+                <div className="space-y-5">
+                  <div className="flex items-start gap-2">
+                    <div className="bg-blue-100 text-blue-800 rounded-full p-1 flex-shrink-0 mt-0.5">
+                      <span className="h-4 w-4 font-medium flex items-center justify-center text-xs">1</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Add API Key as a Secret</p>
+                      <ol className="list-decimal ml-4 mt-1 space-y-1 text-sm">
+                        <li>Navigate to <span className="text-xs bg-gray-100 px-1 rounded">github.com/{repository || '[your-repo]'}/settings/secrets/actions</span></li>
+                        <li>Click <strong>New repository secret</strong></li>
+                        <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">{secretName}</code> as the name</li>
+                        <li>Paste your API key as the value</li>
+                      </ol>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-2">
+                    <div className="bg-blue-100 text-blue-800 rounded-full p-1 flex-shrink-0 mt-0.5">
+                      <span className="h-4 w-4 font-medium flex items-center justify-center text-xs">2</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Add APP_URL as a Variable</p>
+                      <ol className="list-decimal ml-4 mt-1 space-y-1 text-sm">
+                        <li>Navigate to <span className="text-xs bg-gray-100 px-1 rounded">github.com/{repository || '[your-repo]'}/settings/variables/actions</span></li>
+                        <li>Click <strong>New repository variable</strong></li>
+                        <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">APP_URL</code> as the name</li>
+                        <li>Enter <code className="bg-gray-200 px-1 py-0.5 rounded">{window.location.origin}</code> as the value</li>
+                      </ol>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Important:</p>
+                      <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
+                        <li>Both the Secret and Variable must be set for monitoring to work</li>
+                        <li>The API key is used to authenticate ping requests from GitHub Actions</li>
+                        <li>The APP_URL tells GitHub Actions where to send ping data</li>
+                        <li>If you regenerate your API key, you'll need to update the GitHub secret</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleInfo>
             </div>
           </div>
           
