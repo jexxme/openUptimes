@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/app/components/ui/switch";
+import { Slider } from "@/app/components/ui/slider";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface AppearanceTabProps {
   logoUrl: string;
@@ -10,6 +12,8 @@ interface AppearanceTabProps {
   setShowServiceUrls: (show: boolean) => void;
   showServiceDescription: boolean;
   setShowServiceDescription: (show: boolean) => void;
+  historyDays: number;
+  setHistoryDays: (days: number) => void;
   isLoading: boolean;
   isSaving: boolean;
   onSave: () => void;
@@ -22,10 +26,14 @@ export function AppearanceTab({
   setShowServiceUrls,
   showServiceDescription,
   setShowServiceDescription,
+  historyDays,
+  setHistoryDays,
   isLoading,
   isSaving,
   onSave
 }: AppearanceTabProps) {
+  const [logoError, setLogoError] = useState(false);
+
   if (isLoading) {
     return (
       <div className="py-8 flex justify-center">
@@ -59,20 +67,32 @@ export function AppearanceTab({
                 <Input
                   type="text"
                   value={logoUrl}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLogoUrl(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setLogoUrl(e.target.value);
+                    setLogoError(false);
+                  }}
                   placeholder="https://your-domain.com/logo.png"
+                  className={logoError ? "border-red-500" : ""}
                 />
+                {logoError && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Unable to load image from URL
+                  </p>
+                )}
               </div>
               
               <div className="h-10 w-10 border rounded-md bg-background flex items-center justify-center shrink-0 mt-6">
-                {logoUrl ? (
+                {logoUrl && !logoError ? (
                   <img
                     src={logoUrl}
                     alt="Preview"
                     className="max-h-8 max-w-full object-contain"
-                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                      (e.target as HTMLImageElement).src = '/placeholder-logo.png';
+                    onError={(e) => {
+                      e.preventDefault(); // Prevent default error behavior
+                      (e.target as HTMLImageElement).style.display = 'none'; // Hide the image
+                      setLogoError(true); // Set error state
                     }}
+                    onLoad={() => setLogoError(false)}
                   />
                 ) : (
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
@@ -133,6 +153,51 @@ export function AppearanceTab({
                 checked={showServiceDescription}
                 onCheckedChange={setShowServiceDescription}
               />
+            </div>
+          </div>
+        </div>
+        
+        {/* History Options */}
+        <div className="rounded-lg border bg-card p-5">
+          <h3 className="font-medium mb-3 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+              <path d="M12 8v4l3 3"/>
+              <circle cx="12" cy="12" r="10"/>
+            </svg>
+            <span>History Options</span>
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-medium">Display History Duration</label>
+                <span className="text-sm font-medium text-primary">{historyDays} days</span>
+              </div>
+              <Slider
+                value={[historyDays]}
+                onValueChange={(value: number[]) => setHistoryDays(value[0])}
+                min={7}
+                max={180}
+                step={1}
+                className="my-4"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>7 days</span>
+                <span className="text-center">30 days</span>
+                <span className="text-center">90 days</span>
+                <span>180 days</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Adjust how many days of history to display on your status page.
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="ml-1 inline-flex items-center justify-center rounded-full bg-muted h-4 w-4 text-xs">?</button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Longer periods will show data at a reduced resolution. Shorter periods show more detailed data.
+                  </TooltipContent>
+                </Tooltip>
+              </p>
             </div>
           </div>
         </div>

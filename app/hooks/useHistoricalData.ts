@@ -28,6 +28,10 @@ export function useHistoricalData(timeRange = '90d') {
         const url = new URL('/api/history', window.location.origin);
         url.searchParams.append('timeRange', timeRange);
         
+        // Add a timestamp to avoid browser caching
+        url.searchParams.append('_t', Date.now().toString());
+        
+        console.log(`Fetching historical data with timeRange: ${timeRange}`);
         const response = await fetch(url.toString());
         
         if (!response.ok) {
@@ -35,6 +39,7 @@ export function useHistoricalData(timeRange = '90d') {
         }
         
         const historyData = await response.json();
+        console.log(`Received historical data for ${historyData.length} services`);
         
         // Calculate uptime percentage for each service
         const processedData = historyData.map((service: any) => {

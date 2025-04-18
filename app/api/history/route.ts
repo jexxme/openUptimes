@@ -88,6 +88,26 @@ export async function GET(request: NextRequest) {
         historyLimit = 30 * 24 * 2; // 30 days (30-min resolution)
       } else if (timeRange === '90d') {
         historyLimit = 90 * 24 * 60; // Full 90 days of data (1-min resolution)
+      } else if (timeRange.endsWith('d')) {
+        // Handle custom day ranges (e.g., '14d', '45d', '180d')
+        const days = parseInt(timeRange.slice(0, -1), 10);
+        if (!isNaN(days) && days > 0) {
+          // Use a variable resolution based on the number of days
+          if (days <= 7) {
+            // For <= 7 days: use 10-min resolution
+            historyLimit = days * 24 * 6;
+          } else if (days <= 30) {
+            // For 8-30 days: use 30-min resolution
+            historyLimit = days * 24 * 2;
+          } else if (days <= 90) {
+            // For 31-90 days: use 1-hour resolution
+            historyLimit = days * 24;
+          } else {
+            // For > 90 days: use 2-hour resolution
+            historyLimit = days * 12;
+          }
+          console.log(`Custom day range: ${days} days, limit: ${historyLimit}`);
+        }
       } else if (timeRange === 'all') {
         historyLimit = 90 * 24 * 60; // Max 90 days of data
       }

@@ -15,6 +15,7 @@ interface ServiceItemProps {
   url?: string;
   showServiceUrls?: boolean;
   showServiceDescription?: boolean;
+  historyDays?: number;
 }
 
 // ServiceItemTooltip component for description tooltip
@@ -55,15 +56,21 @@ export function ServiceItem({
   description,
   url,
   showServiceUrls = true,
-  showServiceDescription = true
+  showServiceDescription = true,
+  historyDays = 90
 }: ServiceItemProps) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const questionRef = useRef<HTMLButtonElement>(null);
 
-  // Calculate time range for the uptime bar - ensure we use exactly 90 days 
+  // Calculate time range for the uptime bar based on the provided historyDays
   const now = Date.now();
-  const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+  const historyStartTime = now - (historyDays * 24 * 60 * 60 * 1000);
+  
+  // Debug log to verify historyDays is being applied
+  useEffect(() => {
+    console.log(`ServiceItem ${name} using historyDays: ${historyDays}`);
+  }, [name, historyDays]);
   
   const handleMouseEnter = () => {
     if (questionRef.current) {
@@ -194,7 +201,7 @@ export function ServiceItem({
       
       <UptimeBar 
         history={history} 
-        startTime={ninetyDaysAgo} 
+        startTime={historyStartTime} 
         endTime={now} 
         uptimePercentage={uptimePercentage} 
       />
