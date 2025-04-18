@@ -39,7 +39,7 @@ interface StatusHistoryItem {
 }
 
 // Create a client-only wrapper to prevent hydration issues
-const AdminPageClient = ({ searchParams }: { searchParams?: { tab?: string; service?: string } }) => {
+const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: string; service?: string }> }) => {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -115,25 +115,31 @@ const AdminPageClient = ({ searchParams }: { searchParams?: { tab?: string; serv
 
   // Check URL parameters on mount
   useEffect(() => {
-    // Log initial URL parameters
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      const tab = url.searchParams.get('tab');
-      const service = url.searchParams.get('service');
-      
-      console.log('[AdminPage] URL parameters detected:', { 
-        tab, 
-        service,
-        searchParams: Object.fromEntries(url.searchParams.entries()),
-        rawSearchParams: searchParams
-      });
-      
-      // Update active tab based on URL
-      if (tab) {
-        console.log(`[AdminPage] Setting active tab to: ${tab}`);
-        setActiveTab(tab);
+    // Handle Promise-based searchParams
+    const initFromSearchParams = async () => {
+      if (searchParams) {
+        try {
+          const resolvedParams = await searchParams;
+          
+          // Log initial URL parameters
+          console.log('[AdminPage] URL parameters detected:', { 
+            tab: resolvedParams.tab, 
+            service: resolvedParams.service,
+            rawSearchParams: resolvedParams
+          });
+          
+          // Update active tab based on URL
+          if (resolvedParams.tab) {
+            console.log(`[AdminPage] Setting active tab to: ${resolvedParams.tab}`);
+            setActiveTab(resolvedParams.tab);
+          }
+        } catch (error) {
+          console.error('[AdminPage] Error processing search params:', error);
+        }
       }
-    }
+    };
+    
+    initFromSearchParams();
   }, [searchParams]);
   
   // Handle tab change
@@ -866,5 +872,8 @@ const AdminPageClient = ({ searchParams }: { searchParams?: { tab?: string; serv
   );
 };
 
-// Export a client-only wrapper component
-export default dynamic(() => Promise.resolve(AdminPageClient), { ssr: false }); 
+// Create a page component that renders the client component
+export default function Page({ searchParams }: { searchParams?: Promise<{ tab?: string; service?: string }> }) {
+  const AdminPage = dynamic(() => Promise.resolve(AdminPageClient), { ssr: false });
+  return <AdminPage searchParams={searchParams} />;
+} 

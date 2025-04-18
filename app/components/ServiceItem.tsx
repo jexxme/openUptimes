@@ -225,21 +225,44 @@ const StatusTooltip = ({
 };
 
 // Helper to get status display based on status and uptime percentage
-const getStatusDisplay = (status: string, uptimePercentage: number) => {
+const getStatusDisplay = (status: string, uptimePercentage: number, history: Array<{ status: string; timestamp: number }>) => {
+  // Check if there was any downtime in the last 24 hours
+  const hasRecentDowntime = () => {
+    const dayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    return history.some(item => 
+      item.timestamp >= dayAgo && 
+      (item.status === 'down' || item.status === 'degraded' || item.status === 'partial')
+    );
+  };
+
   // Calculate status color with more granularity
   const getStatusColor = () => {
-    if (status === 'up' && uptimePercentage >= 99.5) {
-      return { bg: 'bg-[#3ba55c]/10', text: 'text-[#3ba55c]' };
-    }
-    if (status === 'up' && uptimePercentage >= 95) {
-      return { bg: 'bg-[#3ba55c]/10', text: 'text-[#3ba55c]' };
-    }
-    if (status === 'degraded' || status === 'partial' || (status === 'up' && uptimePercentage < 95)) {
-      return { bg: 'bg-[#faa61a]/10', text: 'text-[#faa61a]' };
-    }
+    // If current status is down, it's an outage
     if (status === 'down') {
       return { bg: 'bg-[#ed4245]/10', text: 'text-[#ed4245]' };
     }
+    
+    // If current status is degraded or partial, it's degraded
+    if (status === 'degraded' || status === 'partial') {
+      return { bg: 'bg-[#faa61a]/10', text: 'text-[#faa61a]' };
+    }
+    
+    // If current status is up but uptime is low
+    if (status === 'up') {
+      if (uptimePercentage >= 99.5) {
+        return { bg: 'bg-[#3ba55c]/10', text: 'text-[#3ba55c]' };
+      }
+      if (uptimePercentage >= 95) {
+        return { bg: 'bg-[#3ba55c]/10', text: 'text-[#3ba55c]' };
+      }
+      // Only show partially degraded if there was recent downtime
+      if (uptimePercentage < 95 && hasRecentDowntime()) {
+        return { bg: 'bg-[#faa61a]/10', text: 'text-[#faa61a]' };
+      }
+      // Otherwise consider it mostly operational
+      return { bg: 'bg-[#3ba55c]/10', text: 'text-[#3ba55c]' };
+    }
+    
     return { bg: 'bg-gray-100', text: 'text-gray-500' };
   };
 
@@ -247,11 +270,22 @@ const getStatusDisplay = (status: string, uptimePercentage: number) => {
 
   // Display label based on status and uptime
   const getLabel = () => {
-    if (status === 'up' && uptimePercentage >= 99.5) return 'Operational';
-    if (status === 'up' && uptimePercentage >= 95) return 'Mostly Operational';
-    if (status === 'degraded' || status === 'partial') return 'Degraded';
-    if (status === 'up' && uptimePercentage < 95) return 'Partially Degraded';
+    // If current status is down, it's an outage
     if (status === 'down') return 'Outage';
+    
+    // If current status is degraded or partial, it's degraded
+    if (status === 'degraded' || status === 'partial') return 'Degraded';
+    
+    // If current status is up but uptime varies
+    if (status === 'up') {
+      if (uptimePercentage >= 99.5) return 'Operational';
+      if (uptimePercentage >= 95) return 'Mostly Operational';
+      // Only show partially degraded if there was recent downtime
+      if (hasRecentDowntime()) return 'Partially Degraded';
+      // Otherwise consider it mostly operational
+      return 'Mostly Operational';
+    }
+    
     return 'Unknown';
   };
 
@@ -266,7 +300,7 @@ const getStatusDisplay = (status: string, uptimePercentage: number) => {
         </svg>
       );
     }
-    if (status === 'degraded' || status === 'partial' || (status === 'up' && uptimePercentage < 95)) {
+    if (status === 'degraded' || status === 'partial' || (status === 'up' && uptimePercentage < 95 && hasRecentDowntime())) {
       return (
         <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -321,24 +355,39 @@ export function ServiceItem({
   // Helper function to get history start time
   const getHistoryStartTime = () => historyStartTime;
   
+  // Check if there was any downtime in the last 24 hours
+  const hasRecentDowntime = () => {
+    const dayAgo = now - (24 * 60 * 60 * 1000);
+    return history.some(item => 
+      item.timestamp >= dayAgo && 
+      (item.status === 'down' || item.status === 'degraded' || item.status === 'partial')
+    );
+  };
+  
   // Get classes for status indicators
   const getStatusClass = (element: 'dot' | 'status-badge' | 'label') => {
     // For the dot
     if (element === 'dot') {
       if (status === 'up' && uptimePercentage >= 99.5) return 'bg-emerald-500';
       if (status === 'up' && uptimePercentage >= 95) return 'bg-emerald-400';
-      if (status === 'degraded' || status === 'partial' || (status === 'up' && uptimePercentage < 95)) return 'bg-yellow-400';
+      if (status === 'degraded' || status === 'partial') return 'bg-yellow-400';
       if (status === 'down') return 'bg-red-500';
-      return 'bg-gray-400';
+      // Only show yellow for "up" with low uptime if there was recent downtime
+      if (status === 'up' && uptimePercentage < 95 && hasRecentDowntime()) return 'bg-yellow-400';
+      // Otherwise show green
+      return status === 'up' ? 'bg-emerald-400' : 'bg-gray-400';
     }
     
     // For the status badge background
     if (element === 'status-badge') {
       if (status === 'up' && uptimePercentage >= 99.5) return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400';
       if (status === 'up' && uptimePercentage >= 95) return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400';
-      if (status === 'degraded' || status === 'partial' || (status === 'up' && uptimePercentage < 95)) return 'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400';
+      if (status === 'degraded' || status === 'partial') return 'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400';
       if (status === 'down') return 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400';
-      return 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-400';
+      // Only show yellow for "up" with low uptime if there was recent downtime
+      if (status === 'up' && uptimePercentage < 95 && hasRecentDowntime()) return 'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400';
+      // Otherwise show green
+      return status === 'up' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-400';
     }
     
     // For the status text label
@@ -346,9 +395,11 @@ export function ServiceItem({
       if (status === 'up' && uptimePercentage >= 99.5) return 'Operational';
       if (status === 'up' && uptimePercentage >= 95) return 'Mostly Operational';
       if (status === 'degraded' || status === 'partial') return 'Degraded';
-      if (status === 'up' && uptimePercentage < 95) return 'Partially Degraded';
       if (status === 'down') return 'Outage';
-      return 'Unknown';
+      // Only show "Partially Degraded" if there was recent downtime
+      if (status === 'up' && uptimePercentage < 95 && hasRecentDowntime()) return 'Partially Degraded';
+      // Otherwise show "Mostly Operational"
+      return status === 'up' ? 'Mostly Operational' : 'Unknown';
     }
     
     return '';

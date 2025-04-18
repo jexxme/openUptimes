@@ -482,7 +482,9 @@ function HomeContent() {
 
   // Create wrapper div with opacity transition based on content readiness
   return (
-    <div className={`flex min-h-screen flex-col bg-white dark:bg-gray-950 ${contentReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}>
+    <div className={`flex min-h-screen flex-col bg-white dark:bg-gray-950 ${contentReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200 overflow-y-auto`}>
+      <GlobalStyles />
+      
       {/* Add PageTitle component with status page title */}
       {contentReady && siteConfig && (
         <PageTitle 
@@ -762,8 +764,34 @@ function HomeContent() {
 }
 
 // Main page component with Suspense boundary
-export default function Home() {
+export default function Home({ searchParams }: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
   return (
-    <HomeContent />
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+// Add this global style for Safari scrolling and proper dark mode support
+export function GlobalStyles() {
+  return (
+    <style jsx global>{`
+      html, body {
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Ensure dark mode is properly applied */
+      .dark {
+        color-scheme: dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html:not(.light) {
+          color-scheme: dark;
+        }
+      }
+    `}</style>
   );
 }

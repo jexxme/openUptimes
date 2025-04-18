@@ -42,8 +42,8 @@ export function GeneralTab({
   const [selectedText, setSelectedText] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   
-  // Store initial values for change detection
-  const [initialValues] = useState({
+  // Store initial values for change detection - now with a setter function
+  const [initialValues, setInitialValues] = useState({
     title: statusPageTitle,
     description: statusPageDescription,
     historyDays: historyDays
@@ -58,6 +58,21 @@ export function GeneralTab({
     
     setHasChanges(hasChanged);
   }, [statusPageTitle, statusPageDescription, historyDays, initialValues]);
+  
+  // Handle save operation
+  const handleSave = () => {
+    onSave();
+    
+    // Update initialValues after successful save
+    // Using a slight delay to ensure the save operation is complete
+    setTimeout(() => {
+      setInitialValues({
+        title: statusPageTitle,
+        description: statusPageDescription,
+        historyDays: historyDays
+      });
+    }, 100);
+  };
   
   // Store selection position when user selects text
   const handleSelect = () => {
@@ -406,7 +421,7 @@ export function GeneralTab({
         
         <div className="flex justify-end">
           <Button 
-            onClick={onSave} 
+            onClick={handleSave} 
             disabled={isSaving || isLoading}
             variant="default"
             className={hasChanges ? "gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50 border border-amber-100 dark:border-amber-900/30" : ""}
