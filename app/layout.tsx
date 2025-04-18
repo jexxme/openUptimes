@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClientHooks } from "./components/ClientHooks";
 
-const geistSans = Geist({
+const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+// We'll use Inter as a replacement for Geist Mono as well
+const mono = Inter({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
@@ -53,7 +54,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} ${mono.variable} antialiased`}
       >
         <ClientHooks>
           {children}
