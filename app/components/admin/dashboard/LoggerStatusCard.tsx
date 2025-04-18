@@ -29,11 +29,18 @@ interface TooltipProps {
 const Tooltip = ({ text, children }: TooltipProps) => (
   <div className="group relative inline-block">
     {children}
-    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 dark:bg-gray-900 text-white text-xs rounded p-1 absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-1 w-48 pointer-events-none">
-      {text}
-      <svg className="absolute text-gray-800 dark:text-gray-900 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255">
-        <polygon className="fill-current" points="0,0 127.5,127.5 255,0" />
-      </svg>
+    <div 
+      className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 
+                bg-gray-800 dark:bg-gray-900 text-white text-xs rounded p-2
+                bottom-full left-1/2 transform -translate-x-1/2 mb-2
+                z-[100] shadow-lg pointer-events-none w-48"
+      style={{ 
+        maxWidth: "200px",
+        overflow: "visible" 
+      }}
+    >
+      <div className="text-center">{text}</div>
+      <div className="absolute w-3 h-3 bg-gray-800 dark:bg-gray-900 transform rotate-45 left-1/2 -ml-1.5 -bottom-1.5"></div>
     </div>
   </div>
 );
@@ -320,10 +327,11 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
     if (!pingStats?.lastPing) return { status: 'Unknown', color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' };
     
     const seconds = Math.floor((currentTime - pingStats.lastPing) / 1000);
+    const interval = pingStats.intervalSeconds || 300;
     
-    if (seconds > 90) {
+    if (seconds > 1.5 * interval) {
       return { status: 'Critical', color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' };
-    } else if (seconds > 60) {
+    } else if (seconds > interval) {
       return { status: 'Warning', color: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400' };
     } else {
       return { status: 'Healthy', color: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' };
@@ -334,7 +342,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
   const secondsSinceLastPing = pingStats?.lastPing ? Math.floor((currentTime - pingStats.lastPing) / 1000) : 0;
 
   return (
-    <Card className={`overflow-hidden border col-span-6 lg:col-span-3 ${className}`}>
+    <Card className={`overflow-visible border col-span-6 lg:col-span-3 ${className}`}>
       <CardHeader className="border-b pb-2 pt-3 px-4 h-[72px] flex items-center">
         <div className="flex items-center justify-between w-full">
           <div className="space-y-0.5">
@@ -391,8 +399,8 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
                     <span className="text-slate-600 dark:text-slate-400">Last GitHub ping:</span>
                   </Tooltip>
                   <span className={`font-medium ${
-                    secondsSinceLastPing > 90 ? 'text-red-600 dark:text-red-400' : 
-                    secondsSinceLastPing > 60 ? 'text-orange-600 dark:text-orange-400' : 
+                    secondsSinceLastPing > 1.5 * (pingStats.intervalSeconds || 300) ? 'text-red-600 dark:text-red-400' : 
+                    secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 'text-orange-600 dark:text-orange-400' : 
                     'text-green-600 dark:text-green-400'
                   }`}>
                     {getLastGitHubActionsPing()}
@@ -411,13 +419,24 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
 
                 {/* Timeline Status Bar */}
                 <div className="mt-3 mb-2">
-                  {/* Time labels */}
-                  <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-1">
-                    <span>Last ping</span>
-                    <span>Expected</span>
-                    <span>Current</span>
+                  {/* Current time indicator */}
+                  <div className="relative h-5 mb-1">
+                    <span 
+                      className={`absolute font-medium text-[10px] ${
+                        secondsSinceLastPing > 1.5 * (pingStats.intervalSeconds || 300) ? 'text-red-600 dark:text-red-400' : 
+                        secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 'text-orange-600 dark:text-orange-400' : 
+                        'text-green-600 dark:text-green-400'
+                      }`}
+                      style={{ 
+                        left: `${Math.min(100, (100 * secondsSinceLastPing) / (1.5 * (pingStats.intervalSeconds || 300)))}%`,
+                        bottom: '0',
+                        transform: 'translateX(-50%)'
+                      }}
+                    >
+                      {secondsSinceLastPing}s
+                    </span>
                   </div>
-                  
+                
                   {/* Timeline bar */}
                   <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden">
                     {/* Elapsed time section */}
@@ -428,55 +447,40 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
                           'bg-green-500'
                       }`}
                       style={{ 
-                        width: `${Math.min(100, (100 * secondsSinceLastPing) / Math.max(secondsSinceLastPing, pingStats.intervalSeconds || 300))}%` 
+                        width: `${Math.min(100, (100 * secondsSinceLastPing) / (1.5 * (pingStats.intervalSeconds || 300)))}%` 
                       }}
                     ></div>
                     
                     {/* Expected time marker */}
-                    <Tooltip text={`Expected ping after: ${pingStats.intervalSeconds || 300}s`}>
-                      <div 
-                        className="absolute h-full w-0.5 bg-slate-600 dark:bg-slate-400 z-10"
-                        style={{ 
-                          left: `${Math.min(100, (100 * (pingStats.intervalSeconds || 300)) / Math.max(secondsSinceLastPing, pingStats.intervalSeconds || 300))}%` 
-                        }}
-                      ></div>
-                    </Tooltip>
+                    <div 
+                      className="absolute h-full w-0.5 bg-slate-600 dark:bg-slate-400 z-10"
+                      style={{ 
+                        left: `${100 * 2/3}%` 
+                      }}
+                    ></div>
                   </div>
                   
-                  {/* Time values */}
-                  <div className="relative text-[10px] mt-1">
+                  {/* Time labels */}
+                  <div className="flex text-[10px] mt-1 relative">
                     {/* Start time */}
                     <span className="absolute left-0 text-slate-500 dark:text-slate-400">0s</span>
                     
-                    {/* Expected time - centered */}
-                    <div className="absolute left-1/2 transform -translate-x-1/2">
-                      <Tooltip text="Expected time interval">
-                        <span className="text-slate-600 dark:text-slate-400 font-medium">
-                          {pingStats.intervalSeconds || 300}s
-                        </span>
-                      </Tooltip>
-                    </div>
+                    {/* Expected time - at 2/3 position */}
+                    <span 
+                      className="absolute text-slate-600 dark:text-slate-400 font-medium"
+                      style={{ left: `${100 * 2/3}%`, transform: 'translateX(-50%)' }}
+                    >
+                      {pingStats.intervalSeconds || 300}s
+                    </span>
                     
-                    {/* Current time */}
-                    <div className="absolute right-0">
-                      <Tooltip text={secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 
-                        `Overdue by ${secondsSinceLastPing - (pingStats.intervalSeconds || 300)}s` : 
-                        "Time since last ping"}>
-                        <span className={`font-medium ${
-                          secondsSinceLastPing > 1.5 * (pingStats.intervalSeconds || 300) ? 'text-red-600 dark:text-red-400' : 
-                          secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 'text-yellow-600 dark:text-yellow-400' : 
-                          'text-slate-600 dark:text-slate-400'
-                        }`}>
-                          {secondsSinceLastPing}s
-                          {secondsSinceLastPing > (pingStats.intervalSeconds || 300) && 
-                            ` (+${secondsSinceLastPing - (pingStats.intervalSeconds || 300)}s)`}
-                        </span>
-                      </Tooltip>
-                    </div>
+                    {/* Critical time - right end */}
+                    <span className="absolute right-0 text-red-600 dark:text-red-400 font-medium">
+                      {Math.round(1.5 * (pingStats.intervalSeconds || 300))}s
+                    </span>
                   </div>
                   
                   {/* Add height to account for absolute positioning */}
-                  <div className="h-4"></div>
+                  <div className="h-5"></div>
                 </div>
               </div>
             )}
@@ -506,12 +510,19 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <Tooltip text="Number of successful ping runs">
-                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Success count:</span>
+                      <Tooltip text="Number of successful ping runs (limited to last 10 entries)">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Success rate:</span>
                       </Tooltip>
                       <span className="text-right dark:text-slate-300">
-                        {pingStats?.recentHistory ? pingStats.recentHistory.filter((entry: any) => 
-                          entry.source === 'github-action').length : '0'}
+                        {pingStats?.recentHistory ? 
+                          (() => {
+                            const githubRuns = pingStats.recentHistory.filter((entry: any) => 
+                              entry.source === 'github-action');
+                            const count = githubRuns.length;
+                            // Show only the percentage
+                            return `${Math.round((count/10) * 100)}%`;
+                          })() : 
+                          '0%'}
                       </span>
                     </div>
                   </div>
