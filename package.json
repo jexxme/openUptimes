@@ -4,12 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "npm rebuild lightningcss --platform=linux --arch=x64 && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "generate-mock-data": "npx ts-node scripts/generate-mock-data.ts",
-    "generate-downtime": "npx ts-node scripts/generate-realistic-downtime.ts",
-    "postinstall": "npm rebuild lightningcss --platform=linux --arch=x64"
+    "generate-downtime": "npx ts-node scripts/generate-realistic-downtime.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.7",
@@ -61,16 +60,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "cssnano": "^6.0.1",
-    "css-loader": "^6.8.1",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",
-    "style-loader": "^3.3.3",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"
-  },
-  "overrides": {
-    "lightningcss": "^1.24.0"
   }
 }
