@@ -304,7 +304,7 @@ function HomeContent() {
         <div className="bg-amber-50 border-b border-amber-100 py-3 px-4 text-center text-amber-800 text-sm">
           <div className="flex items-center justify-center gap-2 mb-1">
             <span className="font-medium text-base">Preview Mode</span>
-            {previewSettings && (
+            {previewSettings && previewSettings.hasUnsavedChanges && (
               <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
                 Unsaved Changes
               </span>
@@ -313,7 +313,7 @@ function HomeContent() {
           <p>
             This is a preview of how your status page will look.
             {siteConfig?.statusPage?.enabled === false && " It is currently disabled for public viewing."}
-            {previewSettings && " Changes you've made are reflected here but not saved yet."}
+            {previewSettings && previewSettings.hasUnsavedChanges && " Changes you've made are reflected here but not saved yet."}
           </p>
           {!siteConfig?.statusPage?.enabled && (
             <div className="mt-1 text-xs">
