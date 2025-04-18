@@ -16,6 +16,7 @@ interface ServiceItemProps {
   showServiceUrls?: boolean;
   showServiceDescription?: boolean;
   historyDays?: number;
+  isRefreshing?: boolean;
 }
 
 // ServiceItemTooltip component for description tooltip
@@ -277,7 +278,7 @@ const getStatusDisplay = (status: string, uptimePercentage: number) => {
   };
 
   return (
-    <div className={`flex items-center px-2.5 py-1 rounded-full ${bg} ${text} font-medium`}>
+    <div className={`flex items-center px-2.5 py-1 rounded-full ${bg} ${text} font-medium cursor-help`}>
       <span className="mr-1.5">{label}</span>
       {getIcon()}
     </div>
@@ -293,7 +294,8 @@ export function ServiceItem({
   url,
   showServiceUrls = true,
   showServiceDescription = true,
-  historyDays = 90
+  historyDays = 90,
+  isRefreshing = false
 }: ServiceItemProps) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -348,7 +350,7 @@ export function ServiceItem({
   const shouldUseStackedLayout = showServiceUrls && url;
 
   return (
-    <div className="component-container hover-lift border-t border-gray-200 first:border-t-0 py-7 space-y-4 px-5">
+    <div className={`component-container hover-lift border-t border-gray-200 first:border-t-0 py-7 space-y-4 px-5 ${isRefreshing ? 'opacity-60 transition-opacity duration-300' : ''}`}>
       <div className={`flex ${shouldUseStackedLayout ? 'flex-col' : ''}`}>
         <div className="flex justify-between items-center w-full">
           {shouldUseStackedLayout ? (
@@ -359,7 +361,7 @@ export function ServiceItem({
                   <div className="relative ml-2 inline-flex items-center">
                     <button 
                       ref={questionRef}
-                      className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center" 
+                      className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center cursor-help" 
                       aria-label="More information"
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
@@ -394,7 +396,7 @@ export function ServiceItem({
                 <div className="relative ml-2 inline-flex items-center">
                   <button 
                     ref={questionRef}
-                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center" 
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center cursor-help" 
                     aria-label="More information"
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
@@ -423,7 +425,8 @@ export function ServiceItem({
         history={history} 
         startTime={historyStartTime} 
         endTime={now} 
-        uptimePercentage={uptimePercentage} 
+        uptimePercentage={uptimePercentage}
+        isRefreshing={isRefreshing}
       />
       
       {/* Use our portal-based tooltip for the description */}

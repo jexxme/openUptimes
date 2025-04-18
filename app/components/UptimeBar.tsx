@@ -9,9 +9,10 @@ interface UptimeBarProps {
   startTime: number;
   endTime: number;
   uptimePercentage: number;
+  isRefreshing?: boolean;
 }
 
-export function UptimeBar({ history, startTime, endTime, uptimePercentage }: UptimeBarProps) {
+export function UptimeBar({ history, startTime, endTime, uptimePercentage, isRefreshing = false }: UptimeBarProps) {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   
@@ -200,7 +201,7 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
   
   return (
     <div className="w-full">
-      <div className="rounded-md overflow-hidden bg-white p-2.5 border border-gray-200 shadow-sm relative">
+      <div className={`rounded-md overflow-hidden bg-white p-2.5 border border-gray-200 shadow-sm relative ${isRefreshing ? 'animate-pulse' : ''}`}>
         <svg 
           className="w-full" 
           preserveAspectRatio="none" 
@@ -212,7 +213,7 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage }: Upt
         
         {/* Using the Portal-based tooltip component */}
         <UptimeBarTooltip
-          visible={hoveredBar !== null}
+          visible={hoveredBar !== null && !isRefreshing}
           position={tooltipPosition}
           date={hoveredBar !== null ? formatDate(getTimestampForBar(hoveredBar)) : ''}
           status={hoveredBar !== null ? '' : ''}
