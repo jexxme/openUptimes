@@ -251,8 +251,47 @@ export function StatusPageContent({
         throw new Error(`Error: ${response.status}`);
       }
       
+      // Also update historyDays setting in appearance API
+      const updatedAppearanceSettings = {
+        historyDays: historyDays,
+        // Keep other appearance settings unchanged
+        logoUrl,
+        showServiceUrls,
+        showServiceDescription,
+        customCSS: customCss,
+        customHeader
+      };
+      
+      const appearanceResponse = await fetch('/api/settings/appearance', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedAppearanceSettings),
+      });
+      
+      if (!appearanceResponse.ok) {
+        throw new Error(`Error: ${appearanceResponse.status}`);
+      }
+      
       // Update the actual saved state after successful save
       setStatusPageEnabled(statusPageEnabledUI);
+      
+      // Update preloaded data to reflect the newly saved state
+      if (preloadedStatusPageData) {
+        preloadedStatusPageData.settings = {
+          ...preloadedStatusPageData.settings,
+          enabled: statusPageEnabledUI,
+          title: statusPageTitle,
+          description: statusPageDescription
+        };
+        preloadedStatusPageData.services = [...serviceVisibility];
+      }
+      
+      // Update history days in preloaded appearance data
+      if (preloadedAppearanceData) {
+        preloadedAppearanceData.historyDays = historyDays;
+      }
       
       // Show success notification
       toast({
@@ -283,7 +322,7 @@ export function StatusPageContent({
         logoUrl,
         showServiceUrls,
         showServiceDescription,
-        historyDays,
+        // historyDays is now saved in the General tab
         // Preserve any existing custom CSS to prevent it from being removed
         customCSS: customCss
       };
@@ -299,6 +338,13 @@ export function StatusPageContent({
       
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
+      }
+      
+      // Update preloaded data to reflect the newly saved state
+      if (preloadedAppearanceData) {
+        preloadedAppearanceData.logoUrl = logoUrl;
+        preloadedAppearanceData.showServiceUrls = showServiceUrls;
+        preloadedAppearanceData.showServiceDescription = showServiceDescription;
       }
       
       // Show success notification
@@ -342,6 +388,12 @@ export function StatusPageContent({
       
       if (!response.ok) {
         throw new Error(`Error: ${response.status}`);
+      }
+      
+      // Update preloaded data to reflect the newly saved state
+      if (preloadedAppearanceData) {
+        preloadedAppearanceData.customCSS = customCss;
+        preloadedAppearanceData.customHeader = customHeader;
       }
       
       // Show success notification
@@ -409,9 +461,12 @@ export function StatusPageContent({
     // Initial settings from server
     const originalTitle = preloadedStatusPageData?.settings?.title || "Service Status";
     const originalDescription = preloadedStatusPageData?.settings?.description || "Current status of our services";
+    const originalHistoryDays = preloadedAppearanceData?.historyDays || 90;
     
-    // Check for title and description changes
-    if (statusPageTitle !== originalTitle || statusPageDescription !== originalDescription) {
+    // Check for title, description and history days changes
+    if (statusPageTitle !== originalTitle || 
+        statusPageDescription !== originalDescription ||
+        historyDays !== originalHistoryDays) {
       return true;
     }
     
@@ -444,12 +499,11 @@ export function StatusPageContent({
     const originalLogoUrl = preloadedAppearanceData?.logoUrl || "";
     const originalShowServiceUrls = preloadedAppearanceData?.showServiceUrls !== false;
     const originalShowServiceDescription = preloadedAppearanceData?.showServiceDescription !== false;
-    const originalHistoryDays = preloadedAppearanceData?.historyDays || 90;
+    // historyDays is now checked in the General tab
     
     if (logoUrl !== originalLogoUrl || 
         showServiceUrls !== originalShowServiceUrls || 
-        showServiceDescription !== originalShowServiceDescription || 
-        historyDays !== originalHistoryDays) {
+        showServiceDescription !== originalShowServiceDescription) {
       return true;
     }
     
@@ -660,6 +714,8 @@ export function StatusPageContent({
               setStatusPageTitle={setStatusPageTitle}
               statusPageDescription={statusPageDescription}
               setStatusPageDescription={setStatusPageDescription}
+              historyDays={historyDays}
+              setHistoryDays={setHistoryDays}
               statusPageEnabledUI={statusPageEnabledUI}
               isLoading={isLoadingStatusPage}
               isSaving={isSavingStatusPage}
@@ -686,8 +742,6 @@ export function StatusPageContent({
               setShowServiceUrls={setShowServiceUrls}
               showServiceDescription={showServiceDescription}
               setShowServiceDescription={setShowServiceDescription}
-              historyDays={historyDays}
-              setHistoryDays={setHistoryDays}
               isLoading={isLoadingAppearance}
               isSaving={isSavingAppearance}
               onSave={handleSaveAppearanceSettings}
