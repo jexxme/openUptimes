@@ -14,10 +14,7 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
-<<<<<<< HEAD
   <a href="#security">Security</a> •
-=======
->>>>>>> 8fec9776aae84c42d0dc1acac919a26d9cd27c45
   <a href="#authentication">Authentication</a> •
   <a href="#api-endpoints">API Endpoints</a> •
   <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
@@ -34,6 +31,7 @@
 </p>
 
 ## Introduction
+
 OpenUptimes is a lightweight status page that helps you monitor and display service uptime. With a clean interface and GitHub Actions integration, tracking your infrastructure's health is easy.
 
 Simplicity is key: deployment takes minutes, configuration is minimal, and monitoring is automatic without complex setups. You only need a GitHub repository, a Redis instance, and a hosting provider like Vercel.
@@ -61,6 +59,7 @@ Unlike other solutions that require dedicated servers or costly subscriptions, O
 OpenUptimes was created to provide an easy, simple, and free solution for monitoring service uptime without relying on complex infrastructure. By using GitHub Actions for monitoring along with your own Redis instance, it ensures that you have a lightweight system that's perfect for smaller projects and websites.
 
 The solution is particularly suited for cases where:
+
 - You need a simple status page without significant investment
 - You want a "set it and forget it" monitoring solution
 - You're looking for something that's quick to set up and requires minimal maintenance
@@ -105,12 +104,14 @@ That's it! Your status page is now live at "your-domain-as-set-in-vercel.com" eg
 For users who want more control over their deployment:
 
 1. Fork and clone the repository:
+
    ```bash
    git clone https://github.com/openuptimes/openuptimes.git
    cd openuptimes
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -121,6 +122,7 @@ For users who want more control over their deployment:
    - Or use a managed Redis service like [Upstash](https://upstash.com/) or [Redis Cloud](https://redis.com/redis-enterprise-cloud/overview/)
 
 4. Create a `.env.local` file:
+
    ```
    REDIS_URL=redis://localhost:6379
    NEXT_PUBLIC_SITE_NAME="OpenUptimes"
@@ -129,6 +131,7 @@ For users who want more control over their deployment:
    ```
 
 5. Run the development server:
+
    ```bash
    npm run dev
    ```
@@ -138,6 +141,7 @@ For users who want more control over their deployment:
 7. Set up GitHub Actions for monitoring (see [GitHub Actions Monitoring](#github-actions-monitoring))
 
 8. For production, build and start:
+
    ```bash
    npm run build
    npm run start
@@ -145,9 +149,10 @@ For users who want more control over their deployment:
 
 ## Configuration
 
-OpenUptimes provides an admin dashboard at `/admin` where you can easily configure all your services without touching any code. 
+OpenUptimes provides an admin dashboard at `/admin` where you can easily configure all your services without touching any code.
 
 Through the admin dashboard, you can:
+
 - Add new services to monitor
 - Edit existing service configurations
 - Delete services you no longer wish to monitor
@@ -155,6 +160,7 @@ Through the admin dashboard, you can:
 - Configure GitHub Actions integration
 
 Each service can be configured with:
+
 - Name: Display name for the service
 - URL: The URL to check
 - Description: (Optional) Description of the service
@@ -174,16 +180,19 @@ OpenUptimes supports the following environment variables:
 | `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
 
 <<<<<<< HEAD
+
 ### Environment Setup
 
 OpenUptimes uses environment variables for configuration. For local development or self-hosted deployment:
 
 1. Copy the example environment file:
+
    ```bash
    cp .env.example .env.local
    ```
 
 2. Edit `.env.local` and set your Redis URL and other settings:
+
    ```
    REDIS_URL="redis://username:password@host:port"
    NEXT_PUBLIC_SITE_NAME="My Status Page"
@@ -211,6 +220,7 @@ To ensure your Redis credentials and other sensitive data remain secure:
 
 =======
 >>>>>>> 8fec9776aae84c42d0dc1acac919a26d9cd27c45
+>>>>>>>
 ## Authentication
 
 OpenUptimes uses a secure, Redis-based authentication system to protect admin and debug routes.
@@ -424,6 +434,7 @@ For more detailed instructions, visit the configuration page at `/debug/ping/git
 ### Customization Options
 
 You can customize the GitHub Actions monitoring by:
+
 - Adjusting the schedule frequency in the cron expression
 - Adding additional conditions for when to run the workflow
 - Implementing custom notification logic in the workflow
@@ -437,9 +448,10 @@ While GitHub Actions provides a simple, maintenance-free way to monitor your ser
 
 Since OpenUptimes is extremely lightweight, its ping endpoint can handle frequent calls without issue. This means you can use external cron services to check your services as frequently as every 30 seconds or 1 minute for more precise downtime detection.
 
-#### Setup Options:
+#### Setup Options
 
 1. **Custom Cron Server**:
+
    ```bash
    # Example crontab entry for checking every minute
    * * * * * curl -X GET "https://your-domain.com/api/ping" -H "Authorization: Bearer YOUR_API_KEY"
@@ -495,6 +507,7 @@ OpenUptimes provides several API endpoints for monitoring and configuring servic
 If you're having trouble connecting to Redis:
 
 1. **Check your Redis URL format**:
+
    ```
    redis[s]://[[username][:password]@][host][:port][/db-number]
    ```
