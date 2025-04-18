@@ -143,6 +143,16 @@ export function StatusPageContent({
   const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
   const pendingNavigationRef = useRef<{ destination: string } | null>(null);
 
+  // Add copyright URL state with the other state variables
+  const [copyrightUrl, setCopyrightUrl] = useState(
+    preloadedAppearanceData?.copyrightUrl || ""
+  );
+
+  // Add copyright text state with the other state variables
+  const [copyrightText, setCopyrightText] = useState(
+    preloadedAppearanceData?.copyrightText || ""
+  );
+
   // Map section to tab value
   const getSectionTabValue = (section: string): string => {
     switch (section) {
@@ -215,11 +225,15 @@ export function StatusPageContent({
     const originalLogoUrl = preloadedAppearanceData?.logoUrl || "";
     const originalShowServiceUrls = preloadedAppearanceData?.showServiceUrls !== false;
     const originalShowServiceDescription = preloadedAppearanceData?.showServiceDescription !== false;
+    const originalCopyrightUrl = preloadedAppearanceData?.copyrightUrl || "";
+    const originalCopyrightText = preloadedAppearanceData?.copyrightText || "";
     // historyDays is now checked in the General tab
     
     if (logoUrl !== originalLogoUrl || 
         showServiceUrls !== originalShowServiceUrls || 
-        showServiceDescription !== originalShowServiceDescription) {
+        showServiceDescription !== originalShowServiceDescription ||
+        copyrightUrl !== originalCopyrightUrl ||
+        copyrightText !== originalCopyrightText) {
       return true;
     }
     
@@ -237,6 +251,21 @@ export function StatusPageContent({
     
     return false;
   };
+
+  // Effect for updating state when preloadedAppearanceData changes
+  useEffect(() => {
+    if (preloadedAppearanceData) {
+      console.log("[StatusPageContent] Updating from preloadedAppearanceData:", preloadedAppearanceData);
+      setLogoUrl(preloadedAppearanceData.logoUrl || "");
+      setShowServiceUrls(preloadedAppearanceData.showServiceUrls !== false);
+      setShowServiceDescription(preloadedAppearanceData.showServiceDescription !== false);
+      setHistoryDays(preloadedAppearanceData.historyDays || 90);
+      setCopyrightUrl(preloadedAppearanceData.copyrightUrl || "");
+      setCopyrightText(preloadedAppearanceData.copyrightText || "");
+      setCustomCss(preloadedAppearanceData.customCSS || ""); 
+      setCustomHeader(preloadedAppearanceData.customHeader || ""); 
+    }
+  }, [preloadedAppearanceData]);
 
   // Complete the tab change after confirmation
   const completeTabChange = useCallback((newTab: string, isUserAction = false) => {
@@ -399,12 +428,24 @@ export function StatusPageContent({
         }
         
         const data = await response.json();
+        console.log("[StatusPageContent] Fetched appearance settings:", data);
         
         // Update state with fetched settings
         setLogoUrl(data.logoUrl || "");
         setShowServiceUrls(data.showServiceUrls !== false);
         setShowServiceDescription(data.showServiceDescription !== false);
         setHistoryDays(data.historyDays || 90);
+        
+        // Explicitly set copyright fields
+        const copyrightUrlValue = data.copyrightUrl || "";
+        const copyrightTextValue = data.copyrightText || "";
+        console.log("[StatusPageContent] Setting copyright values:", {
+          url: copyrightUrlValue,
+          text: copyrightTextValue
+        });
+        setCopyrightUrl(copyrightUrlValue);
+        setCopyrightText(copyrightTextValue);
+        
         setCustomCss(data.customCSS || ""); 
         setCustomHeader(data.customHeader || ""); 
       } catch (err) {
@@ -534,10 +575,15 @@ export function StatusPageContent({
         logoUrl,
         showServiceUrls,
         showServiceDescription,
+        copyrightUrl,
+        copyrightText,
         // historyDays is now saved in the General tab
         // Preserve any existing custom CSS to prevent it from being removed
-        customCSS: customCss
+        customCSS: customCss,
+        customHeader
       };
+      
+      console.log("[StatusPageContent] Saving appearance settings:", updatedSettings);
       
       // Call API to update settings
       const response = await fetch('/api/settings/appearance', {
@@ -557,6 +603,12 @@ export function StatusPageContent({
         preloadedAppearanceData.logoUrl = logoUrl;
         preloadedAppearanceData.showServiceUrls = showServiceUrls;
         preloadedAppearanceData.showServiceDescription = showServiceDescription;
+        preloadedAppearanceData.copyrightUrl = copyrightUrl;
+        preloadedAppearanceData.copyrightText = copyrightText;
+        preloadedAppearanceData.customCSS = customCss;
+        preloadedAppearanceData.customHeader = customHeader;
+        
+        console.log("[StatusPageContent] Updated preloadedAppearanceData:", preloadedAppearanceData);
       }
       
       // Show success notification
@@ -653,6 +705,8 @@ export function StatusPageContent({
       showServiceUrls,
       showServiceDescription,
       historyDays,
+      copyrightUrl,
+      copyrightText,
       customCSS: customCss,
       customHeader
     }
@@ -683,7 +737,7 @@ export function StatusPageContent({
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [statusPageEnabledUI, statusPageTitle, statusPageDescription, serviceVisibility, 
-      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader]);
+      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader, copyrightUrl, copyrightText]);
 
   // Modify page title to indicate unsaved changes
   useEffect(() => {
@@ -698,7 +752,7 @@ export function StatusPageContent({
       document.title = originalTitle;
     };
   }, [statusPageEnabledUI, statusPageTitle, statusPageDescription, serviceVisibility, 
-      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader]);
+      logoUrl, showServiceUrls, showServiceDescription, historyDays, customCss, customHeader, copyrightUrl, copyrightText]);
 
   // Add "leave confirmation" dialog for navigation links
   useEffect(() => {
@@ -853,8 +907,11 @@ export function StatusPageContent({
                 variant="outline" 
                 size="sm"
                 onClick={handleOpenPreview}
-                className="flex items-center gap-1.5 h-9 px-3"
+                className="flex items-center gap-1.5 h-9 px-3 relative"
               >
+                {hasUnsavedChanges() && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
                 <Eye className="h-3.5 w-3.5" />
                 <span>Preview</span>
               </Button>
@@ -917,6 +974,10 @@ export function StatusPageContent({
                 setShowServiceUrls={setShowServiceUrls}
                 showServiceDescription={showServiceDescription}
                 setShowServiceDescription={setShowServiceDescription}
+                copyrightUrl={copyrightUrl}
+                setCopyrightUrl={setCopyrightUrl}
+                copyrightText={copyrightText}
+                setCopyrightText={setCopyrightText}
                 isLoading={isLoadingAppearance}
                 isSaving={isSavingAppearance}
                 onSave={handleSaveAppearanceSettings}

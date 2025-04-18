@@ -22,11 +22,11 @@ import { SidebarNav } from "../components/admin/SidebarNav";
 import { PageTitle } from "../components/PageTitle";
 
 // Admin content pages - Dynamically import with SSR disabled
-const AdminDashboard = dynamic(() => import("../components/admin/pages/Dashboard").then(mod => mod.AdminDashboard), { ssr: false });
-const AdminServices = dynamic(() => import("../components/admin/pages/Services").then(mod => mod.AdminServices), { ssr: false });
+const AdminDashboardPage = dynamic(() => import("../components/admin/pages/Dashboard").then(mod => mod.AdminDashboard), { ssr: false });
+const AdminServicesPage = dynamic(() => import("../components/admin/pages/Services").then(mod => mod.AdminServices), { ssr: false });
 const AdminStatusPage = dynamic(() => import("../components/admin/pages/StatusPage").then(mod => mod.AdminStatusPage), { ssr: false });
 const AdminHistory = dynamic(() => import("../components/admin/pages/History").then(mod => mod.AdminHistory), { ssr: false });
-const AdminSettings = dynamic(() => import("../components/admin/pages/Settings").then(mod => mod.AdminSettings), { ssr: false });
+const AdminSettingsPage = dynamic(() => import("../components/admin/pages/Settings").then(mod => mod.AdminSettings), { ssr: false });
 const AdminAbout = dynamic(() => import("../components/admin/pages/About").then(mod => mod.AdminAbout), { ssr: false });
 
 // Define types needed for the component
@@ -39,7 +39,7 @@ interface StatusHistoryItem {
 }
 
 // Create a client-only wrapper to prevent hydration issues
-const AdminPageClient = () => {
+const AdminPageClient = ({ searchParams }: { searchParams?: { tab?: string; service?: string } }) => {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -113,25 +113,62 @@ const AdminPageClient = () => {
     }
   }, []);
 
-  // Handle URL parameters on component mount
+  // Check URL parameters on mount
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
-    
-    // Set the active tab based on URL parameter
-    if (tabParam) {
-      setActiveTab(tabParam);
-    }
-  }, []);
-  
-  // Update URL when active tab changes
-  useEffect(() => {
-    if (isLoaded) {
+    // Log initial URL parameters
+    if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      url.searchParams.set('tab', activeTab);
+      const tab = url.searchParams.get('tab');
+      const service = url.searchParams.get('service');
+      
+      console.log('[AdminPage] URL parameters detected:', { 
+        tab, 
+        service,
+        searchParams: Object.fromEntries(url.searchParams.entries()),
+        rawSearchParams: searchParams
+      });
+      
+      // Update active tab based on URL
+      if (tab) {
+        console.log(`[AdminPage] Setting active tab to: ${tab}`);
+        setActiveTab(tab);
+      }
+    }
+  }, [searchParams]);
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    console.log(`[AdminPage] Tab changed to: ${value}`);
+    
+    // Update URL with the new tab value
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      
+      // Track current parameters before changing
+      const currentService = url.searchParams.get('service');
+      console.log(`[AdminPage] Current service parameter: ${currentService}`);
+      
+      // Set the new tab
+      url.searchParams.set('tab', value);
+      
+      // Preserve service parameter when switching to services tab
+      if (value === 'services' && currentService) {
+        console.log(`[AdminPage] Preserving service parameter: ${currentService}`);
+      } else if (value !== 'services') {
+        // If switching to a different tab, remove service parameter
+        url.searchParams.delete('service');
+      }
+      
+      // Log the final URL parameters
+      console.log(`[AdminPage] Updated URL parameters:`, Object.fromEntries(url.searchParams.entries()));
+      
+      // Update URL
       window.history.pushState({}, '', url.toString());
     }
-  }, [activeTab, isLoaded]);
+    
+    // Update active tab state
+    setActiveTab(value);
+  };
 
   // Save preloaded data in a ref to avoid rerenders on tab change
   const preloadedDataRef = useRef<{
@@ -657,6 +694,15 @@ const AdminPageClient = () => {
   // Pass preloaded data to components
   const logoProps = logoUrl ? { preloadedLogoUrl: logoUrl } : {};
 
+  // For our navigation debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).debugTab = activeTab;
+      (window as any).debugParams = searchParams;
+      console.log('[AdminPage] Debug variables set. Check window.debugTab and window.debugParams');
+    }
+  }, [activeTab, searchParams]);
+
   if (!isLoaded || setupLoading || isValidatingSession) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-background">
@@ -692,46 +738,46 @@ const AdminPageClient = () => {
   const renderContent = () => {
     switch(activeTab) {
       case "dashboard":
-        return <AdminDashboard 
+        return <AdminDashboardPage 
           preloadedServices={preloadedDataRef.current.services} 
           preloadedStatusPageData={preloadedDataRef.current.statusPage}
           preloadedHistoryData={preloadedDataRef.current.history}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       case "services":
-        return <AdminServices 
+        return <AdminServicesPage 
           preloadedServices={preloadedDataRef.current.services}
           preloadedServicesConfig={preloadedDataRef.current.servicesConfig}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       case "statuspage":
         return <AdminStatusPage 
           preloadedStatusPageData={preloadedDataRef.current.statusPage}
           preloadedAppearanceData={preloadedDataRef.current.appearance}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
           registerUnsavedChangesCallback={registerUnsavedChangesCallback}
         />;
       case "history":
         return <AdminHistory 
           preloadedHistory={preloadedDataRef.current.history}
           preloadedHistoryServices={preloadedDataRef.current.historyServices}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       case "settings":
-        return <AdminSettings 
-          setActiveTab={setActiveTab}
+        return <AdminSettingsPage 
+          setActiveTab={handleTabChange}
           registerUnsavedChangesCallback={registerUnsavedChangesCallback}
         />;
       case "about":
         return <AdminAbout 
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       default:
-        return <AdminDashboard 
+        return <AdminDashboardPage 
           preloadedServices={preloadedDataRef.current.services}
           preloadedStatusPageData={preloadedDataRef.current.statusPage}
           preloadedHistoryData={preloadedDataRef.current.history}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
     }
   };
@@ -770,7 +816,7 @@ const AdminPageClient = () => {
         <UISidebar className="hidden md:block">
           <SidebarNav 
             activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
+            setActiveTab={handleTabChange} 
             handleLogout={handleLogout} 
             isLoggingOut={isLoggingOut} 
             hasUnsavedChanges={hasUnsavedChanges}
@@ -792,7 +838,7 @@ const AdminPageClient = () => {
                 <SheetContent side="left" className="w-64 p-0">
                   <SidebarNav 
                     activeTab={activeTab} 
-                    setActiveTab={setActiveTab} 
+                    setActiveTab={handleTabChange} 
                     handleLogout={handleLogout} 
                     isLoggingOut={isLoggingOut} 
                     hasUnsavedChanges={hasUnsavedChanges}

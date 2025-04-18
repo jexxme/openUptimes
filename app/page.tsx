@@ -13,6 +13,7 @@ import { RefreshCw } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { createPortal } from "react-dom";
 import { PageTitle } from "./components/PageTitle";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 // For type checking only
 interface ServiceConfig {
@@ -69,14 +70,24 @@ const StatusBadgeTooltip = ({
   
   return createPortal(
     <div 
-      className="fixed z-[9999] transform -translate-x-1/2 -translate-y-full shadow-lg"
+      className="fixed z-[9999] transform -translate-x-1/2 shadow-lg"
       style={{ 
         left: `${position.x}px`, 
-        top: `${position.y - 10}px`,
+        top: `${position.y + 38}px`,
         pointerEvents: 'none' 
       }}
     >
-      <div className="bg-gray-800 text-white text-xs leading-normal px-4 py-3 rounded-md min-w-[220px]">
+      <div className="bg-gray-800 dark:bg-gray-900 text-white text-xs leading-normal px-4 py-3 rounded-md min-w-[220px]">
+        <div 
+          className="w-0 h-0 absolute -top-2 left-1/2 transform -translate-x-1/2" 
+          style={{ 
+            borderLeft: '8px solid transparent',
+            borderRight: '8px solid transparent',
+            borderBottom: '8px solid rgb(31, 41, 55)', // Same as bg-gray-800
+            borderBottomColor: 'var(--tooltip-bg-color, rgb(31, 41, 55))'
+          }}
+        ></div>
+        
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-2 h-2 rounded-full ${
             status === 'outage' ? 'bg-red-500' : 
@@ -115,15 +126,16 @@ const StatusBadgeTooltip = ({
           </div>
         )}
         
-        <div 
-          className="w-0 h-0 absolute -bottom-2 left-1/2 transform -translate-x-1/2" 
-          style={{ 
-            borderLeft: '8px solid transparent',
-            borderRight: '8px solid transparent',
-            borderTop: '8px solid rgb(31, 41, 55)' // Same as bg-gray-800
-          }}
-        ></div>
       </div>
+      
+      <style jsx>{`
+        :global(.dark) {
+          --tooltip-bg-color: rgb(17, 24, 39); /* dark:bg-gray-900 */
+        }
+        :global(.light) {
+          --tooltip-bg-color: rgb(31, 41, 55); /* bg-gray-800 */
+        }
+      `}</style>
     </div>,
     document.body
   );
@@ -132,19 +144,19 @@ const StatusBadgeTooltip = ({
 // StatusDot component for animated status indicator
 const StatusDot = ({ status, uptimePercentage }: { status: string; uptimePercentage?: number }) => {
   // Determine color based on status and uptime percentage
-  let statusColor = 'bg-gray-300'; // Default color for unknown
+  let statusColor = 'bg-gray-300 dark:bg-gray-600'; // Default color for unknown
   
   if (status === "up") {
     if (uptimePercentage !== undefined) {
-      if (uptimePercentage >= 99.5) statusColor = 'bg-emerald-500'; // Fully operational - green
-      else if (uptimePercentage >= 95) statusColor = 'bg-emerald-500'; // Still very good - green
+      if (uptimePercentage >= 99.5) statusColor = 'bg-emerald-500 dark:bg-emerald-400'; // Fully operational - green
+      else if (uptimePercentage >= 95) statusColor = 'bg-emerald-500 dark:bg-emerald-400'; // Still very good - green
       else if (uptimePercentage >= 70) statusColor = 'bg-yellow-400'; // Minor issues - yellow
       else statusColor = 'bg-orange-400'; // Major issues but still up - orange
     } else {
-      statusColor = 'bg-emerald-500'; // Default green if no percentage
+      statusColor = 'bg-emerald-500 dark:bg-emerald-400'; // Default green if no percentage
     }
   } else if (status === "down") {
-    statusColor = 'bg-red-500'; // Complete outage - red
+    statusColor = 'bg-red-500 dark:bg-red-400'; // Complete outage - red
   } else if (status === "degraded" || status === "partial") {
     statusColor = 'bg-yellow-400'; // Degraded service - yellow
   }
@@ -154,8 +166,8 @@ const StatusDot = ({ status, uptimePercentage }: { status: string; uptimePercent
       <div className={`w-3 h-3 rounded-full ${statusColor}`}>
         {(status === "up" && (!uptimePercentage || uptimePercentage >= 95)) && (
           <>
-            <span className="absolute inset-0 rounded-full bg-emerald-500 opacity-75 animate-ping"></span>
-            <span className="absolute inset-0 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="absolute inset-0 rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75 animate-ping"></span>
+            <span className="absolute inset-0 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
           </>
         )}
       </div>
@@ -470,7 +482,7 @@ function HomeContent() {
 
   // Create wrapper div with opacity transition based on content readiness
   return (
-    <div className={`flex min-h-screen flex-col bg-white ${contentReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}>
+    <div className={`flex min-h-screen flex-col bg-white dark:bg-gray-950 ${contentReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}>
       {/* Add PageTitle component with status page title */}
       {contentReady && siteConfig && (
         <PageTitle 
@@ -480,11 +492,11 @@ function HomeContent() {
       )}
       
       {showPreviewBanner && (
-        <div className="bg-amber-50 border-b border-amber-100 py-3 px-4 text-center text-amber-800 text-sm">
+        <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-100 dark:border-amber-900/40 py-3 px-4 text-center text-amber-800 dark:text-amber-300 text-sm">
           <div className="flex items-center justify-center gap-2 mb-1">
             <span className="font-medium text-base">Preview Mode</span>
             {previewSettings && previewSettings.hasUnsavedChanges && (
-              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
+              <span className="text-xs bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full font-medium">
                 Unsaved Changes
               </span>
             )}
@@ -502,34 +514,32 @@ function HomeContent() {
         </div>
       )}
       
-      <div className="mx-auto w-full max-w-3xl px-4 py-8">
-        {/* Logo Section with placeholder to maintain height */}
-        <div className="flex justify-center mb-8 h-16">
-          {contentReady && appearanceConfig && ((appearanceConfig.logo && appearanceConfig.logo !== '') || (appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '')) && (
-            <>
-              {appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '' ? (
-                <img 
-                  src={appearanceConfig.logoUrl} 
-                  alt={`${siteConfig.siteName || 'OpenUptimes'} Logo`}
-                  className="h-16 w-auto"
-                  onLoad={() => console.log('Logo image loaded')}
-                  onError={() => console.log('Logo image failed to load')}
-                />
-              ) : (
-                <div 
-                  className="h-16 w-auto"
-                  dangerouslySetInnerHTML={{ __html: appearanceConfig.logo || '' }}
-                />
-              )}
-            </>
-          )}
-        </div>
+      <div className={`mx-auto w-full max-w-3xl px-4 py-4 ${!(contentReady && appearanceConfig && ((appearanceConfig.logo && appearanceConfig.logo !== '') || (appearanceConfig.logoUrl && appearanceConfig.logoUrl !== ''))) ? 'pt-8' : ''}`}>
+        {/* Logo Section - only render if logo exists */}
+        {contentReady && appearanceConfig && ((appearanceConfig.logo && appearanceConfig.logo !== '') || (appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '')) && (
+          <div className="flex justify-center mb-8 h-16">
+            {appearanceConfig.logoUrl && appearanceConfig.logoUrl !== '' ? (
+              <img 
+                src={appearanceConfig.logoUrl} 
+                alt={`${siteConfig.siteName || 'OpenUptimes'} Logo`}
+                className="h-16 w-auto"
+                onLoad={() => console.log('Logo image loaded')}
+                onError={() => console.log('Logo image failed to load')}
+              />
+            ) : (
+              <div 
+                className="h-16 w-auto"
+                dangerouslySetInnerHTML={{ __html: appearanceConfig.logo || '' }}
+              />
+            )}
+          </div>
+        )}
         
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{siteConfig?.statusPage?.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{siteConfig?.statusPage?.title}</h1>
             <p 
-              className="text-gray-500 mt-1"
+              className="text-gray-500 dark:text-gray-400 mt-1"
               dangerouslySetInnerHTML={{ 
                 __html: siteConfig?.statusPage?.description 
                   ? DOMPurify.sanitize(siteConfig.statusPage.description, {
@@ -621,7 +631,7 @@ function HomeContent() {
               return (
                 <div 
                   ref={statusBadgeRef}
-                  className="flex items-center gap-1.5 rounded-full bg-yellow-50 px-3 py-1.5 text-sm font-medium text-yellow-700 my-auto cursor-help"
+                  className="flex items-center gap-1.5 rounded-full bg-yellow-50 dark:bg-yellow-950/40 px-3 py-1.5 text-sm font-medium text-yellow-700 dark:text-yellow-400 my-auto cursor-help"
                   onMouseEnter={handleStatusBadgeMouseEnter}
                   onMouseLeave={handleStatusBadgeMouseLeave}
                 >
@@ -645,7 +655,7 @@ function HomeContent() {
             return (
               <div 
                 ref={statusBadgeRef}
-                className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 my-auto cursor-help"
+                className="flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400 my-auto cursor-help"
                 onMouseEnter={handleStatusBadgeMouseEnter}
                 onMouseLeave={handleStatusBadgeMouseLeave}
               >
@@ -661,12 +671,15 @@ function HomeContent() {
           })()}
         </div>
         
-        <div className="mb-2 flex flex-wrap items-center gap-2 justify-end">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="mb-2 flex flex-wrap items-center gap-2 justify-between">
+          <div>
+            <ThemeToggle />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
             <span>Last updated: <span suppressHydrationWarning>{new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false })}</span></span>
             <button 
               onClick={handleRefresh}
-              className="flex items-center justify-center h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md border border-gray-200 shadow-sm transition-all hover:shadow-md"
+              className="flex items-center justify-center h-7 w-7 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:shadow-md"
               disabled={isRefreshing || historyLoading}
               title="Refresh status"
             >
@@ -677,30 +690,30 @@ function HomeContent() {
           </div>
         </div>
         
-        <div className="rounded-xl shadow-sm border border-gray-200 overflow-hidden bg-white">
+        <div className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden bg-white dark:bg-gray-900">
           {historyLoading ? (
             // Skeleton UI for services
             Array(3).fill(0).map((_, i) => (
-              <div key={i} className="border-b border-gray-100 last:border-b-0 p-4">
+              <div key={i} className="border-b border-gray-100 dark:border-gray-800 last:border-b-0 p-4">
                 <div className="flex justify-between items-center">
-                  <div className="h-5 w-40 bg-gray-100 rounded animate-pulse mb-2"></div>
-                  <div className="h-3 w-20 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-5 w-40 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mb-2"></div>
+                  <div className="h-3 w-20 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"></div>
                 </div>
-                <div className="h-3 w-3/4 bg-gray-100 rounded animate-pulse mt-3"></div>
+                <div className="h-3 w-3/4 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mt-3"></div>
                 <div className="mt-3 grid grid-cols-12 gap-1">
                   {Array(12).fill(0).map((_, j) => (
-                    <div key={j} className="h-5 bg-gray-100 rounded animate-pulse"></div>
+                    <div key={j} className="h-5 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"></div>
                   ))}
                 </div>
               </div>
             ))
           ) : historyError ? (
-            <div className="rounded-xl border border-red-100 bg-white p-6 text-center shadow-sm">
-              <h2 className="mb-2 text-lg font-medium text-red-600">Error Loading Status</h2>
-              <p className="text-sm text-red-500 mb-4">{historyError}</p>
+            <div className="rounded-xl border border-red-100 dark:border-red-900/30 bg-white dark:bg-gray-900 p-6 text-center shadow-sm">
+              <h2 className="mb-2 text-lg font-medium text-red-600 dark:text-red-400">Error Loading Status</h2>
+              <p className="text-sm text-red-500 dark:text-red-400 mb-4">{historyError}</p>
               <button
                 onClick={handleRefresh}
-                className="inline-flex items-center rounded-md bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
+                className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/20 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
               >
                 <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -725,9 +738,9 @@ function HomeContent() {
               />
             ))
           ) : (
-            <div className="text-center py-12 px-4 text-gray-500">
+            <div className="text-center py-12 px-4 text-gray-500 dark:text-gray-400">
               <svg 
-                className="mx-auto h-12 w-12 text-gray-300 mb-3" 
+                className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-700 mb-3" 
                 fill="none" 
                 viewBox="0 0 24 24" 
                 stroke="currentColor" 

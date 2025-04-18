@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { ChevronRight } from "lucide-react";
 
 // Status indicator dot with animation for up status
 export const StatusDot = ({ status }: { status: string }) => {
@@ -24,7 +25,7 @@ export const StatusDot = ({ status }: { status: string }) => {
 };
 
 // Service status item component used in dashboard and other lists
-export const ServiceStatusItem = ({ service }: { service: any }) => {
+export const ServiceStatusItem = ({ service, showChevron = false }: { service: any; showChevron?: boolean }) => {
   const status = service.currentStatus?.status || "unknown";
   
   return (
@@ -44,6 +45,9 @@ export const ServiceStatusItem = ({ service }: { service: any }) => {
         `}>
           {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
         </div>
+        {showChevron && (
+          <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0 ml-1" />
+        )}
       </div>
     </div>
   );

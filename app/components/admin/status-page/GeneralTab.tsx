@@ -341,21 +341,50 @@ export function GeneralTab({
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-sm font-medium">Display History Duration</label>
-                  <span className="text-sm font-medium text-primary">{historyDays} days</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={historyDays}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (isNaN(value)) return;
+                        
+                        if (value < 7 || value > 180) {
+                          // Still set the value but with visual indication it's out of range
+                          setHistoryDays(value);
+                        } else {
+                          setHistoryDays(value);
+                        }
+                      }}
+                      className={`w-16 h-8 text-sm text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                        (historyDays < 7 || historyDays > 180) 
+                          ? 'border-amber-400 dark:border-amber-500' 
+                          : ''
+                      }`}
+                    />
+                    <span className="text-sm font-medium">days</span>
+                  </div>
                 </div>
+                
+                {(historyDays < 7 || historyDays > 180) && (
+                  <div className="mb-2 text-xs text-amber-500 dark:text-amber-400">
+                    Recommended range is 7-180 days. Values outside this range may cause unexpected behavior.
+                  </div>
+                )}
+                
                 <Slider
-                  value={[historyDays]}
+                  value={[Math.min(Math.max(historyDays, 7), 180)]} 
                   onValueChange={(value: number[]) => setHistoryDays(value[0])}
                   min={7}
                   max={180}
                   step={1}
                   className="my-4"
                 />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>7 days</span>
-                  <span className="text-center">30 days</span>
-                  <span className="text-center">90 days</span>
-                  <span>180 days</span>
+                <div className="relative h-5 w-full">
+                  <span className="absolute left-0 text-xs text-muted-foreground">7</span>
+                  <span className="absolute left-[13.3%] transform -translate-x-1/2 text-xs text-muted-foreground">30</span>
+                  <span className="absolute left-[47.9%] transform -translate-x-1/2 text-xs text-muted-foreground">90</span>
+                  <span className="absolute right-0 text-xs text-muted-foreground">180</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   Adjust how many days of history to display on your status page.

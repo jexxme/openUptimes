@@ -36,7 +36,7 @@ export default function UptimeBarTooltip({
   
   return createPortal(
     <div 
-      className="fixed z-[9999] bg-gray-800 text-white text-xs rounded-md py-2 px-3 leading-normal shadow-lg transform -translate-x-1/2 -translate-y-full pointer-events-none"
+      className="fixed z-[9999] bg-gray-800 dark:bg-gray-900 text-white text-xs rounded-md py-2 px-3 leading-normal shadow-lg transform -translate-x-1/2 -translate-y-full pointer-events-none"
       style={{ 
         left: `${position.x}px`, 
         top: `${position.y - 10}px`,
@@ -57,7 +57,7 @@ export default function UptimeBarTooltip({
       
       {uptimePercentage !== null ? (
         <>
-          <div className="mt-2 mb-1 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+          <div className="mt-2 mb-1 bg-gray-700 dark:bg-gray-800 rounded-full h-1.5 overflow-hidden">
             <div 
               className="h-full rounded-full" 
               style={{ 
@@ -81,9 +81,19 @@ export default function UptimeBarTooltip({
         style={{ 
           borderLeft: '8px solid transparent',
           borderRight: '8px solid transparent',
-          borderTop: '8px solid rgb(31, 41, 55)' // Same as bg-gray-800
+          borderTop: '8px solid rgb(31, 41, 55)', // Same as bg-gray-800
+          borderTopColor: 'var(--tooltip-bg-color, rgb(31, 41, 55))'
         }}
       ></div>
+      
+      <style jsx>{`
+        :global(.dark) {
+          --tooltip-bg-color: rgb(17, 24, 39); /* dark:bg-gray-900 */
+        }
+        :global(.light) {
+          --tooltip-bg-color: rgb(31, 41, 55); /* bg-gray-800 */
+        }
+      `}</style>
     </div>,
     document.body
   );

@@ -74,6 +74,7 @@ interface ServicesListProps {
   updateService: (originalName: string, updatedService: ServiceConfig) => Promise<boolean>;
   deleteService: (name: string) => Promise<boolean>;
   onViewHistory?: (serviceName: string) => void;
+  activeServiceName?: string | null;
 }
 
 export function ServicesList({
@@ -91,6 +92,7 @@ export function ServicesList({
   updateService,
   deleteService,
   onViewHistory,
+  activeServiceName,
 }: ServicesListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
@@ -103,12 +105,82 @@ export function ServicesList({
   const [responseTimeSpans, setResponseTimeSpans] = useState<Record<string, number>>({});
   const [showChartInfo, setShowChartInfo] = useState<Record<string, boolean>>({});
 
+  // Toggle service expansion - declare first before useEffect uses it
+  const toggleServiceExpansion = useCallback((serviceName: string) => {
+    setExpandedServices(prev => {
+      const newState = {
+        ...prev,
+        [serviceName]: !prev[serviceName]
+      };
+      return newState;
+    });
+  }, []);
+
   // Update processedServices when services prop changes
   useEffect(() => {
     if (services && services.length > 0) {
       setProcessedServices(services);
     }
   }, [services]);
+
+  // Add a listener for the custom event
+  useEffect(() => {
+    const handleServiceTabMounted = () => {
+      if (activeServiceName && services.length > 0 && servicesConfig.length > 0) {
+        // Set expanded state immediately
+        setExpandedServices(prev => ({
+          ...prev,
+          [activeServiceName]: true
+        }));
+        
+        // Scroll after a brief delay to ensure rendering is complete
+        setTimeout(() => {
+          const serviceEl = document.getElementById(`service-${activeServiceName}`);
+          if (serviceEl) {
+            serviceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    };
+    
+    // Listen for the custom event
+    if (typeof window !== 'undefined') {
+      window.addEventListener('services-tab-mounted', handleServiceTabMounted);
+      
+      // Also handle expansion on initial load
+      if (activeServiceName) {
+        // Set expanded state immediately 
+        setExpandedServices(prev => ({
+          ...prev,
+          [activeServiceName]: true
+        }));
+        
+        // Simple scroll after a delay
+        setTimeout(() => {
+          const serviceEl = document.getElementById(`service-${activeServiceName}`);
+          if (serviceEl) {
+            serviceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('services-tab-mounted', handleServiceTabMounted);
+      }
+    };
+  }, [activeServiceName, services, servicesConfig]);
+
+  // Add this effect to set initial expanded state
+  useEffect(() => {
+    if (activeServiceName) {
+      setExpandedServices(prev => ({
+        ...prev,
+        [activeServiceName]: true
+      }));
+    }
+  }, [activeServiceName]);
 
   const handleAddService = async (service: ServiceConfig) => {
     return await addService(service);
@@ -149,14 +221,6 @@ export function ServicesList({
         (service.description && service.description.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : servicesConfig;
-
-  // Toggle service expansion
-  const toggleServiceExpansion = (serviceName: string) => {
-    setExpandedServices(prev => ({
-      ...prev,
-      [serviceName]: !prev[serviceName]
-    }));
-  };
 
   // Calculate uptime percentage and duration
   const calculateUptimeStats = (serviceData: any) => {
@@ -276,11 +340,11 @@ export function ServicesList({
       <div className="flex items-center justify-between mb-6">
         <div className="relative w-full max-w-md">
           <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+            <Search className="h-4 w-4 text-slate-400 dark:text-slate-500" />
           </div>
           <input
             type="text"
-            className="w-full py-2.5 pl-12 pr-4 border dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-200"
+            className="w-full py-2.5 pl-12 pr-4 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary/70 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200"
             placeholder="Search services..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -301,6 +365,7 @@ export function ServicesList({
             />
             <span>Refresh</span>
           </Button>
+          
           <Button 
             size="sm" 
             className="gap-2 px-4 h-9 whitespace-nowrap"
@@ -319,7 +384,7 @@ export function ServicesList({
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
       ) : statusError || servicesConfigError ? (
-        <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-red-50 dark:bg-red-950/30">
+        <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/20">
           <AlertTriangle className="h-8 w-8 text-red-500 dark:text-red-400 mb-2" />
           <h3 className="text-red-700 dark:text-red-400 font-medium mb-1">Error Loading Services</h3>
           <p className="text-sm text-red-600 dark:text-red-400 mb-4 text-center">
@@ -341,7 +406,7 @@ export function ServicesList({
         </div>
       ) : filteredServices.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-center">
-          <Server className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
+          <Server className="h-8 w-8 text-slate-300 dark:text-slate-700 mb-2" />
           <h3 className="text-slate-700 dark:text-slate-300 font-medium">No services found</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-4">
             {searchQuery
@@ -371,11 +436,21 @@ export function ServicesList({
             return (
               <div 
                 key={service.name} 
-                className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-800 hover:shadow-sm transition-shadow duration-200 w-full"
+                className={`bg-white dark:bg-slate-950 rounded-lg border ${
+                  activeServiceName === service.name 
+                    ? 'border-primary/70 dark:border-primary/50 ring-1 ring-primary/30 shadow-sm animate-highlight' 
+                    : 'border-slate-200 dark:border-slate-800/80'
+                } hover:shadow-sm transition-all duration-200 w-full`}
+                id={`service-${service.name}`}
+                data-service-name={service.name}
+                data-expanded={expandedServices[service.name] || false}
               >
                 <div 
                   className="flex items-center justify-between p-6 cursor-pointer w-full"
                   onClick={() => toggleServiceExpansion(service.name)}
+                  data-expanded={expandedServices[service.name] || false}
+                  role="button"
+                  aria-expanded={expandedServices[service.name] || false}
                 >
                   <div className="flex items-center space-x-4 flex-1 min-w-0">
                     <div className="flex items-center pl-1">
@@ -383,21 +458,21 @@ export function ServicesList({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center flex-wrap gap-2">
-                        <h3 className="font-medium truncate dark:text-white">{service.name}</h3>
+                        <h3 className="font-medium truncate dark:text-slate-100">{service.name}</h3>
                         {responseTime && (
                           <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs rounded-full">
                             {responseTime}ms
                           </span>
                         )}
                         <div className={`text-xs px-2 py-0.5 rounded-full font-medium
-                          ${status === "up" ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400" : 
-                            status === "down" ? "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400" : 
+                          ${status === "up" ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" : 
+                            status === "down" ? "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400" : 
                             "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400"}
                         `}>
                           {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
                         </div>
                         {service.visible === false && (
-                          <div className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 flex items-center gap-1">
+                          <div className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 flex items-center gap-1">
                             <EyeOff className="h-3 w-3" />
                             <span>Hidden</span>
                           </div>
@@ -472,26 +547,26 @@ export function ServicesList({
                 
                 {/* Expanded details section */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-slate-700 w-full bg-slate-50/30 dark:bg-slate-800/10">
+                  <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800 w-full bg-slate-50/30 dark:bg-slate-900/20">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-[800px] mx-auto">
                       {/* Metadata section */}
-                      <div className="bg-white dark:bg-slate-800 p-4 rounded-md w-full border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm">
                         <h4 className="text-xs font-medium mb-3 text-slate-700 dark:text-slate-300 flex items-center">
-                          <span className="w-1 h-4 bg-blue-500 dark:bg-blue-400 rounded-full mr-2"></span>
+                          <span className="w-1 h-4 bg-blue-500 dark:bg-blue-500/70 rounded-full mr-2"></span>
                           Service Metadata
                         </h4>
                         <div className="space-y-2 text-xs w-full">
                           <div className="flex justify-between py-0.5">
                             <span className="text-slate-600 dark:text-slate-400 mr-2">Expected Status:</span>
-                            <span className="font-medium dark:text-slate-300">{service.expectedStatus || 200}</span>
+                            <span className="font-medium dark:text-slate-200">{service.expectedStatus || 200}</span>
                           </div>
                           <div className="flex justify-between py-0.5">
                             <span className="text-slate-600 dark:text-slate-400 mr-2">Visible on Status Page:</span>
-                            <span className="font-medium dark:text-slate-300">{service.visible ? 'Yes' : 'No'}</span>
+                            <span className="font-medium dark:text-slate-200">{service.visible ? 'Yes' : 'No'}</span>
                           </div>
                           <div className="flex justify-between py-0.5">
                             <span className="text-slate-600 dark:text-slate-400 mr-2">Last Check:</span>
-                            <span className="font-medium text-xs truncate max-w-[120px] dark:text-slate-300">
+                            <span className="font-medium text-xs truncate max-w-[120px] dark:text-slate-200">
                               {statusData?.currentStatus?.timestamp 
                                 ? new Date(statusData.currentStatus.timestamp).toLocaleString() 
                                 : 'N/A'}
@@ -500,7 +575,7 @@ export function ServicesList({
                           {statusData?.currentStatus?.statusCode && (
                             <div className="flex justify-between py-0.5">
                               <span className="text-slate-600 dark:text-slate-400 mr-2">Status Code:</span>
-                              <span className="font-medium dark:text-slate-300">{statusData.currentStatus.statusCode}</span>
+                              <span className="font-medium dark:text-slate-200">{statusData.currentStatus.statusCode}</span>
                             </div>
                           )}
 
@@ -508,7 +583,7 @@ export function ServicesList({
                           {statusData?.history && (
                             <div className="flex justify-between py-0.5">
                               <span className="text-slate-600 dark:text-slate-400 mr-2">Total Checks:</span>
-                              <span className="font-medium dark:text-slate-300">
+                              <span className="font-medium dark:text-slate-200">
                                 {statusData.history.length}
                               </span>
                             </div>
@@ -518,7 +593,7 @@ export function ServicesList({
                           {statusData?.history && statusData.history.length > 0 && (
                             <div className="flex justify-between py-0.5">
                               <span className="text-slate-600 dark:text-slate-400 mr-2">First Monitored:</span>
-                              <span className="font-medium dark:text-slate-300">
+                              <span className="font-medium dark:text-slate-200">
                                 {(() => {
                                   const oldestEntry = statusData.history[statusData.history.length - 1];
                                   if (!oldestEntry?.timestamp) return 'N/A';
@@ -532,13 +607,13 @@ export function ServicesList({
                           
                           {/* Divider before error message if present */}
                           {statusData?.currentStatus?.error && (
-                            <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
+                            <div className="border-t border-slate-200 dark:border-slate-800 my-2"></div>
                           )}
                           
                           {statusData?.currentStatus?.error && (
-                            <div className="mt-3 p-2 rounded-md bg-slate-50 dark:bg-slate-900">
+                            <div className="mt-3 p-2 rounded-md bg-slate-50 dark:bg-slate-900/60">
                               <span className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Last Error:</span>
-                              <span className="font-medium text-red-600 dark:text-red-400 text-xs block p-2 bg-red-50 dark:bg-red-950/40 rounded-md border border-red-100 dark:border-red-900/30 overflow-auto max-h-[40px]">
+                              <span className="font-medium text-red-600 dark:text-red-400 text-xs block p-2 bg-red-50 dark:bg-red-950/30 rounded-md border border-red-100 dark:border-red-900/20 overflow-auto max-h-[40px]">
                                 {statusData.currentStatus.error}
                               </span>
                             </div>
@@ -547,9 +622,9 @@ export function ServicesList({
                       </div>
                       
                       {/* Uptime & Statistics section */}
-                      <div className="bg-white dark:bg-slate-800 p-4 rounded-md w-full border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm">
                         <h4 className="text-xs font-medium mb-3 text-slate-700 dark:text-slate-300 flex items-center">
-                          <span className="w-1 h-4 bg-emerald-500 dark:bg-emerald-400 rounded-full mr-2"></span>
+                          <span className="w-1 h-4 bg-emerald-500 dark:bg-emerald-500/70 rounded-full mr-2"></span>
                           Uptime Statistics
                         </h4>
                         <div className="space-y-3 w-full">
@@ -564,7 +639,7 @@ export function ServicesList({
                                   'text-red-600 dark:text-red-400'
                                 }`}>{uptimePercentage.toFixed(2)}%</span>
                               </div>
-                              <div className="relative w-full bg-slate-200 dark:bg-slate-700/60 rounded-full h-2 overflow-hidden">
+                              <div className="relative w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                                 <div 
                                   className={`absolute top-0 left-0 h-2 rounded-full ${
                                     uptimePercentage > 99 ? 'bg-emerald-500' : 
@@ -612,7 +687,7 @@ export function ServicesList({
                           {statusData?.history && statusData.history.length > 0 && (
                             <div className="flex justify-between py-0.5 text-xs">
                               <span className="text-slate-600 dark:text-slate-400 mr-2">Avg Response Time:</span>
-                              <span className="font-medium dark:text-slate-300">
+                              <span className="font-medium dark:text-slate-200">
                                 {(() => {
                                   const validTimes = statusData.history
                                     .map((c: any) => c.responseTime)
@@ -631,7 +706,7 @@ export function ServicesList({
                           {statusData?.history && statusData.history.length > 0 && (
                             <div className="flex justify-between py-0.5 text-xs">
                               <span className="text-slate-600 dark:text-slate-400 mr-2">Response Range:</span>
-                              <span className="font-medium dark:text-slate-300">
+                              <span className="font-medium dark:text-slate-200">
                                 {(() => {
                                   const validTimes = statusData.history
                                     .map((c: any) => c.responseTime)
@@ -649,7 +724,7 @@ export function ServicesList({
                           
                           {/* Online Status Section */}
                           {status === "up" && onlineSince && (
-                            <div className="mt-3 p-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="mt-3 p-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/20">
                               <h5 className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-2">Online Status</h5>
                               <div className="flex items-center gap-2 mb-1.5">
                                 <Clock className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
@@ -673,10 +748,10 @@ export function ServicesList({
                       </div>
 
                       {/* New dedicated Response Time Chart card - spans full width in both grid layouts */}
-                      <div className="bg-white dark:bg-slate-800 p-4 rounded-md w-full border border-slate-200 dark:border-slate-700 shadow-sm md:col-span-2">
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm md:col-span-2">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
-                            <span className="w-1 h-4 bg-indigo-500 dark:bg-indigo-400 rounded-full mr-2"></span>
+                            <span className="w-1 h-4 bg-indigo-500 dark:bg-indigo-500/70 rounded-full mr-2"></span>
                             Response Time Chart
                           </h4>
                           
@@ -684,14 +759,14 @@ export function ServicesList({
                             <div className="relative">
                               <button 
                                 onClick={(e) => toggleChartInfo(service.name, e)}
-                                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                 aria-label="Chart information"
                               >
-                                <HelpCircle className="h-3.5 w-3.5 text-slate-500" />
+                                <HelpCircle className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                               </button>
                               
                               {showChartInfo[service.name] && (
-                                <div className="absolute right-0 top-6 z-10 w-64 p-3 text-xs bg-white dark:bg-slate-900 shadow-lg rounded-md border border-slate-200 dark:border-slate-700">
+                                <div className="absolute right-0 top-6 z-10 w-64 p-3 text-xs bg-white dark:bg-slate-950 shadow-lg rounded-md border border-slate-200 dark:border-slate-800">
                                   <h5 className="font-medium mb-1.5 text-slate-800 dark:text-slate-200">About Response Time Chart</h5>
                                   <p className="text-slate-600 dark:text-slate-400 mb-2">
                                     This chart shows the response time trend for recent checks. 
@@ -716,7 +791,7 @@ export function ServicesList({
                             </div>
                             
                             <button
-                              className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30"
+                              className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onViewHistory?.(service.name);
@@ -739,34 +814,34 @@ export function ServicesList({
                                 e.stopPropagation();
                                 changeTimeSpan(service.name, 'next');
                               }}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                               aria-label="Show fewer checks"
                             >
-                              <ChevronLeft className="h-4 w-4 text-slate-500" />
+                              <ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                             </button>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 changeTimeSpan(service.name, 'prev');
                               }}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                               aria-label="Show more checks"
                             >
-                              <ChevronRight className="h-4 w-4 text-slate-500" />
+                              <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                             </button>
                           </div>
                         </div>
                         
                         {/* Enhanced Response Time Chart */}
                         {statusData?.history && statusData.history.length > 0 ? (
-                          <div className="rounded-md bg-white dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700">
+                          <div className="rounded-md bg-white dark:bg-slate-950 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
                             {/* Bar Chart Section - enhanced height */}
                             <div className="h-16 flex items-end justify-between px-1 py-2 relative">
                               {/* Grid lines */}
                               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                                <div className="w-full h-px bg-slate-100 dark:bg-slate-700/30"></div>
-                                <div className="w-full h-px bg-slate-100 dark:bg-slate-700/30"></div>
-                                <div className="w-full h-px bg-slate-100 dark:bg-slate-700/30"></div>
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
                               </div>
                               
                               {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
@@ -823,7 +898,7 @@ export function ServicesList({
                             </div>
                             
                             {/* Timestamp Labels Section - Simplified */}
-                            <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                            <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
                               {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
                                 const date = new Date(check.timestamp);
                                 const now = new Date();
@@ -831,7 +906,7 @@ export function ServicesList({
                                 
                                 return (
                                   <div key={`time-${index}`} className="flex-1 text-center">
-                                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate px-0.5 font-medium">
+                                    <div className="text-xs text-slate-500 dark:text-slate-500 truncate px-0.5 font-medium">
                                       {isToday 
                                         ? date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
                                         : date.toLocaleDateString([], {month: 'numeric', day: 'numeric'})
@@ -843,7 +918,7 @@ export function ServicesList({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center h-28 bg-white dark:bg-slate-800 rounded-md p-4 border border-slate-200 dark:border-slate-700">
+                          <div className="flex flex-col items-center justify-center h-28 bg-white dark:bg-slate-950 rounded-md p-4 border border-slate-200 dark:border-slate-800">
                             <div className="text-[12px] text-slate-500 dark:text-slate-400 mb-2">No response time data available</div>
                             <div className="text-[10px] text-slate-400 dark:text-slate-500">
                               Response time history will appear here after checks are performed
@@ -869,20 +944,20 @@ export function ServicesList({
                               
                               return (
                                 <>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Average</div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Average</div>
                                     <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{Math.round(avgTime)}ms</div>
                                   </div>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Minimum</div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Minimum</div>
                                     <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{minTime}ms</div>
                                   </div>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Maximum</div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Maximum</div>
                                     <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{maxTime}ms</div>
                                   </div>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">90th Percentile</div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">90th Percentile</div>
                                     <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p90Time}ms</div>
                                   </div>
                                 </>

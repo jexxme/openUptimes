@@ -11,6 +11,10 @@ interface AppearanceTabProps {
   setShowServiceUrls: (show: boolean) => void;
   showServiceDescription: boolean;
   setShowServiceDescription: (show: boolean) => void;
+  copyrightUrl: string;
+  setCopyrightUrl: (url: string) => void;
+  copyrightText: string;
+  setCopyrightText: (text: string) => void;
   isLoading: boolean;
   isSaving: boolean;
   onSave: () => void;
@@ -23,11 +27,51 @@ export function AppearanceTab({
   setShowServiceUrls,
   showServiceDescription,
   setShowServiceDescription,
+  copyrightUrl,
+  setCopyrightUrl,
+  copyrightText,
+  setCopyrightText,
   isLoading,
   isSaving,
   onSave
 }: AppearanceTabProps) {
   const [logoError, setLogoError] = useState(false);
+  const [copyrightUrlError, setCopyrightUrlError] = useState(false);
+  const [copyrightUrlTitle, setCopyrightUrlTitle] = useState<string | null>(null);
+  const currentYear = new Date().getFullYear();
+
+  // Validate URL when input changes
+  const validateCopyrightUrl = async (url: string) => {
+    if (!url) {
+      setCopyrightUrlError(false);
+      setCopyrightUrlTitle(null);
+      return;
+    }
+
+    try {
+      // Check if valid URL format
+      new URL(url);
+      
+      try {
+        // Attempt to fetch the title of the URL
+        const response = await fetch(`/api/utils/fetch-title?url=${encodeURIComponent(url)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.title) {
+            setCopyrightUrlTitle(data.title);
+          }
+        }
+        setCopyrightUrlError(false);
+      } catch (e) {
+        // Even if we can't fetch the title, the URL might still be valid
+        setCopyrightUrlError(false);
+      }
+    } catch (e) {
+      // Invalid URL format
+      setCopyrightUrlError(true);
+      setCopyrightUrlTitle(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -116,6 +160,72 @@ export function AppearanceTab({
           </div>
         </div>
         
+        {/* Copyright Section */}
+        <div className="rounded-lg border bg-card p-5">
+          <h3 className="font-medium mb-3 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span>Footer Copyright</span>
+          </h3>
+          
+          <div className="space-y-2">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Copyright Text</label>
+              <Input
+                type="text"
+                value={copyrightText}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setCopyrightText(e.target.value);
+                }}
+                placeholder={`© {year} Your Company Name`}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Use <code className="bg-muted px-1 rounded">{'{year}'}</code> to dynamically display the current year. Leave empty to use the default format.
+              </p>
+            </div>
+            
+            <div className="mt-4">
+              <label className="text-sm font-medium mb-1.5 block">Copyright URL</label>
+              <Input
+                type="text"
+                value={copyrightUrl}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setCopyrightUrl(e.target.value);
+                  validateCopyrightUrl(e.target.value);
+                }}
+                placeholder="https://your-domain.com/"
+                className={copyrightUrlError ? "border-red-500" : ""}
+              />
+              {copyrightUrlError && (
+                <p className="text-xs text-red-500 mt-1">
+                  Please enter a valid URL
+                </p>
+              )}
+              {copyrightUrlTitle && !copyrightUrlError && (
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                  {copyrightUrlTitle}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                The copyright text in the footer will link to this URL
+              </p>
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-border">
+              <label className="text-sm font-medium mb-1.5 block">Preview</label>
+              <div className="border rounded-md px-3 py-2.5 text-xs text-muted-foreground bg-background">
+                {(copyrightText && copyrightText.replace(/{year}/g, currentYear.toString())) || `© ${currentYear} Your Company Name`}
+                {copyrightUrl && <span className="text-primary"> (clickable)</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+        
         {/* Display Options */}
         <div className="rounded-lg border bg-card p-5">
           <h3 className="font-medium mb-3 flex items-center gap-2">
@@ -155,7 +265,7 @@ export function AppearanceTab({
         <div className="flex justify-end mt-6">
           <Button 
             onClick={onSave} 
-            disabled={isSaving || isLoading}
+            disabled={isSaving || isLoading || copyrightUrlError}
             size="sm"
           >
             {isSaving ? 

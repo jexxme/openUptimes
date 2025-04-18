@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertTriangle, Server } from "lucide-react";
+import { RefreshCw, AlertTriangle, Server, ChevronRight } from "lucide-react";
 import { ServiceStatusItem } from "./ServiceComponents";
 
 // Section on the dashboard that shows the status of all service
@@ -32,6 +32,20 @@ export const ServiceStatusSection = ({
   const upServices = services.filter(service => service.currentStatus?.status === "up").length;
   const downServices = services.filter(service => service.currentStatus?.status === "down").length;
   
+  // Log navigation attempts for debugging
+  const navigateToService = (tab: string, serviceName?: string) => {
+    console.log(`[ServiceStatus] Navigating to ${tab}${serviceName ? ` with service: ${serviceName}` : ''}`);
+    
+    // Add debugging for URL params
+    if (typeof window !== 'undefined' && serviceName) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('service', serviceName);
+      console.log(`[ServiceStatus] URL will be: ${url.toString()}`);
+    }
+    
+    handleNavigation(tab, serviceName);
+  };
+
   return (
     <Card className="overflow-hidden border col-span-12 lg:col-span-5 flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4 border-b h-[72px]">
@@ -102,30 +116,36 @@ export const ServiceStatusSection = ({
                 )}
               </div>
             </div>
-            {services.length > 5 && (
-              <Button
-                variant="default"
-                size="sm"
-                className="text-xs h-6 px-2"
-                onClick={() => handleNavigation("services")}
-              >
-                View All
-              </Button>
-            )}
           </div>
           <div className="rounded-md border overflow-hidden mt-3">
-            <div className="divide-y dark:divide-slate-700 max-h-[250px] overflow-auto">
-              {services.slice(0, 5).map((service, index) => (
-                <ServiceStatusItem key={service.id || index} service={service} />
-              ))}
-              {services.length > 5 && (
-                <div 
-                  onClick={() => handleNavigation("services")}
-                  className="flex items-center justify-center p-3 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-sm text-slate-600 dark:text-slate-400 transition-colors"
-                >
-                  <span>View all {services.length} services</span>
-                </div>
-              )}
+            <div className="divide-y dark:divide-slate-700 max-h-[350px] overflow-auto 
+              scrollbar-thin scrollbar-thumb-rounded scrollbar-track-transparent
+              scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400
+              dark:scrollbar-thumb-slate-600 dark:hover:scrollbar-thumb-slate-500
+              [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full
+              [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb:hover]:bg-slate-400
+              dark:[&::-webkit-scrollbar-thumb]:bg-slate-600 dark:[&::-webkit-scrollbar-thumb:hover]:bg-slate-500">
+              {[...services]
+                .sort((a, b) => {
+                  // Sort offline services first
+                  if (a.currentStatus?.status === "down" && b.currentStatus?.status !== "down") return -1;
+                  if (a.currentStatus?.status !== "down" && b.currentStatus?.status === "down") return 1;
+                  return 0;
+                })
+                .map((service, index) => (
+                  <div 
+                    key={service.id || index} 
+                    className="group cursor-pointer"
+                    onClick={() => navigateToService("services", service.name)}
+                  >
+                    <ServiceStatusItem 
+                      key={service.id || index} 
+                      service={service} 
+                      showChevron={true}
+                    />
+                  </div>
+                ))
+              }
             </div>
           </div>
         </div>

@@ -24,6 +24,9 @@ export function AdminServices({
   // Always fetch history data for expandable service details
   const [showHistory, setShowHistory] = useState(true);
   
+  // Track which service should be expanded from URL or navigation
+  const [activeServiceName, setActiveServiceName] = useState<string | null>(null);
+  
   // We'll skip the initial API fetch if we have preloaded data
   const hasPreloadedServices = !!preloadedServices && Array.isArray(preloadedServices) && preloadedServices.length > 0;
   const hasPreloadedConfig = !!preloadedServicesConfig && Array.isArray(preloadedServicesConfig) && preloadedServicesConfig.length > 0;
@@ -56,10 +59,27 @@ export function AdminServices({
     hasPreloadedConfig ? preloadedServicesConfig : undefined
   );
   
-  // Track initial render state and refresh data on mount
+  // Initial effect to check URL params and set active service
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      
+      // Check for service parameter in URL
+      if (typeof window !== 'undefined') {
+        // Use URL API to get parameters reliably
+        const url = new URL(window.location.href);
+        const serviceParam = url.searchParams.get('service') || url.searchParams.get('section');
+
+        if (serviceParam) {
+          try {
+            const decodedService = decodeURIComponent(serviceParam);
+            // Set active service name - this will cause the service to be expanded
+            setActiveServiceName(decodedService);
+          } catch (e) {
+            // Error handling
+          }
+        }
+      }
       
       // Automatically refresh data on initial mount
       // This ensures complete data for uptime calculations
@@ -69,6 +89,49 @@ export function AdminServices({
       }, 500);
     }
   }, [refresh, refreshServicesConfig]);
+
+  // Simple effect to scroll to active service after data is loaded
+  useEffect(() => {
+    if (activeServiceName && services.length > 0) {
+      // Wait for services to render before scrolling
+      setTimeout(() => {
+        const serviceEl = document.getElementById(`service-${activeServiceName}`);
+        if (serviceEl) {
+          serviceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    }
+  }, [activeServiceName, services.length]);
+
+  // Handle URL updates when services tab is directly loaded
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Check URL parameters on each history change
+      const handleUrlChange = () => {
+        const url = new URL(window.location.href);
+        const serviceParam = url.searchParams.get('service') || url.searchParams.get('section');
+        
+        if (serviceParam) {
+          try {
+            const decodedService = decodeURIComponent(serviceParam);
+            setActiveServiceName(decodedService);
+          } catch (e) {
+            // Error handling
+          }
+        } else {
+          // Clear active service if parameter is removed
+          setActiveServiceName(null);
+        }
+      };
+      
+      // Listen for URL changes (back/forward navigation)
+      window.addEventListener('popstate', handleUrlChange);
+      
+      return () => {
+        window.removeEventListener('popstate', handleUrlChange);
+      };
+    }
+  }, []);
 
   // Handle viewing history for a specific service
   const handleViewHistory = (serviceName: string) => {
@@ -176,6 +239,7 @@ export function AdminServices({
               updateService={updateService}
               deleteService={deleteService}
               onViewHistory={handleViewHistory}
+              activeServiceName={activeServiceName}
             />
 
             {renderErrorMessage()}

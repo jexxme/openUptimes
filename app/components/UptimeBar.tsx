@@ -201,7 +201,7 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage, isRef
   
   return (
     <div className="w-full">
-      <div className={`rounded-md overflow-hidden bg-white p-2.5 border border-gray-200 shadow-sm relative ${isRefreshing ? 'animate-pulse' : ''}`}>
+      <div className={`rounded-md overflow-hidden bg-white dark:bg-gray-900 p-2.5 border border-gray-200 dark:border-gray-800 shadow-sm relative ${isRefreshing ? 'animate-pulse' : ''}`}>
         <svg 
           className="w-full" 
           preserveAspectRatio="none" 
@@ -222,10 +222,10 @@ export function UptimeBar({ history, startTime, endTime, uptimePercentage, isRef
           uptimePercentage={hoveredBar !== null ? calculateUptimeForBar(hoveredBar) : null}
         />
       </div>
-      <div className="flex justify-between text-xs text-gray-500 mt-2.5 px-1">
-        <div className="text-xs font-normal text-gray-500">{daysDuration} days ago</div>
-        <div className="text-xs font-medium text-gray-700">{uptimePercentage.toFixed(2)}% uptime</div>
-        <div className="text-xs font-normal text-gray-500">Today</div>
+      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2.5 px-1">
+        <div className="text-xs font-normal text-gray-500 dark:text-gray-400">{daysDuration} days ago</div>
+        <div className="text-xs font-medium text-gray-700 dark:text-gray-300">{uptimePercentage.toFixed(2)}% uptime</div>
+        <div className="text-xs font-normal text-gray-500 dark:text-gray-400">Today</div>
       </div>
     </div>
   );

@@ -112,16 +112,16 @@ export function DashboardContent({
         url.searchParams.set('tab', tab);
         
         if (section) {
-          url.searchParams.set('section', section);
+          url.searchParams.set('service', section);
         } else {
-          url.searchParams.delete('section');
+          url.searchParams.delete('service');
         }
         
         window.history.pushState({}, '', url.toString());
       }
     } else {
       // Fallback to traditional navigation if setActiveTab not provided
-      window.location.href = `/admin?tab=${tab}${section ? `&section=${section}` : ''}`;
+      window.location.href = `/admin?tab=${tab}${section ? `&service=${section}` : ''}`;
     }
   };
 

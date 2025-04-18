@@ -40,9 +40,9 @@ const ServiceItemTooltip = ({
         pointerEvents: 'none' 
       }}
     >
-      <div className="bg-gray-800 text-white text-xs leading-normal px-3 py-2 rounded-md max-w-xs">
+      <div className="bg-gray-800 dark:bg-gray-900 text-white text-xs leading-normal px-3 py-2 rounded-md max-w-xs">
         {text}
-        <div className="tooltip-arrow bg-gray-800 w-2 h-2 rotate-45 absolute -bottom-1 left-1/2 transform -translate-x-1/2"></div>
+        <div className="tooltip-arrow bg-gray-800 dark:bg-gray-900 w-2 h-2 rotate-45 absolute -bottom-1 left-1/2 transform -translate-x-1/2"></div>
       </div>
     </div>,
     document.body
@@ -160,7 +160,7 @@ const StatusTooltip = ({
         pointerEvents: 'none' 
       }}
     >
-      <div className="bg-gray-800 text-white text-xs leading-normal px-4 py-3 rounded-md min-w-[220px]">
+      <div className="bg-gray-800 dark:bg-gray-900 text-white text-xs leading-normal px-4 py-3 rounded-md min-w-[220px]">
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-2 h-2 rounded-full ${getStatusColor()}`}></div>
           <span className="font-medium text-sm">{service} Status</span>
@@ -205,10 +205,20 @@ const StatusTooltip = ({
           style={{ 
             borderLeft: '8px solid transparent',
             borderRight: '8px solid transparent',
-            borderTop: '8px solid rgb(31, 41, 55)' // Same as bg-gray-800
+            borderTop: '8px solid rgb(31, 41, 55)', // Same as bg-gray-800
+            borderTopColor: 'var(--tooltip-bg-color, rgb(31, 41, 55))'
           }}
         ></div>
       </div>
+      
+      <style jsx>{`
+        :global(.dark) {
+          --tooltip-bg-color: rgb(17, 24, 39); /* dark:bg-gray-900 */
+        }
+        :global(.light) {
+          --tooltip-bg-color: rgb(31, 41, 55); /* bg-gray-800 */
+        }
+      `}</style>
     </div>,
     document.body
   );
@@ -299,16 +309,52 @@ export function ServiceItem({
 }: ServiceItemProps) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-  const questionRef = useRef<HTMLButtonElement>(null);
-  
-  // Status badge tooltip state
   const [statusTooltipVisible, setStatusTooltipVisible] = useState(false);
   const [statusTooltipPosition, setStatusTooltipPosition] = useState({ x: 0, y: 0 });
   const statusBadgeRef = useRef<HTMLDivElement>(null);
-
-  // Calculate time range for the uptime bar based on the provided historyDays
+  const questionRef = useRef<HTMLSpanElement>(null);
+  
+  // Timestamp for now and start of history
   const now = Date.now();
   const historyStartTime = now - (historyDays * 24 * 60 * 60 * 1000);
+
+  // Helper function to get history start time
+  const getHistoryStartTime = () => historyStartTime;
+  
+  // Get classes for status indicators
+  const getStatusClass = (element: 'dot' | 'status-badge' | 'label') => {
+    // For the dot
+    if (element === 'dot') {
+      if (status === 'up' && uptimePercentage >= 99.5) return 'bg-emerald-500';
+      if (status === 'up' && uptimePercentage >= 95) return 'bg-emerald-400';
+      if (status === 'degraded' || status === 'partial' || (status === 'up' && uptimePercentage < 95)) return 'bg-yellow-400';
+      if (status === 'down') return 'bg-red-500';
+      return 'bg-gray-400';
+    }
+    
+    // For the status badge background
+    if (element === 'status-badge') {
+      if (status === 'up' && uptimePercentage >= 99.5) return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400';
+      if (status === 'up' && uptimePercentage >= 95) return 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400';
+      if (status === 'degraded' || status === 'partial' || (status === 'up' && uptimePercentage < 95)) return 'bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400';
+      if (status === 'down') return 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400';
+      return 'bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-400';
+    }
+    
+    // For the status text label
+    if (element === 'label') {
+      if (status === 'up' && uptimePercentage >= 99.5) return 'Operational';
+      if (status === 'up' && uptimePercentage >= 95) return 'Mostly Operational';
+      if (status === 'degraded' || status === 'partial') return 'Degraded';
+      if (status === 'up' && uptimePercentage < 95) return 'Partially Degraded';
+      if (status === 'down') return 'Outage';
+      return 'Unknown';
+    }
+    
+    return '';
+  };
+  
+  // Calculate time range for the uptime bar based on the provided historyDays
   
   // Debug log to verify historyDays is being applied
   useEffect(() => {
@@ -350,95 +396,72 @@ export function ServiceItem({
   const shouldUseStackedLayout = showServiceUrls && url;
 
   return (
-    <div className={`component-container hover-lift border-t border-gray-200 first:border-t-0 py-7 space-y-4 px-5 ${isRefreshing ? 'opacity-60 transition-opacity duration-300' : ''}`}>
-      <div className={`flex ${shouldUseStackedLayout ? 'flex-col' : ''}`}>
-        <div className="flex justify-between items-center w-full">
-          {shouldUseStackedLayout ? (
-            <div className="flex flex-col">
-              <div className="flex items-center">
-                <span className="text-gray-800 font-semibold text-base tracking-tight">{name}</span>
-                {showServiceDescription && description && (
-                  <div className="relative ml-2 inline-flex items-center">
-                    <button 
-                      ref={questionRef}
-                      className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center cursor-help" 
-                      aria-label="More information"
-                      onMouseEnter={handleMouseEnter}
-                      onMouseLeave={handleMouseLeave}
-                      onFocus={handleMouseEnter}
-                      onBlur={handleMouseLeave}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="mt-0">
-                <a 
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-600 inline-flex items-center text-sm w-fit"
-                  title={`Visit ${name}`}
-                >
-                  <span className="truncate underline">{url.replace(/^https?:\/\//, '')}</span>
-                  <ExternalLink size={14} className="ml-1 flex-shrink-0" />
-                </a>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <span className="text-gray-800 font-semibold text-base tracking-tight">{name}</span>
-              {showServiceDescription && description && (
-                <div className="relative ml-2 inline-flex items-center">
-                  <button 
-                    ref={questionRef}
-                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full flex items-center justify-center cursor-help" 
-                    aria-label="More information"
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
-                    onFocus={handleMouseEnter}
-                    onBlur={handleMouseLeave}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
+    <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0 p-4">
+      <div className="mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <h3 className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
+            {name}
+            {showServiceDescription && description && (
+              <span 
+                ref={questionRef}
+                className="cursor-help text-gray-400 dark:text-gray-500 ml-1"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+              </span>
+            )}
+          </h3>
+          
+          {showServiceUrls && url && (
+            <a 
+              href={url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:underline inline-flex items-center gap-0.5"
+            >
+              <span>{url.replace(/^https?:\/\//, '')}</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+        
+        <div 
+          className={`flex items-center gap-1.5 text-sm ${getStatusClass('status-badge')}`}
+          ref={statusBadgeRef}
+          onMouseEnter={handleStatusMouseEnter}
+          onMouseLeave={handleStatusMouseLeave}
+        >
+          <div className="relative flex items-center justify-center w-3 h-3">
+            <div className={`w-3 h-3 rounded-full ${getStatusClass('dot')}`}>
+              {(status === "up" && uptimePercentage >= 95) && (
+                <>
+                  <span className="absolute inset-0 rounded-full bg-emerald-500 dark:bg-emerald-400 opacity-75 animate-ping"></span>
+                  <span className="absolute inset-0 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+                </>
               )}
             </div>
-          )}
-          <div 
-            ref={statusBadgeRef}
-            onMouseEnter={handleStatusMouseEnter}
-            onMouseLeave={handleStatusMouseLeave}
-          >
-            {getStatusDisplay(status, uptimePercentage)}
           </div>
+          <span>{getStatusClass('label')}</span>
         </div>
       </div>
       
       <UptimeBar 
-        history={history} 
-        startTime={historyStartTime} 
-        endTime={now} 
+        history={history}
+        startTime={historyStartTime}
+        endTime={now}
         uptimePercentage={uptimePercentage}
         isRefreshing={isRefreshing}
       />
       
-      {/* Use our portal-based tooltip for the description */}
-      {showServiceDescription && description && (
-        <ServiceItemTooltip
-          visible={tooltipVisible}
-          text={description}
-          position={tooltipPosition}
-        />
-      )}
+      <ServiceItemTooltip
+        visible={tooltipVisible}
+        text={description || ''}
+        position={tooltipPosition}
+      />
       
-      {/* Status badge tooltip */}
       <StatusTooltip
         visible={statusTooltipVisible}
         position={statusTooltipPosition}
@@ -446,6 +469,7 @@ export function ServiceItem({
         status={status}
         uptimePercentage={uptimePercentage}
         history={history}
+        daysToShow={historyDays}
       />
     </div>
   );
