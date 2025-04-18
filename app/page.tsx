@@ -10,6 +10,7 @@ import { useHistoricalData } from "./hooks/useHistoricalData";
 import { useAppearanceSettings } from "./hooks/useAppearanceSettings";
 import Image from "next/image";
 import { RefreshCw } from "lucide-react";
+import DOMPurify from "dompurify";
 
 // For type checking only
 interface ServiceConfig {
@@ -364,7 +365,15 @@ function HomeContent() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{siteConfig?.statusPage?.title}</h1>
-                <p className="text-gray-500 mt-1">{siteConfig?.statusPage?.description}</p>
+                <p 
+                  className="text-gray-500 mt-1"
+                  dangerouslySetInnerHTML={{ 
+                    __html: DOMPurify.sanitize(siteConfig?.statusPage?.description || '', {
+                      ALLOWED_TAGS: ['a', 'strong', 'em', 'b', 'i', 'br'],
+                      ALLOWED_ATTR: ['href', 'target', 'rel']
+                    }) 
+                  }}
+                />
               </div>
               <button 
                 onClick={handleRefresh}
