@@ -14,6 +14,7 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
+  <a href="#authentication">Authentication</a> •
   <a href="#api-endpoints">API Endpoints</a> •
   <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
   <a href="#alternative-monitoring">Alternative Monitoring</a> •
@@ -167,6 +168,169 @@ OpenUptimes supports the following environment variables:
 | `NEXT_PUBLIC_SITE_NAME` | Name of your status page | "OpenUptimes" | No |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description | "Service Status Monitor" | No |
 | `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
+
+## Authentication
+
+OpenUptimes uses a secure, Redis-based authentication system to protect admin and debug routes.
+
+### Authentication Architecture
+
+The authentication system is designed with the following principles:
+
+1. **Simplicity**: Simple password-based authentication by default
+2. **Security**: Secure password hashing with salting
+3. **Stateless**: Token-based authentication using HTTP-only cookies
+4. **Extensibility**: Provider-based architecture for future authentication methods
+5. **Brute Force Protection**: Rate limiting with exponential backoff
+
+### How It Works
+
+1. **Initial Setup**:
+   - During first-time setup, you create an admin password
+   - The password is securely hashed (SHA-256) with a unique salt
+   - The hash is stored in Redis under the key `admin:password`
+
+2. **Login Process**:
+   - User submits credentials via `/login` page
+   - Server validates credentials against stored hash
+   - On successful authentication, a random 32-character session token is generated
+   - Token is stored in Redis with a 24-hour expiration
+   - Token is sent to the client as an HTTP-only cookie
+
+3. **Session Validation**:
+   - Every protected route checks for the presence of the auth cookie
+   - Token is validated against Redis to ensure the session is active
+   - If validation fails, user is redirected to the login page
+   - Sessions automatically expire after 24 hours
+
+4. **Logout Process**:
+   - Session token is removed from Redis
+   - Auth cookie is cleared using multiple browser-compatible methods
+
+5. **Brute Force Protection**:
+   - Failed login attempts are tracked by IP address
+   - After multiple failed attempts, the IP is temporarily blocked
+   - Block duration increases exponentially with repeated failures
+   - System returns appropriate 429 status code with Retry-After header
+   - All responses include security headers to prevent common attacks
+
+### Authentication Providers
+
+The system uses a provider-based architecture that allows for easy extension:
+
+```typescript
+// Interface for authentication providers
+interface AuthProvider {
+  type: string;
+  verify(credentials: any): Promise<boolean>;
+  getUserInfo?(): Promise<any>;
+}
+
+// Default password provider implementation
+class PasswordAuthProvider implements AuthProvider {
+  type = 'password';
+  
+  async verify(credentials: { password: string }): Promise<boolean> {
+    // Verifies password against stored hash
+    return verifyPassword(credentials.password);
+  }
+}
+```
+
+### Extending the Authentication System
+
+OpenUptimes is designed to be easily extended with additional authentication methods:
+
+#### Adding OAuth (Google, GitHub, etc.)
+
+1. **Create a new provider class**:
+
+```typescript
+class OAuthProvider implements AuthProvider {
+  type = 'oauth';
+  provider: string; // 'google', 'github', etc.
+  
+  constructor(config: { provider: string, clientId: string, clientSecret: string }) {
+    this.provider = config.provider;
+    // Store OAuth configuration
+  }
+  
+  async verify(credentials: { code: string }): Promise<boolean> {
+    // Exchange authorization code for tokens
+    // Validate tokens with the OAuth provider
+    return isValid;
+  }
+  
+  async getUserInfo(): Promise<any> {
+    // Fetch user profile from OAuth provider
+    return userProfile;
+  }
+}
+```
+
+2. **Register the provider** in the provider factory:
+
+```typescript
+function createAuthProvider(type: string, config?: any): AuthProvider {
+  switch (type) {
+    case 'password':
+      return new PasswordAuthProvider();
+    case 'oauth':
+      return new OAuthProvider(config);
+    default:
+      return new PasswordAuthProvider();
+  }
+}
+```
+
+3. **Add UI components** for the new authentication method
+
+4. **Update API routes** to handle OAuth redirects and token exchanges
+
+#### Adding SSO (SAML, OIDC)
+
+Similar to OAuth, you can implement Single Sign-On by:
+
+1. Creating a provider for your SSO protocol
+2. Handling the appropriate authentication flows
+3. Integrating with your identity provider
+
+#### Custom Authentication Schemes
+
+For specialized use cases, you can implement custom authentication providers:
+
+```typescript
+class CustomProvider implements AuthProvider {
+  type = 'custom';
+  
+  async verify(credentials: any): Promise<boolean> {
+    // Your custom verification logic
+    return isValid;
+  }
+}
+```
+
+### Security Considerations
+
+- All passwords are salted and hashed using SHA-256
+- Sessions are stored in Redis with automatic expiration
+- Auth cookies are HTTP-only to prevent JavaScript access
+- Secure flag ensures cookies are only sent over HTTPS
+- Cookies use SameSite=Lax to prevent CSRF attacks
+- Sessions can be invalidated server-side at any time
+- IP-based rate limiting prevents brute force attacks
+- Progressive delays increase with each failed attempt
+- Security headers protect against common web vulnerabilities:
+  - X-Content-Type-Options: prevents MIME type sniffing
+  - X-Frame-Options: prevents clickjacking attacks
+  - Cache-Control: prevents sensitive data caching
+
+### Authentication API Endpoints
+
+- **POST `/api/auth/login`**: Authenticates a user and creates a session
+- **POST `/api/auth/logout`**: Invalidates the current session
+- **GET `/api/auth/validate`**: Validates the current session token
+- **POST `/api/admin/password/reset`**: Allows password reset with Redis credentials
 
 ## GitHub Actions Monitoring
 

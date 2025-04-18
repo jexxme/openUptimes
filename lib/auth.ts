@@ -1,6 +1,45 @@
 import { getAdminPassword, isSessionValid } from './redis';
 
 /**
+ * AuthProvider interface - to be implemented by different auth methods
+ */
+export interface AuthProvider {
+  type: string;
+  verify(credentials: any): Promise<boolean>;
+  getUserInfo?(): Promise<any>;
+}
+
+/**
+ * Default password-based authentication provider
+ */
+export class PasswordAuthProvider implements AuthProvider {
+  type = 'password';
+  
+  async verify(credentials: { password: string }): Promise<boolean> {
+    const { password } = credentials;
+    if (!password) return false;
+    return verifyPassword(password);
+  }
+}
+
+/**
+ * Factory to create auth providers (for future expansion)
+ */
+export function createAuthProvider(type: string = 'password'): AuthProvider {
+  switch (type) {
+    case 'password':
+      return new PasswordAuthProvider();
+    // Future providers can be added here:
+    // case 'oauth':
+    //   return new OAuthProvider(config);
+    // case 'sso':
+    //   return new SSOProvider(config);
+    default:
+      return new PasswordAuthProvider();
+  }
+}
+
+/**
  * Generate a secure password hash with salt
  */
 export async function hashPassword(password: string): Promise<string> {
@@ -66,6 +105,57 @@ export function parseTokenFromCookie(cookieStr?: string): string | null {
   
   const match = cookieStr.match(/authToken=([^;]+)/);
   return match ? match[1] : null;
+}
+
+/**
+ * Authentication result containing token and optional user info
+ */
+export interface AuthResult {
+  success: boolean;
+  token?: string;
+  userInfo?: any;
+  error?: string;
+}
+
+/**
+ * Authenticate a user with credentials and provider type
+ */
+export async function authenticate(
+  credentials: any, 
+  providerType: string = 'password'
+): Promise<AuthResult> {
+  try {
+    const provider = createAuthProvider(providerType);
+    const isValid = await provider.verify(credentials);
+    
+    if (!isValid) {
+      return { 
+        success: false,
+        error: 'Invalid credentials'
+      };
+    }
+    
+    // Generate session token
+    const token = generateSessionToken();
+    
+    // Get user info if provider supports it
+    let userInfo = undefined;
+    if (provider.getUserInfo) {
+      userInfo = await provider.getUserInfo();
+    }
+    
+    return {
+      success: true,
+      token,
+      userInfo
+    };
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
 }
 
 /**

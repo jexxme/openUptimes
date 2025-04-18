@@ -526,24 +526,51 @@ const AdminPageClient = () => {
   // Ensure the session is valid on page load
   useEffect(() => {
     async function validateSession() {
-      if (process.env.NODE_ENV === 'production') {
-        try {
-          const response = await fetch('/api/auth/validate');
-          const data = await response.json();
-          
-          if (!data.valid) {
-            // Add timestamp to prevent cache issues
-            window.location.href = `/login?from=/admin&t=${Date.now()}`;
-            return;
-          }
-        } catch (error) {
-          console.error("Session validation error:", error);
-          // If we can't validate, let the user stay on the page
+      try {
+        console.log("Validating session...");
+        setLoadingState("Validating session...");
+        setLoadingProgress(10);
+        
+        const response = await fetch('/api/auth/validate', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          credentials: 'include' // Important to include cookies
+        });
+        
+        console.log("Session validation response status:", response.status);
+        
+        if (!response.ok) {
+          console.error('Session validation failed with status:', response.status);
+          redirectToLogin();
+          return;
         }
+        
+        const data = await response.json();
+        console.log("Session validation data:", data);
+        
+        if (!data.valid) {
+          console.log('Invalid session detected, redirecting to login');
+          redirectToLogin();
+          return;
+        }
+        
+        console.log("Session is valid, continuing to load admin page");
+        // Only proceed if session is valid
+        setIsValidatingSession(false);
+      } catch (error) {
+        console.error("Session validation error:", error);
+        redirectToLogin();
+        return;
       }
-      
-      // Set loaded state when validation is complete
-      setIsValidatingSession(false);
+    }
+    
+    function redirectToLogin() {
+      // Add timestamp to prevent cache issues
+      const redirectUrl = `/login?from=/admin&t=${Date.now()}`;
+      console.log("Redirecting to login:", redirectUrl);
+      window.location.href = redirectUrl;
     }
     
     validateSession();
