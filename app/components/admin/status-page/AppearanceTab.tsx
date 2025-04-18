@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/app/components/ui/switch";
@@ -32,6 +32,8 @@ export function AppearanceTab({
   isSaving,
   onSave
 }: AppearanceTabProps) {
+  const [logoError, setLogoError] = useState(false);
+
   if (isLoading) {
     return (
       <div className="py-8 flex justify-center">
@@ -65,20 +67,32 @@ export function AppearanceTab({
                 <Input
                   type="text"
                   value={logoUrl}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLogoUrl(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setLogoUrl(e.target.value);
+                    setLogoError(false);
+                  }}
                   placeholder="https://your-domain.com/logo.png"
+                  className={logoError ? "border-red-500" : ""}
                 />
+                {logoError && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Unable to load image from URL
+                  </p>
+                )}
               </div>
               
               <div className="h-10 w-10 border rounded-md bg-background flex items-center justify-center shrink-0 mt-6">
-                {logoUrl ? (
+                {logoUrl && !logoError ? (
                   <img
                     src={logoUrl}
                     alt="Preview"
                     className="max-h-8 max-w-full object-contain"
-                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                      (e.target as HTMLImageElement).src = '/placeholder-logo.png';
+                    onError={(e) => {
+                      e.preventDefault(); // Prevent default error behavior
+                      (e.target as HTMLImageElement).style.display = 'none'; // Hide the image
+                      setLogoError(true); // Set error state
                     }}
+                    onLoad={() => setLogoError(false)}
                   />
                 ) : (
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
