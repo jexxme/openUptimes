@@ -79,6 +79,13 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
   const [isDev, setIsDev] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
+  const [invertLogo, setInvertLogo] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedPreference = localStorage.getItem("openuptimes-logo-invert");
+      return savedPreference !== null ? savedPreference === "true" : true;
+    }
+    return true; // Default to true
+  });
   const { theme, toggleTheme } = useTheme();
   const isDarkMode = theme === "dark";
   
@@ -115,16 +122,55 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
       const img = new Image();
       img.onload = () => {
         setImageLoaded(true);
+        
+        // Only attempt to analyze SVGs
+        if (logoUrl.endsWith('.svg')) {
+          analyzeSvgDarkness(logoUrl);
+        }
       };
       img.src = logoUrl;
     }
   }, [logoUrl]);
+
+  // Analyze SVG to determine if it's dark-dominant
+  const analyzeSvgDarkness = async (svgUrl: string) => {
+    try {
+      const response = await fetch(svgUrl);
+      if (response.ok) {
+        const svgText = await response.text();
+        
+        // Simple heuristic: check for dark colors in fill/stroke attributes
+        const darkColorPattern = /(fill|stroke)="(#0|#1|#2|#3|black|rgb\(0,|rgb\(1[0-9]|rgb\(2[0-5]|rgba\(0,|rgba\(1[0-9]|rgba\(2[0-5])/g;
+        const lightColorPattern = /(fill|stroke)="(#[d-f]|#[D-F]|white|rgb\(2[2-5][0-9]|rgb\(25[0-5]|rgba\(2[2-5][0-9]|rgba\(25[0-5])/g;
+        
+        const darkMatches = (svgText.match(darkColorPattern) || []).length;
+        const lightMatches = (svgText.match(lightColorPattern) || []).length;
+        
+        // If there are significantly more dark colors than light colors, set invertLogo to true
+        if (darkMatches > lightMatches * 1.5) {
+          setInvertLogo(true);
+          localStorage.setItem("openuptimes-logo-invert", "true");
+        }
+      }
+    } catch (error) {
+      console.error('Error analyzing SVG:', error);
+    }
+  };
 
   const handleLogoClick = () => {
     const newCount = logoClickCount + 1;
     setLogoClickCount(newCount);
     if (newCount >= 5) {
       setShowDebug(true);
+    }
+  };
+
+  const handleLogoContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isDarkMode) {
+      const newInvertValue = !invertLogo;
+      setInvertLogo(newInvertValue);
+      localStorage.setItem("openuptimes-logo-invert", newInvertValue.toString());
     }
   };
 
@@ -175,13 +221,17 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
         <div className="absolute left-0 bottom-0 w-full h-[1px] bg-gradient-to-r from-transparent via-sidebar-primary/20 to-transparent"></div>
         {logoUrl && imageLoaded ? (
           <div 
-            className="flex items-center justify-center h-full py-2 w-full cursor-pointer"
+            className="flex items-center justify-center h-full py-2 w-full cursor-pointer relative group"
             onClick={handleLogoClick}
+            onContextMenu={handleLogoContextMenu}
+            title={isDarkMode ? "Right-click to toggle logo inversion" : ""}
           >
             <img 
               src={logoUrl} 
               alt="Logo" 
-              className="max-h-full max-w-[140px] object-contain"
+              className={`max-h-full max-w-[140px] object-contain transition-opacity duration-150 ${
+                isDarkMode && invertLogo ? "logo-dark-mode" : ""
+              }`}
             />
           </div>
         ) : (
@@ -194,7 +244,11 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               alt="OpenUptimes" 
               className="w-5 h-5 mr-2"
             />
-            <h2 className="text-lg font-semibold bg-gradient-to-r from-primary via-sidebar-primary to-primary bg-clip-text text-transparent tracking-tight">
+            <h2 className={`text-lg font-semibold tracking-tight ${
+              isDarkMode 
+                ? "text-foreground" 
+                : "bg-gradient-to-r from-primary via-sidebar-primary to-primary bg-clip-text text-transparent"
+            }`}>
               OpenUptimes
             </h2>
           </div>
@@ -308,6 +362,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
             variant="ghost"
             size="sm"
             className="flex items-center text-muted-foreground hover:text-foreground group"
+            onClick={() => handleNavigation("about")}
           >
             <Info className="h-3.5 w-3.5 mr-1.5 group-hover:text-primary transition-colors" />
             <span className="text-sm">About</span>

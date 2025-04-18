@@ -27,6 +27,7 @@ const AdminServices = dynamic(() => import("../components/admin/pages/Services")
 const AdminStatusPage = dynamic(() => import("../components/admin/pages/StatusPage").then(mod => mod.AdminStatusPage), { ssr: false });
 const AdminHistory = dynamic(() => import("../components/admin/pages/History").then(mod => mod.AdminHistory), { ssr: false });
 const AdminSettings = dynamic(() => import("../components/admin/pages/Settings").then(mod => mod.AdminSettings), { ssr: false });
+const AdminAbout = dynamic(() => import("../components/admin/pages/About").then(mod => mod.AdminAbout), { ssr: false });
 
 // Define types needed for the component
 interface StatusHistoryItem {
@@ -680,6 +681,10 @@ const AdminPageClient = () => {
         return <AdminSettings 
           setActiveTab={setActiveTab}
         />;
+      case "about":
+        return <AdminAbout 
+          setActiveTab={setActiveTab}
+        />;
       default:
         return <AdminDashboard 
           preloadedServices={preloadedDataRef.current.services}
@@ -703,6 +708,8 @@ const AdminPageClient = () => {
         return "Uptime History";
       case "settings":
         return "Settings";
+      case "about":
+        return "About";
       default:
         return activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     }

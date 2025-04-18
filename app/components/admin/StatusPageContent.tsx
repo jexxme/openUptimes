@@ -27,6 +27,7 @@ import { AppearanceTab } from "@/app/components/admin/status-page/AppearanceTab"
 import { AdvancedTab } from "@/app/components/admin/status-page/AdvancedTab";
 import { StatusPagePreviewDialog } from "@/app/components/admin/status-page/StatusPagePreviewDialog";
 import { PageTitle } from "../PageTitle";
+import { StatusPageTabs } from "@/app/components/admin/status-page/StatusPageTabs";
 
 interface StatusPageContentProps {
   activeSection?: string;
@@ -677,48 +678,15 @@ export function StatusPageContent({
           </div>
           
           <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-            <TabsList className="mb-6 bg-muted/50 dark:bg-muted/20">
-              <TabsTrigger value="general" className="flex items-center gap-2 data-[state=active]:bg-background">
-                <Globe className="h-4 w-4" />
-                <span>General</span>
-                {hasGeneralTabChanges() && (
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="services" className="flex items-center gap-2 data-[state=active]:bg-background">
-                <Layout className="h-4 w-4" />
-                <span>Services</span>
-                {hasServicesTabChanges() && (
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-background">
-                <Palette className="h-4 w-4" />
-                <span>Appearance</span>
-                {hasAppearanceTabChanges() && (
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="advanced" className="flex items-center gap-2 data-[state=active]:bg-background">
-                <Sliders className="h-4 w-4" />
-                <span>Advanced</span>
-                {hasAdvancedTabChanges() && (
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 dark:bg-amber-500/70 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 dark:bg-amber-400"></span>
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
+            <StatusPageTabs 
+              currentTab={currentTab}
+              hasGeneralTabChanges={hasGeneralTabChanges()}
+              hasServicesTabChanges={hasServicesTabChanges()}
+              hasAppearanceTabChanges={hasAppearanceTabChanges()}
+              hasAdvancedTabChanges={hasAdvancedTabChanges()}
+              onTabChange={setCurrentTab}
+              variant="outline"
+            />
             
             <TabsContent value="general">
               <GeneralTab 

@@ -199,6 +199,17 @@
   animation-delay: 300ms;
 }
 
+/* Logo adjustment for dark mode */
+.logo-dark-mode {
+  filter: brightness(1.15) contrast(1.05) invert(0.8);
+  opacity: 0.98;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  padding: 1px;
+  background-color: rgba(255, 255, 255, 0.03);
+  transition: filter 180ms ease-out;
+}
+
 /* Scrollbar styles */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;

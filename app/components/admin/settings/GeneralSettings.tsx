@@ -76,19 +76,24 @@ interface GeneralSettingsProps {
       workflow?: string;
       schedule?: string;
       secretName?: string;
+      lastSuccessfulPing?: string | null;
     };
     apiKey?: string;
   } | null;
   isLoading: boolean;
   error: string | null;
   onSettingsUpdate: (settings: any) => void;
+  hasUnsavedChanges?: boolean; // Optional prop to indicate if this tab has unsaved changes
+  onUnsavedChangesChange?: (hasChanges: boolean) => void; // Callback to report unsaved changes
 }
 
 export function GeneralSettings({ 
   initialSettings, 
   isLoading: isLoadingProp, 
   error: errorProp,
-  onSettingsUpdate 
+  onSettingsUpdate,
+  hasUnsavedChanges: hasUnsavedChangesProp,
+  onUnsavedChangesChange
 }: GeneralSettingsProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(isLoadingProp);
@@ -100,7 +105,21 @@ export function GeneralSettings({
   const [repository, setRepository] = useState(initialSettings?.githubAction?.repository ?? '');
   const [schedule, setSchedule] = useState(initialSettings?.githubAction?.schedule ?? '*/5 * * * *');
   const [secretName, setSecretName] = useState(initialSettings?.githubAction?.secretName ?? 'PING_API_KEY');
+  const [lastSuccessfulPing, setLastSuccessfulPing] = useState<string | null>(initialSettings?.githubAction?.lastSuccessfulPing ?? null);
   const [showScheduleHelp, setShowScheduleHelp] = useState(false);
+  
+  // Ping history state
+  const [pingStats, setPingStats] = useState<{
+    lastPing: number | null;
+    firstPing: number | null;
+    pingCount: number;
+    isLoading: boolean;
+  }>({
+    lastPing: null,
+    firstPing: null,
+    pingCount: 0,
+    isLoading: false
+  });
   
   // Repository validation
   const [isValidatingRepo, setIsValidatingRepo] = useState(false);
@@ -117,7 +136,96 @@ export function GeneralSettings({
   
   // Validate if the current schedule is a predefined option
   const isSchedulePreset = SCHEDULE_OPTIONS.some(option => option.value === schedule);
+
+  // Track the original values to detect changes
+  const [originalValues, setOriginalValues] = useState({
+    isGithubEnabled: initialSettings?.githubAction?.enabled ?? true,
+    repository: initialSettings?.githubAction?.repository ?? '',
+    schedule: initialSettings?.githubAction?.schedule ?? '*/5 * * * *',
+    secretName: initialSettings?.githubAction?.secretName ?? 'PING_API_KEY',
+    apiKey: initialSettings?.apiKey ?? '',
+    lastSuccessfulPing: initialSettings?.githubAction?.lastSuccessfulPing ?? null,
+  });
   
+  // Fetch ping statistics
+  useEffect(() => {
+    const fetchPingStats = async () => {
+      if (!isGithubEnabled) return;
+      
+      setPingStats(prev => ({ ...prev, isLoading: true }));
+      
+      try {
+        const response = await fetch('/api/ping-stats?limit=0');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ping stats: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.recentHistory && Array.isArray(data.recentHistory)) {
+          const pingHistory = data.recentHistory;
+          const pingCount = pingHistory.length;
+          
+          // Get first and last ping timestamps
+          const lastPing = pingCount > 0 ? pingHistory[0].timestamp : null;
+          const firstPing = pingCount > 0 ? pingHistory[pingCount - 1].timestamp : null;
+          
+          setPingStats({
+            lastPing,
+            firstPing,
+            pingCount,
+            isLoading: false
+          });
+          
+          // Also update the lastSuccessfulPing for saving
+          if (lastPing && (!lastSuccessfulPing || new Date(lastPing).getTime() > new Date(lastSuccessfulPing).getTime())) {
+            setLastSuccessfulPing(new Date(lastPing).toISOString());
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching ping stats:', error);
+        // Don't show error to avoid confusion - this is supplementary data
+        setPingStats(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+    
+    fetchPingStats();
+    // Only run when component mounts or when isGithubEnabled changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGithubEnabled]);
+  
+  // Format date for display
+  const formatDate = (timestamp: number | null): string => {
+    if (!timestamp) return 'Unknown';
+    return new Date(timestamp).toLocaleString();
+  };
+  
+  // Get relative time for display
+  const getRelativeTime = (timestamp: number | null): string => {
+    if (!timestamp) return '';
+    
+    const msPerMinute = 60 * 1000;
+    const msPerHour = msPerMinute * 60;
+    const msPerDay = msPerHour * 24;
+    
+    const elapsed = Date.now() - timestamp;
+    
+    if (elapsed < msPerMinute) {
+      const seconds = Math.round(elapsed / 1000);
+      return `${seconds} second${seconds !== 1 ? 's' : ''} ago`;
+    } else if (elapsed < msPerHour) {
+      const minutes = Math.round(elapsed / msPerMinute);
+      return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+    } else if (elapsed < msPerDay) {
+      const hours = Math.round(elapsed / msPerHour);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    } else {
+      const days = Math.round(elapsed / msPerDay);
+      return `${days} day${days !== 1 ? 's' : ''} ago`;
+    }
+  };
+
   // Update from props whenever they change
   useEffect(() => {
     setIsLoading(isLoadingProp);
@@ -130,8 +238,43 @@ export function GeneralSettings({
       setSchedule(initialSettings.githubAction?.schedule ?? '*/5 * * * *');
       setSecretName(initialSettings.githubAction?.secretName ?? 'PING_API_KEY');
       setApiKey(initialSettings.apiKey ?? '');
+      setLastSuccessfulPing(initialSettings.githubAction?.lastSuccessfulPing ?? null);
+      
+      // Also update the original values for change detection
+      setOriginalValues({
+        isGithubEnabled: initialSettings.githubAction?.enabled ?? true,
+        repository: initialSettings.githubAction?.repository ?? '',
+        schedule: initialSettings.githubAction?.schedule ?? '*/5 * * * *',
+        secretName: initialSettings.githubAction?.secretName ?? 'PING_API_KEY',
+        apiKey: initialSettings.apiKey ?? '',
+        lastSuccessfulPing: initialSettings.githubAction?.lastSuccessfulPing ?? null,
+      });
     }
   }, [isLoadingProp, errorProp, initialSettings]);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = () => {
+    return (
+      isGithubEnabled !== originalValues.isGithubEnabled ||
+      repository !== originalValues.repository ||
+      schedule !== originalValues.schedule ||
+      secretName !== originalValues.secretName ||
+      // For API key, we only consider it changed if it was generated new
+      // or if it was explicitly changed and is different from original
+      (apiKey !== originalValues.apiKey && (apiKey !== '' || originalValues.apiKey !== ''))
+      // Note: We don't include lastSuccessfulPing in change detection
+      // since it's a read-only value set by the system, not by user input
+    );
+  };
+
+  // Report unsaved changes to parent component
+  useEffect(() => {
+    // Only call the callback if it exists and we're not in the middle of loading
+    if (onUnsavedChangesChange && !isLoading) {
+      onUnsavedChangesChange(hasUnsavedChanges());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGithubEnabled, repository, schedule, secretName, apiKey, isLoading]);
 
   // Validate if a GitHub repository exists
   const validateRepository = async (repoPath: string) => {
@@ -222,6 +365,12 @@ export function GeneralSettings({
     setIsSaving(true);
     
     try {
+      // If we have ping stats but no lastSuccessfulPing (or an older one), update it
+      const currentLastSuccessfulPing = lastSuccessfulPing;
+      if (pingStats.lastPing && (!currentLastSuccessfulPing || new Date(pingStats.lastPing).getTime() > new Date(currentLastSuccessfulPing).getTime())) {
+        setLastSuccessfulPing(new Date(pingStats.lastPing).toISOString());
+      }
+      
       const updatedSettings: {
         githubAction: {
           enabled: boolean;
@@ -229,6 +378,7 @@ export function GeneralSettings({
           workflow: string;
           schedule: string;
           secretName: string;
+          lastSuccessfulPing: string | null;
         };
         apiKey?: string;
       } = {
@@ -237,7 +387,8 @@ export function GeneralSettings({
           repository,
           workflow: 'ping.yml',
           schedule,
-          secretName
+          secretName,
+          lastSuccessfulPing: pingStats.lastPing ? new Date(pingStats.lastPing).toISOString() : lastSuccessfulPing
         }
       };
       
@@ -260,6 +411,16 @@ export function GeneralSettings({
       }
       
       const data = await response.json();
+      
+      // Update original values after successful save
+      setOriginalValues({
+        isGithubEnabled,
+        repository,
+        schedule,
+        secretName,
+        apiKey,
+        lastSuccessfulPing
+      });
       
       // Notify parent component about the update
       onSettingsUpdate(data);
@@ -352,21 +513,49 @@ export function GeneralSettings({
                   <TooltipTrigger asChild>
                     <div className={cn(
                       "ml-auto px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help",
-                      isGithubEnabled 
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" 
-                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                      pingStats.lastPing && isGithubEnabled
+                        ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400"
+                        : isGithubEnabled 
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" 
+                          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
                     )}>
                       <div className={cn(
                         "w-2 h-2 rounded-full",
-                        isGithubEnabled ? "bg-blue-500 dark:bg-blue-400" : "bg-gray-400 dark:bg-gray-500"
+                        pingStats.lastPing && isGithubEnabled
+                          ? "bg-green-500 dark:bg-green-400"
+                          : isGithubEnabled 
+                            ? "bg-blue-500 dark:bg-blue-400" 
+                            : "bg-gray-400 dark:bg-gray-500"
                       )}></div>
-                      <span>{isGithubEnabled ? 'Actions Enabled' : 'Actions Disabled'}</span>
+                      <span>
+                        {pingStats.lastPing && isGithubEnabled 
+                          ? `Active (${pingStats.pingCount} pings)` 
+                          : isGithubEnabled 
+                            ? 'Actions Enabled' 
+                            : 'Actions Disabled'}
+                      </span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {isGithubEnabled 
-                      ? 'GitHub Actions are enabled for automated monitoring.' 
-                      : 'GitHub Actions are disabled. Enable to use automated monitoring.'}
+                  <TooltipContent side="top" className="max-w-[300px] p-3 bg-foreground text-background rounded-md">
+                    {pingStats.lastPing && isGithubEnabled ? (
+                      <div className="space-y-2">
+                        <p className="font-medium">GitHub Actions are running successfully</p>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-2 text-sm">
+                          <span className="text-background/70">Last ping:</span>
+                          <span>{formatDate(pingStats.lastPing)} <span className="text-xs text-background/70">({getRelativeTime(pingStats.lastPing)})</span></span>
+                          
+                          <span className="text-background/70">First ping:</span>
+                          <span>{formatDate(pingStats.firstPing)} <span className="text-xs text-background/70">({getRelativeTime(pingStats.firstPing)})</span></span>
+                          
+                          <span className="text-background/70">Total pings:</span>
+                          <span>{pingStats.pingCount}</span>
+                        </div>
+                      </div>
+                    ) : isGithubEnabled ? (
+                      'GitHub Actions are enabled but no successful pings have been detected yet. Make sure your repository is correctly configured with the API key and APP_URL.'
+                    ) : (
+                      'GitHub Actions are disabled. Enable to use automated monitoring.'
+                    )}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -374,54 +563,67 @@ export function GeneralSettings({
             
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Repository (user/repo)</label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className={cn(
-                        "px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help",
-                        !repository 
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400" 
-                          : isValidatingRepo
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
+                <label className="text-sm font-medium flex items-center gap-2">
+                  Repository (user/repo)
+                  
+                  {repository && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className={cn(
+                            "px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help",
+                            isValidatingRepo
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
+                              : isRepoValid
+                                ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400"
+                                : "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
+                          )}>
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              isValidatingRepo
+                                ? "bg-blue-500 dark:bg-blue-400"
+                                : isRepoValid
+                                  ? "bg-green-500 dark:bg-green-400"
+                                  : "bg-amber-500 dark:bg-amber-400"
+                            )}></div>
+                            <span>
+                              {isValidatingRepo
+                                ? 'Checking...'
+                                : isRepoValid
+                                  ? 'Connected'
+                                  : 'Unknown'
+                              }
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[260px] text-center bg-foreground text-background rounded-md">
+                          {isValidatingRepo
+                            ? 'Checking if the repository exists and is accessible...'
                             : isRepoValid
-                              ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400"
-                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
-                      )}>
-                        <div className={cn(
-                          "w-2 h-2 rounded-full",
-                          !repository 
-                            ? "bg-amber-500 dark:bg-amber-400" 
-                            : isValidatingRepo
-                              ? "bg-blue-500 dark:bg-blue-400"
-                              : isRepoValid
-                                ? "bg-green-500 dark:bg-green-400"
-                                : "bg-amber-500 dark:bg-amber-400"
-                        )}></div>
-                        <span>
-                          {!repository 
-                            ? 'Missing' 
-                            : isValidatingRepo
-                              ? 'Checking...'
-                              : isRepoValid
-                                ? 'Connected'
-                                : 'Unknown'
+                              ? 'Repository exists and is accessible. Ready to configure with GitHub Actions.'
+                              : 'Repository may be private or not found. Private repositories will work but cannot be validated.'
                           }
-                        </span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-[260px] text-center">
-                      {!repository 
-                        ? 'No repository has been entered. Please specify a repository in the format username/repo-name.' 
-                        : isValidatingRepo
-                          ? 'Checking if the repository exists and is accessible...'
-                          : isRepoValid
-                            ? 'Repository exists and is accessible. Ready to configure with GitHub Actions.'
-                            : 'Repository may be private or not found. Private repositories will work but cannot be validated.'
-                      }
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </label>
+                
+                {!repository && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 cursor-help bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                          <div className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400"></div>
+                          <span>Missing</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[260px] text-center bg-foreground text-background rounded-md">
+                        No repository has been entered. Please specify a repository in the format username/repo-name.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
               <Input
                 placeholder="yourname/repo"
@@ -435,9 +637,26 @@ export function GeneralSettings({
           </div>
 
           <div className="rounded-lg border bg-card p-6">
-            <h3 className="font-medium mb-3 flex items-center gap-2">
-              <Key className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium mb-3 flex items-center">
+              <Key className="h-4 w-4 text-muted-foreground mr-2" />
               <span>GitHub Environment</span>
+              <div className="group relative inline-flex items-center h-full ml-2">
+                <Button variant="ghost" size="sm" className="h-5 w-5 p-0 opacity-70 hover:opacity-100 flex items-center justify-center">
+                  <Info className="h-3 w-3 text-yellow-500" />
+                  <span className="sr-only">More information</span>
+                </Button>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-amber-50 text-amber-900 dark:bg-amber-950/90 dark:text-amber-200 text-xs rounded p-3 absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-1 w-[300px] pointer-events-none border border-amber-200 dark:border-amber-800/60">
+                  <div className="flex gap-2 items-start">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs">
+                      You must add both <strong>API Key</strong> as a Secret and <strong>APP_URL</strong> as a Variable in your GitHub repository for monitoring to work.
+                    </p>
+                  </div>
+                  <svg className="absolute text-amber-50 dark:text-amber-950/90 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255">
+                    <polygon className="fill-current" points="0,0 127.5,127.5 255,0" />
+                  </svg>
+                </div>
+              </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -454,7 +673,7 @@ export function GeneralSettings({
                       <span>{apiKey ? 'Configured' : 'Not Configured'}</span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top">
+                  <TooltipContent side="top" className="bg-foreground text-background rounded-md">
                     {apiKey 
                       ? 'API key is configured. Remember to add it to your GitHub repository.' 
                       : 'API key is not configured. Generate a key to enable GitHub Actions integration.'}
@@ -464,13 +683,6 @@ export function GeneralSettings({
             </h3>
             
             <div className="space-y-6">
-              <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-100 dark:border-amber-900/30">
-                <p className="text-sm text-amber-800 dark:text-amber-400 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>You must add both <strong>API Key</strong> as a Secret and <strong>APP_URL</strong> as a Variable in your GitHub repository for monitoring to work.</span>
-                </p>
-              </div>
-
               {/* Required Secrets & Variables Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* API Key Section */}
@@ -593,7 +805,10 @@ export function GeneralSettings({
               </div>
 
               {/* Setup Instructions Section */}
-              <CollapsibleInfo title="Setup instructions">
+              <CollapsibleInfo 
+                title="Setup instructions"
+                className="mt-3"
+              >
                 <div className="space-y-5">
                   <div className="flex items-start gap-2">
                     <div className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400 rounded-full p-1 flex-shrink-0 mt-0.5">
@@ -627,14 +842,10 @@ export function GeneralSettings({
                   
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Important:</p>
-                      <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
-                        <li>Both the Secret and Variable must be set for monitoring to work</li>
-                        <li>The API key is used to authenticate ping requests from GitHub Actions</li>
-                        <li>The APP_URL tells GitHub Actions where to send ping data</li>
-                        <li>If you regenerate your API key, you'll need to update the GitHub secret</li>
-                      </ul>
+                    <div className="space-y-1.5">
+                      <p className="font-medium text-amber-700 dark:text-amber-400">Important Note About Scheduling:</p>
+                      <p className="leading-snug">This schedule setting is only used for configuration validation and logging. The actual ping frequency is determined by when GitHub Actions runs your workflow.</p>
+                      <p className="leading-snug">To change the actual schedule, you need to edit the workflow file in your GitHub repository.</p>
                     </div>
                   </div>
                 </div>
@@ -644,9 +855,26 @@ export function GeneralSettings({
           
           {/* Schedule Configuration */}
           <div className="rounded-lg border bg-card p-6">
-            <h3 className="font-medium mb-3 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium mb-3 flex items-center">
+              <Clock className="h-4 w-4 text-muted-foreground mr-2" />
               <span>Schedule Configuration</span>
+              <div className="group relative inline-flex items-center h-full ml-2">
+                <Button variant="ghost" size="sm" className="h-5 w-5 p-0 opacity-70 hover:opacity-100 flex items-center justify-center">
+                  <Info className="h-3 w-3 text-yellow-500" />
+                  <span className="sr-only">More information</span>
+                </Button>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-amber-50 text-amber-900 dark:bg-amber-950/90 dark:text-amber-200 text-xs rounded p-3 absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-1 w-[300px] pointer-events-none border border-amber-200 dark:border-amber-800/60">
+                  <div className="flex gap-2 items-start">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs">
+                      This setting is for validation only. To change the actual ping frequency, edit the workflow file in GitHub.
+                    </p>
+                  </div>
+                  <svg className="absolute text-amber-50 dark:text-amber-950/90 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255">
+                    <polygon className="fill-current" points="0,0 127.5,127.5 255,0" />
+                  </svg>
+                </div>
+              </div>
             </h3>
             
             <div className="space-y-4">
@@ -693,67 +921,99 @@ export function GeneralSettings({
                       )}
                     </div>
                   </div>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a 
+                          href={repository ? `https://github.com/${repository}/edit/main/.github/workflows/ping.yml` : 'https://github.com'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "h-10 w-10 inline-flex items-center justify-center rounded-md border transition-colors",
+                            repository 
+                              ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/40" 
+                              : "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700 dark:text-gray-500"
+                          )}
+                          onClick={e => !repository && e.preventDefault()}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px] text-center">
+                        {repository 
+                          ? "Edit GitHub workflow file to change actual schedule" 
+                          : "Configure repository first to edit workflow file"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a 
+                          href="https://crontab.guru" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="h-10 w-10 inline-flex items-center justify-center rounded-md border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/40"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Crontab reference - Create and test cron schedules
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 
-                <CollapsibleInfo 
-                  title="about cron schedules"
-                  iconColor="text-blue-500"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-2">
-                      <Info className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Common cron patterns:</p>
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
-                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">*/5 * * * *</code> = Every 5 minutes</div>
-                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">0 */1 * * *</code> = Every hour</div>
-                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">0 0 * * *</code> = Once daily (midnight)</div>
-                          <div><code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">0 0 * * 1-5</code> = Weekdays only</div>
+                <div className="mt-1">
+                  <CollapsibleInfo 
+                    title="About cron schedules"
+                    iconColor="text-blue-500"
+                    className="mt-3"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-4 w-4 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Common cron patterns:</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 mt-1">
+                            <div className="flex items-center flex-wrap">
+                              <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded mr-1.5">*/5 * * * *</code>
+                              <span className="text-gray-600 dark:text-gray-400">Every 5 minutes</span>
+                            </div>
+                            <div className="flex items-center flex-wrap">
+                              <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded mr-1.5">0 */1 * * *</code>
+                              <span className="text-gray-600 dark:text-gray-400">Every hour</span>
+                            </div>
+                            <div className="flex items-center flex-wrap">
+                              <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded mr-1.5">0 0 * * *</code>
+                              <span className="text-gray-600 dark:text-gray-400">Once daily (midnight)</span>
+                            </div>
+                            <div className="flex items-center flex-wrap">
+                              <code className="bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded mr-1.5">0 0 * * 1-5</code>
+                              <span className="text-gray-600 dark:text-gray-400">Weekdays only</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div className="space-y-1.5">
+                          <p className="font-medium text-amber-700 dark:text-amber-400">Important Note About Scheduling:</p>
+                          <p className="leading-snug">This schedule setting is only used for configuration validation and logging. The actual ping frequency is determined by when GitHub Actions runs your workflow.</p>
+                          <p className="leading-snug">To change the actual schedule, you need to edit the workflow file in your GitHub repository.</p>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Important Note About Scheduling:</p>
-                        <p className="mt-1">This schedule setting is only used for configuration validation and logging. The actual ping frequency is determined by when GitHub Actions runs your workflow.</p>
-                        <p className="mt-1">To change the actual schedule, you need to edit the workflow file in your GitHub repository.</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2 pt-2 mt-1">
-                      <a 
-                        href={repository ? `https://github.com/${repository}/edit/main/.github/workflows/ping.yml` : 'https://github.com'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          "inline-flex items-center gap-1 text-xs px-2 py-1 rounded",
-                          repository 
-                            ? "bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-900/40" 
-                            : "bg-gray-100 text-gray-500 cursor-not-allowed dark:bg-gray-800 dark:text-gray-400"
-                        )}
-                        onClick={e => !repository && e.preventDefault()}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Edit workflow file
-                      </a>
-                      <a 
-                        href="https://crontab.guru" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-900/40"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Crontab reference
-                      </a>
-                    </div>
-                  </div>
-                </CollapsibleInfo>
+                  </CollapsibleInfo>
+                </div>
               </div>
             </div>
           </div>
@@ -775,10 +1035,27 @@ export function GeneralSettings({
 
           {/* Save Button */}
           <div className="flex justify-end pt-2">
-            <Button onClick={handleSaveSettings} disabled={isSaving} className="px-6">
-              {isSaving ? 
-                <><div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>Saving...</> : 
-                "Save Changes"}
+            <Button 
+              onClick={handleSaveSettings} 
+              disabled={isSaving || !hasUnsavedChanges() || isLoading}
+              className={cn(
+                "px-6",
+                hasUnsavedChanges() && !isSaving 
+                  ? "bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700" 
+                  : ""
+              )}
+            >
+              {isSaving ? (
+                <>
+                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                  Saving...
+                </>
+              ) : hasUnsavedChanges() ? (
+                <>
+                  <div className="w-1.5 h-1.5 bg-white dark:bg-white rounded-full animate-pulse mr-2"></div>
+                  Save Changes
+                </>
+              ) : "Save Changes"}
             </Button>
           </div>
         </div>

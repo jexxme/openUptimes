@@ -1,6 +1,6 @@
 "use client";
 
-import { TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import { ApplicationTabs } from "@/app/components/ui/application-tabs";
 import { Globe, Layout, Palette, Sliders } from "lucide-react";
 
 interface StatusPageTabsProps {
@@ -9,6 +9,8 @@ interface StatusPageTabsProps {
   hasServicesTabChanges: boolean;
   hasAppearanceTabChanges: boolean;
   hasAdvancedTabChanges: boolean;
+  onTabChange?: (value: string) => void;
+  variant?: "default" | "outline";
 }
 
 export function StatusPageTabs({
@@ -16,50 +18,45 @@ export function StatusPageTabs({
   hasGeneralTabChanges,
   hasServicesTabChanges,
   hasAppearanceTabChanges,
-  hasAdvancedTabChanges
+  hasAdvancedTabChanges,
+  onTabChange,
+  variant = "default"
 }: StatusPageTabsProps) {
+  const tabs = [
+    {
+      value: "general",
+      icon: <Globe className="h-4 w-4" />,
+      label: "General",
+      hasChanges: hasGeneralTabChanges
+    },
+    {
+      value: "services",
+      icon: <Layout className="h-4 w-4" />,
+      label: "Services",
+      hasChanges: hasServicesTabChanges
+    },
+    {
+      value: "appearance",
+      icon: <Palette className="h-4 w-4" />,
+      label: "Appearance",
+      hasChanges: hasAppearanceTabChanges
+    },
+    {
+      value: "advanced",
+      icon: <Sliders className="h-4 w-4" />,
+      label: "Advanced",
+      hasChanges: hasAdvancedTabChanges
+    }
+  ];
+
   return (
-    <TabsList className="mb-6">
-      <TabsTrigger value="general" className="flex items-center gap-2">
-        <Globe className="h-4 w-4" />
-        <span>General</span>
-        {hasGeneralTabChanges && (
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-          </span>
-        )}
-      </TabsTrigger>
-      <TabsTrigger value="services" className="flex items-center gap-2">
-        <Layout className="h-4 w-4" />
-        <span>Services</span>
-        {hasServicesTabChanges && (
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-          </span>
-        )}
-      </TabsTrigger>
-      <TabsTrigger value="appearance" className="flex items-center gap-2">
-        <Palette className="h-4 w-4" />
-        <span>Appearance</span>
-        {hasAppearanceTabChanges && (
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-          </span>
-        )}
-      </TabsTrigger>
-      <TabsTrigger value="advanced" className="flex items-center gap-2">
-        <Sliders className="h-4 w-4" />
-        <span>Advanced</span>
-        {hasAdvancedTabChanges && (
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-          </span>
-        )}
-      </TabsTrigger>
-    </TabsList>
+    <ApplicationTabs 
+      tabs={tabs} 
+      value={currentTab} 
+      onValueChange={onTabChange || (() => {})}
+      variant={variant}
+      spacing="equal"
+      className="w-full"
+    />
   );
 } 
