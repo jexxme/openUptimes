@@ -14,7 +14,10 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
+<<<<<<< HEAD
   <a href="#security">Security</a> •
+=======
+>>>>>>> 8fec9776aae84c42d0dc1acac919a26d9cd27c45
   <a href="#authentication">Authentication</a> •
   <a href="#api-endpoints">API Endpoints</a> •
   <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
@@ -170,6 +173,7 @@ OpenUptimes supports the following environment variables:
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description | "Service Status Monitor" | No |
 | `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
 
+<<<<<<< HEAD
 ### Environment Setup
 
 OpenUptimes uses environment variables for configuration. For local development or self-hosted deployment:
@@ -205,6 +209,8 @@ To ensure your Redis credentials and other sensitive data remain secure:
 
 5. **Monitor access:** Regularly check your Redis instance access logs for unusual activity.
 
+=======
+>>>>>>> 8fec9776aae84c42d0dc1acac919a26d9cd27c45
 ## Authentication
 
 OpenUptimes uses a secure, Redis-based authentication system to protect admin and debug routes.
