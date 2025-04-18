@@ -1,0 +1,6 @@
+Enhance status page editing capabilities and appearance settings for improved user experience
+
+- Introduce HTML formatting options in the status page description editor, allowing users to easily add links and style text for better content presentation.
+- Implement a link insertion dialog to streamline the process of adding hyperlinks, enhancing user interaction and content richness.
+- Update history days management to improve clarity and accessibility, ensuring users can easily customize the duration of displayed historical data.
+- Refactor components to maintain consistent design patterns and focus on user-centric design principles throughout the updates.

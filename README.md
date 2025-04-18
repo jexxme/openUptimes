@@ -14,6 +14,7 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
+  <a href="#security">Security</a> •
   <a href="#authentication">Authentication</a> •
   <a href="#api-endpoints">API Endpoints</a> •
   <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
@@ -168,6 +169,41 @@ OpenUptimes supports the following environment variables:
 | `NEXT_PUBLIC_SITE_NAME` | Name of your status page | "OpenUptimes" | No |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description | "Service Status Monitor" | No |
 | `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
+
+### Environment Setup
+
+OpenUptimes uses environment variables for configuration. For local development or self-hosted deployment:
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Edit `.env.local` and set your Redis URL and other settings:
+   ```
+   REDIS_URL="redis://username:password@host:port"
+   NEXT_PUBLIC_SITE_NAME="My Status Page"
+   NEXT_PUBLIC_SITE_DESCRIPTION="Service Status Monitor"
+   NEXT_PUBLIC_REFRESH_INTERVAL=60000
+   ```
+
+3. Make sure `.env.local` is in your `.gitignore` file to prevent accidentally committing sensitive information.
+
+## Security
+
+### Protecting Sensitive Information
+
+To ensure your Redis credentials and other sensitive data remain secure:
+
+1. **Never commit .env files:** The repository includes .gitignore rules to prevent committing .env.local and other environment files.
+
+2. **Use .env.example:** We provide a template `.env.example` file with placeholder values to show the required configuration without exposing real credentials.
+
+3. **Rotate credentials:** If you suspect your Redis credentials have been exposed, immediately rotate them.
+
+4. **Use environment variables:** In production environments like Vercel, use their environment variable system rather than committed files.
+
+5. **Monitor access:** Regularly check your Redis instance access logs for unusual activity.
 
 ## Authentication
 
