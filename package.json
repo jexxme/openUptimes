@@ -34,10 +34,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dompurify": "^3.2.5",
-<<<<<<< HEAD
     "dotenv": "^16.3.1",
-=======
->>>>>>> 8fec9776aae84c42d0dc1acac919a26d9cd27c45
     "framer-motion": "^12.7.2",
     "jose": "^6.0.10",
     "lucide-react": "^0.488.0",
