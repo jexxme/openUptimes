@@ -14,6 +14,8 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#installation">Installation</a> •
   <a href="#configuration">Configuration</a> •
+  <a href="#security">Security</a> •
+  <a href="#authentication">Authentication</a> •
   <a href="#api-endpoints">API Endpoints</a> •
   <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
   <a href="#alternative-monitoring">Alternative Monitoring</a> •
@@ -29,6 +31,7 @@
 </p>
 
 ## Introduction
+
 OpenUptimes is a lightweight status page that helps you monitor and display service uptime. With a clean interface and GitHub Actions integration, tracking your infrastructure's health is easy.
 
 Simplicity is key: deployment takes minutes, configuration is minimal, and monitoring is automatic without complex setups. You only need a GitHub repository, a Redis instance, and a hosting provider like Vercel.
@@ -56,6 +59,7 @@ Unlike other solutions that require dedicated servers or costly subscriptions, O
 OpenUptimes was created to provide an easy, simple, and free solution for monitoring service uptime without relying on complex infrastructure. By using GitHub Actions for monitoring along with your own Redis instance, it ensures that you have a lightweight system that's perfect for smaller projects and websites.
 
 The solution is particularly suited for cases where:
+
 - You need a simple status page without significant investment
 - You want a "set it and forget it" monitoring solution
 - You're looking for something that's quick to set up and requires minimal maintenance
@@ -100,12 +104,14 @@ That's it! Your status page is now live at "your-domain-as-set-in-vercel.com" eg
 For users who want more control over their deployment:
 
 1. Fork and clone the repository:
+
    ```bash
    git clone https://github.com/openuptimes/openuptimes.git
    cd openuptimes
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -116,6 +122,7 @@ For users who want more control over their deployment:
    - Or use a managed Redis service like [Upstash](https://upstash.com/) or [Redis Cloud](https://redis.com/redis-enterprise-cloud/overview/)
 
 4. Create a `.env.local` file:
+
    ```
    REDIS_URL=redis://localhost:6379
    NEXT_PUBLIC_SITE_NAME="OpenUptimes"
@@ -124,6 +131,7 @@ For users who want more control over their deployment:
    ```
 
 5. Run the development server:
+
    ```bash
    npm run dev
    ```
@@ -133,6 +141,7 @@ For users who want more control over their deployment:
 7. Set up GitHub Actions for monitoring (see [GitHub Actions Monitoring](#github-actions-monitoring))
 
 8. For production, build and start:
+
    ```bash
    npm run build
    npm run start
@@ -140,9 +149,10 @@ For users who want more control over their deployment:
 
 ## Configuration
 
-OpenUptimes provides an admin dashboard at `/admin` where you can easily configure all your services without touching any code. 
+OpenUptimes provides an admin dashboard at `/admin` where you can easily configure all your services without touching any code.
 
 Through the admin dashboard, you can:
+
 - Add new services to monitor
 - Edit existing service configurations
 - Delete services you no longer wish to monitor
@@ -150,6 +160,7 @@ Through the admin dashboard, you can:
 - Configure GitHub Actions integration
 
 Each service can be configured with:
+
 - Name: Display name for the service
 - URL: The URL to check
 - Description: (Optional) Description of the service
@@ -167,6 +178,211 @@ OpenUptimes supports the following environment variables:
 | `NEXT_PUBLIC_SITE_NAME` | Name of your status page | "OpenUptimes" | No |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description | "Service Status Monitor" | No |
 | `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
+
+<<<<<<< HEAD
+
+### Environment Setup
+
+OpenUptimes uses environment variables for configuration. For local development or self-hosted deployment:
+
+1. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Edit `.env.local` and set your Redis URL and other settings:
+
+   ```
+   REDIS_URL="redis://username:password@host:port"
+   NEXT_PUBLIC_SITE_NAME="My Status Page"
+   NEXT_PUBLIC_SITE_DESCRIPTION="Service Status Monitor"
+   NEXT_PUBLIC_REFRESH_INTERVAL=60000
+   ```
+
+3. Make sure `.env.local` is in your `.gitignore` file to prevent accidentally committing sensitive information.
+
+## Security
+
+### Protecting Sensitive Information
+
+To ensure your Redis credentials and other sensitive data remain secure:
+
+1. **Never commit .env files:** The repository includes .gitignore rules to prevent committing .env.local and other environment files.
+
+2. **Use .env.example:** We provide a template `.env.example` file with placeholder values to show the required configuration without exposing real credentials.
+
+3. **Rotate credentials:** If you suspect your Redis credentials have been exposed, immediately rotate them.
+
+4. **Use environment variables:** In production environments like Vercel, use their environment variable system rather than committed files.
+
+5. **Monitor access:** Regularly check your Redis instance access logs for unusual activity.
+
+=======
+>>>>>>> 8fec9776aae84c42d0dc1acac919a26d9cd27c45
+>>>>>>>
+## Authentication
+
+OpenUptimes uses a secure, Redis-based authentication system to protect admin and debug routes.
+
+### Authentication Architecture
+
+The authentication system is designed with the following principles:
+
+1. **Simplicity**: Simple password-based authentication by default
+2. **Security**: Secure password hashing with salting
+3. **Stateless**: Token-based authentication using HTTP-only cookies
+4. **Extensibility**: Provider-based architecture for future authentication methods
+5. **Brute Force Protection**: Rate limiting with exponential backoff
+
+### How It Works
+
+1. **Initial Setup**:
+   - During first-time setup, you create an admin password
+   - The password is securely hashed (SHA-256) with a unique salt
+   - The hash is stored in Redis under the key `admin:password`
+
+2. **Login Process**:
+   - User submits credentials via `/login` page
+   - Server validates credentials against stored hash
+   - On successful authentication, a random 32-character session token is generated
+   - Token is stored in Redis with a 24-hour expiration
+   - Token is sent to the client as an HTTP-only cookie
+
+3. **Session Validation**:
+   - Every protected route checks for the presence of the auth cookie
+   - Token is validated against Redis to ensure the session is active
+   - If validation fails, user is redirected to the login page
+   - Sessions automatically expire after 24 hours
+
+4. **Logout Process**:
+   - Session token is removed from Redis
+   - Auth cookie is cleared using multiple browser-compatible methods
+
+5. **Brute Force Protection**:
+   - Failed login attempts are tracked by IP address
+   - After multiple failed attempts, the IP is temporarily blocked
+   - Block duration increases exponentially with repeated failures
+   - System returns appropriate 429 status code with Retry-After header
+   - All responses include security headers to prevent common attacks
+
+### Authentication Providers
+
+The system uses a provider-based architecture that allows for easy extension:
+
+```typescript
+// Interface for authentication providers
+interface AuthProvider {
+  type: string;
+  verify(credentials: any): Promise<boolean>;
+  getUserInfo?(): Promise<any>;
+}
+
+// Default password provider implementation
+class PasswordAuthProvider implements AuthProvider {
+  type = 'password';
+  
+  async verify(credentials: { password: string }): Promise<boolean> {
+    // Verifies password against stored hash
+    return verifyPassword(credentials.password);
+  }
+}
+```
+
+### Extending the Authentication System
+
+OpenUptimes is designed to be easily extended with additional authentication methods:
+
+#### Adding OAuth (Google, GitHub, etc.)
+
+1. **Create a new provider class**:
+
+```typescript
+class OAuthProvider implements AuthProvider {
+  type = 'oauth';
+  provider: string; // 'google', 'github', etc.
+  
+  constructor(config: { provider: string, clientId: string, clientSecret: string }) {
+    this.provider = config.provider;
+    // Store OAuth configuration
+  }
+  
+  async verify(credentials: { code: string }): Promise<boolean> {
+    // Exchange authorization code for tokens
+    // Validate tokens with the OAuth provider
+    return isValid;
+  }
+  
+  async getUserInfo(): Promise<any> {
+    // Fetch user profile from OAuth provider
+    return userProfile;
+  }
+}
+```
+
+2. **Register the provider** in the provider factory:
+
+```typescript
+function createAuthProvider(type: string, config?: any): AuthProvider {
+  switch (type) {
+    case 'password':
+      return new PasswordAuthProvider();
+    case 'oauth':
+      return new OAuthProvider(config);
+    default:
+      return new PasswordAuthProvider();
+  }
+}
+```
+
+3. **Add UI components** for the new authentication method
+
+4. **Update API routes** to handle OAuth redirects and token exchanges
+
+#### Adding SSO (SAML, OIDC)
+
+Similar to OAuth, you can implement Single Sign-On by:
+
+1. Creating a provider for your SSO protocol
+2. Handling the appropriate authentication flows
+3. Integrating with your identity provider
+
+#### Custom Authentication Schemes
+
+For specialized use cases, you can implement custom authentication providers:
+
+```typescript
+class CustomProvider implements AuthProvider {
+  type = 'custom';
+  
+  async verify(credentials: any): Promise<boolean> {
+    // Your custom verification logic
+    return isValid;
+  }
+}
+```
+
+### Security Considerations
+
+- All passwords are salted and hashed using SHA-256
+- Sessions are stored in Redis with automatic expiration
+- Auth cookies are HTTP-only to prevent JavaScript access
+- Secure flag ensures cookies are only sent over HTTPS
+- Cookies use SameSite=Lax to prevent CSRF attacks
+- Sessions can be invalidated server-side at any time
+- IP-based rate limiting prevents brute force attacks
+- Progressive delays increase with each failed attempt
+- Security headers protect against common web vulnerabilities:
+  - X-Content-Type-Options: prevents MIME type sniffing
+  - X-Frame-Options: prevents clickjacking attacks
+  - Cache-Control: prevents sensitive data caching
+
+### Authentication API Endpoints
+
+- **POST `/api/auth/login`**: Authenticates a user and creates a session
+- **POST `/api/auth/logout`**: Invalidates the current session
+- **GET `/api/auth/validate`**: Validates the current session token
+- **POST `/api/admin/password/reset`**: Allows password reset with Redis credentials
 
 ## GitHub Actions Monitoring
 
@@ -218,6 +434,7 @@ For more detailed instructions, visit the configuration page at `/debug/ping/git
 ### Customization Options
 
 You can customize the GitHub Actions monitoring by:
+
 - Adjusting the schedule frequency in the cron expression
 - Adding additional conditions for when to run the workflow
 - Implementing custom notification logic in the workflow
@@ -231,9 +448,10 @@ While GitHub Actions provides a simple, maintenance-free way to monitor your ser
 
 Since OpenUptimes is extremely lightweight, its ping endpoint can handle frequent calls without issue. This means you can use external cron services to check your services as frequently as every 30 seconds or 1 minute for more precise downtime detection.
 
-#### Setup Options:
+#### Setup Options
 
 1. **Custom Cron Server**:
+
    ```bash
    # Example crontab entry for checking every minute
    * * * * * curl -X GET "https://your-domain.com/api/ping" -H "Authorization: Bearer YOUR_API_KEY"
@@ -289,6 +507,7 @@ OpenUptimes provides several API endpoints for monitoring and configuring servic
 If you're having trouble connecting to Redis:
 
 1. **Check your Redis URL format**:
+
    ```
    redis[s]://[[username][:password]@][host][:port][/db-number]
    ```

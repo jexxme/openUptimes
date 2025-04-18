@@ -16,7 +16,12 @@ import {
   ChevronUp,
   Clock,
   Calendar,
-  EyeOff
+  EyeOff,
+  BarChart3,
+  Info,
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -28,7 +33,7 @@ const StatusDot = ({ status }: { status: string }) => {
   const statusColor = 
     status === "up" ? "bg-emerald-500" : 
     status === "down" ? "bg-red-500" : 
-    "bg-gray-300";
+    "bg-gray-300 dark:bg-gray-600";
   
   return (
     <div className="relative flex items-center justify-center w-3 h-3">
@@ -69,6 +74,7 @@ interface ServicesListProps {
   updateService: (originalName: string, updatedService: ServiceConfig) => Promise<boolean>;
   deleteService: (name: string) => Promise<boolean>;
   onViewHistory?: (serviceName: string) => void;
+  activeServiceName?: string | null;
 }
 
 export function ServicesList({
@@ -86,6 +92,7 @@ export function ServicesList({
   updateService,
   deleteService,
   onViewHistory,
+  activeServiceName,
 }: ServicesListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
@@ -95,6 +102,19 @@ export function ServicesList({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [expandedServices, setExpandedServices] = useState<Record<string, boolean>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [responseTimeSpans, setResponseTimeSpans] = useState<Record<string, number>>({});
+  const [showChartInfo, setShowChartInfo] = useState<Record<string, boolean>>({});
+
+  // Toggle service expansion - declare first before useEffect uses it
+  const toggleServiceExpansion = useCallback((serviceName: string) => {
+    setExpandedServices(prev => {
+      const newState = {
+        ...prev,
+        [serviceName]: !prev[serviceName]
+      };
+      return newState;
+    });
+  }, []);
 
   // Update processedServices when services prop changes
   useEffect(() => {
@@ -102,6 +122,65 @@ export function ServicesList({
       setProcessedServices(services);
     }
   }, [services]);
+
+  // Add a listener for the custom event
+  useEffect(() => {
+    const handleServiceTabMounted = () => {
+      if (activeServiceName && services.length > 0 && servicesConfig.length > 0) {
+        // Set expanded state immediately
+        setExpandedServices(prev => ({
+          ...prev,
+          [activeServiceName]: true
+        }));
+        
+        // Scroll after a brief delay to ensure rendering is complete
+        setTimeout(() => {
+          const serviceEl = document.getElementById(`service-${activeServiceName}`);
+          if (serviceEl) {
+            serviceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    };
+    
+    // Listen for the custom event
+    if (typeof window !== 'undefined') {
+      window.addEventListener('services-tab-mounted', handleServiceTabMounted);
+      
+      // Also handle expansion on initial load
+      if (activeServiceName) {
+        // Set expanded state immediately 
+        setExpandedServices(prev => ({
+          ...prev,
+          [activeServiceName]: true
+        }));
+        
+        // Simple scroll after a delay
+        setTimeout(() => {
+          const serviceEl = document.getElementById(`service-${activeServiceName}`);
+          if (serviceEl) {
+            serviceEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('services-tab-mounted', handleServiceTabMounted);
+      }
+    };
+  }, [activeServiceName, services, servicesConfig]);
+
+  // Add this effect to set initial expanded state
+  useEffect(() => {
+    if (activeServiceName) {
+      setExpandedServices(prev => ({
+        ...prev,
+        [activeServiceName]: true
+      }));
+    }
+  }, [activeServiceName]);
 
   const handleAddService = async (service: ServiceConfig) => {
     return await addService(service);
@@ -142,14 +221,6 @@ export function ServicesList({
         (service.description && service.description.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     : servicesConfig;
-
-  // Toggle service expansion
-  const toggleServiceExpansion = (serviceName: string) => {
-    setExpandedServices(prev => ({
-      ...prev,
-      [serviceName]: !prev[serviceName]
-    }));
-  };
 
   // Calculate uptime percentage and duration
   const calculateUptimeStats = (serviceData: any) => {
@@ -235,17 +306,45 @@ export function ServicesList({
   const offlineServices = services.filter(service => service.currentStatus?.status === "down").length;
   const unknownServices = services.filter(service => !service.currentStatus || service.currentStatus?.status === "unknown").length;
 
+  // Function to change the time span for response time chart
+  const changeTimeSpan = (serviceName: string, direction: 'prev' | 'next') => {
+    const currentSpan = responseTimeSpans[serviceName] || 10;
+    const spans = [5, 10, 15, 20, 25];
+    const currentIndex = spans.indexOf(currentSpan);
+    let newIndex;
+    
+    if (direction === 'prev') {
+      newIndex = currentIndex <= 0 ? spans.length - 1 : currentIndex - 1;
+    } else {
+      newIndex = currentIndex >= spans.length - 1 ? 0 : currentIndex + 1;
+    }
+    
+    setResponseTimeSpans(prev => ({
+      ...prev,
+      [serviceName]: spans[newIndex]
+    }));
+  };
+
+  // Toggle chart info popup
+  const toggleChartInfo = (serviceName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowChartInfo(prev => ({
+      ...prev,
+      [serviceName]: !prev[serviceName]
+    }));
+  };
+
   return (
-    <div className="overflow-hidden w-full">
+    <div className="w-full">
       {/* Search and action buttons */}
       <div className="flex items-center justify-between mb-6">
         <div className="relative w-full max-w-md">
           <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
+            <Search className="h-4 w-4 text-slate-400 dark:text-slate-500" />
           </div>
           <input
             type="text"
-            className="w-full py-2.5 pl-12 pr-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full py-2.5 pl-12 pr-4 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary/70 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200"
             placeholder="Search services..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -266,6 +365,7 @@ export function ServicesList({
             />
             <span>Refresh</span>
           </Button>
+          
           <Button 
             size="sm" 
             className="gap-2 px-4 h-9 whitespace-nowrap"
@@ -284,10 +384,10 @@ export function ServicesList({
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
       ) : statusError || servicesConfigError ? (
-        <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-red-50">
-          <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
-          <h3 className="text-red-700 font-medium mb-1">Error Loading Services</h3>
-          <p className="text-sm text-red-600 mb-4 text-center">
+        <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/20">
+          <AlertTriangle className="h-8 w-8 text-red-500 dark:text-red-400 mb-2" />
+          <h3 className="text-red-700 dark:text-red-400 font-medium mb-1">Error Loading Services</h3>
+          <p className="text-sm text-red-600 dark:text-red-400 mb-4 text-center">
             {statusError || servicesConfigError}
           </p>
           <Button 
@@ -306,9 +406,9 @@ export function ServicesList({
         </div>
       ) : filteredServices.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-center">
-          <Server className="h-8 w-8 text-slate-300 mb-2" />
-          <h3 className="text-slate-700 font-medium">No services found</h3>
-          <p className="text-sm text-slate-500 mt-1 mb-4">
+          <Server className="h-8 w-8 text-slate-300 dark:text-slate-700 mb-2" />
+          <h3 className="text-slate-700 dark:text-slate-300 font-medium">No services found</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-4">
             {searchQuery
               ? "No services match your search query"
               : "Add your first service to start monitoring"
@@ -336,44 +436,54 @@ export function ServicesList({
             return (
               <div 
                 key={service.name} 
-                className="bg-white rounded-lg border hover:shadow-sm transition-shadow duration-200 overflow-hidden w-full"
+                className={`bg-white dark:bg-slate-950 rounded-lg border ${
+                  activeServiceName === service.name 
+                    ? 'border-primary/70 dark:border-primary/50 ring-1 ring-primary/30 shadow-sm animate-highlight' 
+                    : 'border-slate-200 dark:border-slate-800/80'
+                } hover:shadow-sm transition-all duration-200 w-full`}
+                id={`service-${service.name}`}
+                data-service-name={service.name}
+                data-expanded={expandedServices[service.name] || false}
               >
                 <div 
                   className="flex items-center justify-between p-6 cursor-pointer w-full"
                   onClick={() => toggleServiceExpansion(service.name)}
+                  data-expanded={expandedServices[service.name] || false}
+                  role="button"
+                  aria-expanded={expandedServices[service.name] || false}
                 >
-                  <div className="flex items-center space-x-4 flex-1 min-w-0 max-w-[calc(100%-180px)]">
+                  <div className="flex items-center space-x-4 flex-1 min-w-0">
                     <div className="flex items-center pl-1">
                       <StatusDot status={status} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center flex-wrap gap-2">
-                        <h3 className="font-medium truncate">{service.name}</h3>
+                        <h3 className="font-medium truncate dark:text-slate-100">{service.name}</h3>
                         {responseTime && (
-                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs rounded-full">
                             {responseTime}ms
                           </span>
                         )}
                         <div className={`text-xs px-2 py-0.5 rounded-full font-medium
-                          ${status === "up" ? "bg-emerald-100 text-emerald-700" : 
-                            status === "down" ? "bg-red-100 text-red-700" : 
-                            "bg-slate-100 text-slate-700"}
+                          ${status === "up" ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" : 
+                            status === "down" ? "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400" : 
+                            "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400"}
                         `}>
                           {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
                         </div>
                         {service.visible === false && (
-                          <div className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 flex items-center gap-1">
+                          <div className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 flex items-center gap-1">
                             <EyeOff className="h-3 w-3" />
                             <span>Hidden</span>
                           </div>
                         )}
                       </div>
-                      <div className="text-sm text-slate-500 truncate mt-1">
+                      <div className="text-sm text-slate-500 dark:text-slate-400 truncate mt-1">
                         <a 
                           href={service.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="inline-flex items-center hover:text-blue-600"
+                          className="inline-flex items-center hover:text-blue-600 dark:hover:text-blue-400"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <span className="truncate">{service.url}</span>
@@ -381,7 +491,7 @@ export function ServicesList({
                         </a>
                       </div>
                       {service.description && (
-                        <p className="text-xs text-slate-500 mt-1">{service.description}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{service.description}</p>
                       )}
                     </div>
                   </div>
@@ -389,7 +499,7 @@ export function ServicesList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-9 w-9 p-0 hover:text-blue-600 hover:bg-blue-50"
+                      className="h-9 w-9 p-0 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewHistory?.(service.name);
@@ -415,7 +525,7 @@ export function ServicesList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-9 w-9 p-0 hover:text-red-500"
+                      className="h-9 w-9 p-0 hover:text-red-500 dark:hover:text-red-400"
                       onClick={(e) => {
                         e.stopPropagation();
                         openDeleteDialog(service);
@@ -437,38 +547,73 @@ export function ServicesList({
                 
                 {/* Expanded details section */}
                 {isExpanded && (
-                  <div className="px-6 pb-6 pt-2 border-t border-slate-100 w-full">
-                    <div className="ml-11 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                  <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800 w-full bg-slate-50/30 dark:bg-slate-900/20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-[800px] mx-auto">
                       {/* Metadata section */}
-                      <div className="bg-slate-50 p-5 rounded-md w-full">
-                        <h4 className="text-sm font-medium mb-3 text-slate-700">Service Metadata</h4>
-                        <div className="space-y-3 text-xs w-full">
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Expected Status:</span>
-                            <span className="font-medium">{service.expectedStatus || 200}</span>
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h4 className="text-xs font-medium mb-3 text-slate-700 dark:text-slate-300 flex items-center">
+                          <span className="w-1 h-4 bg-blue-500 dark:bg-blue-500/70 rounded-full mr-2"></span>
+                          Service Metadata
+                        </h4>
+                        <div className="space-y-2 text-xs w-full">
+                          <div className="flex justify-between py-0.5">
+                            <span className="text-slate-600 dark:text-slate-400 mr-2">Expected Status:</span>
+                            <span className="font-medium dark:text-slate-200">{service.expectedStatus || 200}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Visible on Status Page:</span>
-                            <span className="font-medium">{service.visible ? 'Yes' : 'No'}</span>
+                          <div className="flex justify-between py-0.5">
+                            <span className="text-slate-600 dark:text-slate-400 mr-2">Visible on Status Page:</span>
+                            <span className="font-medium dark:text-slate-200">{service.visible ? 'Yes' : 'No'}</span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Last Check:</span>
-                            <span className="font-medium">
+                          <div className="flex justify-between py-0.5">
+                            <span className="text-slate-600 dark:text-slate-400 mr-2">Last Check:</span>
+                            <span className="font-medium text-xs truncate max-w-[120px] dark:text-slate-200">
                               {statusData?.currentStatus?.timestamp 
                                 ? new Date(statusData.currentStatus.timestamp).toLocaleString() 
                                 : 'N/A'}
                             </span>
                           </div>
                           {statusData?.currentStatus?.statusCode && (
-                            <div className="flex justify-between">
-                              <span className="text-slate-600">Status Code:</span>
-                              <span className="font-medium">{statusData.currentStatus.statusCode}</span>
+                            <div className="flex justify-between py-0.5">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Status Code:</span>
+                              <span className="font-medium dark:text-slate-200">{statusData.currentStatus.statusCode}</span>
                             </div>
                           )}
+
+                          {/* Total Checks */}
+                          {statusData?.history && (
+                            <div className="flex justify-between py-0.5">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Total Checks:</span>
+                              <span className="font-medium dark:text-slate-200">
+                                {statusData.history.length}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* First Monitored */}
+                          {statusData?.history && statusData.history.length > 0 && (
+                            <div className="flex justify-between py-0.5">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">First Monitored:</span>
+                              <span className="font-medium dark:text-slate-200">
+                                {(() => {
+                                  const oldestEntry = statusData.history[statusData.history.length - 1];
+                                  if (!oldestEntry?.timestamp) return 'N/A';
+                                  
+                                  const date = new Date(oldestEntry.timestamp);
+                                  return date.toLocaleDateString();
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Divider before error message if present */}
                           {statusData?.currentStatus?.error && (
-                            <div className="mt-3">
-                              <span className="text-slate-600 block mb-1">Last Error:</span>
-                              <span className="font-medium text-red-600 text-xs block p-2 bg-red-50 rounded overflow-auto">
+                            <div className="border-t border-slate-200 dark:border-slate-800 my-2"></div>
+                          )}
+                          
+                          {statusData?.currentStatus?.error && (
+                            <div className="mt-3 p-2 rounded-md bg-slate-50 dark:bg-slate-900/60">
+                              <span className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Last Error:</span>
+                              <span className="font-medium text-red-600 dark:text-red-400 text-xs block p-2 bg-red-50 dark:bg-red-950/30 rounded-md border border-red-100 dark:border-red-900/20 overflow-auto max-h-[40px]">
                                 {statusData.currentStatus.error}
                               </span>
                             </div>
@@ -477,16 +622,24 @@ export function ServicesList({
                       </div>
                       
                       {/* Uptime & Statistics section */}
-                      <div className="bg-slate-50 p-5 rounded-md w-full">
-                        <h4 className="text-sm font-medium mb-3 text-slate-700">Uptime Statistics</h4>
-                        <div className="space-y-4 w-full">
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <h4 className="text-xs font-medium mb-3 text-slate-700 dark:text-slate-300 flex items-center">
+                          <span className="w-1 h-4 bg-emerald-500 dark:bg-emerald-500/70 rounded-full mr-2"></span>
+                          Uptime Statistics
+                        </h4>
+                        <div className="space-y-3 w-full">
                           {uptimePercentage !== null && (
-                            <div className="mb-3 w-full">
-                              <div className="flex justify-between text-xs mb-1 w-full">
-                                <span className="text-slate-600">Uptime</span>
-                                <span className="font-medium">{uptimePercentage.toFixed(2)}%</span>
+                            <div className="mb-2 w-full">
+                              <div className="flex justify-between text-xs mb-1.5 w-full">
+                                <span className="text-slate-600 dark:text-slate-400">Uptime</span>
+                                <span className={`font-medium ${
+                                  uptimePercentage > 99 ? 'text-emerald-600 dark:text-emerald-400' : 
+                                  uptimePercentage > 95 ? 'text-green-600 dark:text-green-400' : 
+                                  uptimePercentage > 90 ? 'text-yellow-600 dark:text-yellow-400' : 
+                                  'text-red-600 dark:text-red-400'
+                                }`}>{uptimePercentage.toFixed(2)}%</span>
                               </div>
-                              <div className="relative w-full bg-slate-200 rounded-full h-2">
+                              <div className="relative w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                                 <div 
                                   className={`absolute top-0 left-0 h-2 rounded-full ${
                                     uptimePercentage > 99 ? 'bg-emerald-500' : 
@@ -500,105 +653,318 @@ export function ServicesList({
                             </div>
                           )}
                           
-                          {status === 'up' && (
-                            <div className="flex items-start text-xs">
-                              <Clock className="h-3.5 w-3.5 text-emerald-600 mt-0.5 mr-1.5" />
-                              <div>
-                                <span className="text-slate-600 block">Online since:</span>
-                                <span className="font-medium text-emerald-700">
-                                  {onlineSince ? (
-                                    <>
-                                      {formatOnlineSince(onlineSince)} 
-                                      <span className="text-slate-500 ml-1">
-                                        ({onlineSince.toLocaleString()})
-                                      </span>
-                                    </>
-                                  ) : (
-                                    'Unknown'
-                                  )}
-                                </span>
-                              </div>
+                          {/* Availability Metric */}
+                          {statusData?.history && statusData.history.length > 0 && (
+                            <div className="flex justify-between py-0.5 text-xs">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Availability (24h):</span>
+                              <span className={`font-medium ${
+                                uptimePercentage === null ? 'text-slate-600 dark:text-slate-400' :
+                                uptimePercentage > 99 ? 'text-emerald-600 dark:text-emerald-400' : 
+                                uptimePercentage > 95 ? 'text-green-600 dark:text-green-400' : 
+                                uptimePercentage > 90 ? 'text-yellow-600 dark:text-yellow-400' : 
+                                'text-red-600 dark:text-red-400'
+                              }`}>
+                                {(() => {
+                                  // Get checks within the last 24 hours
+                                  const now = new Date();
+                                  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                                  const recentChecks = statusData.history.filter((check: any) => 
+                                    new Date(check.timestamp) >= dayAgo
+                                  );
+                                  
+                                  if (recentChecks.length === 0) return 'N/A';
+                                  
+                                  const upChecks = recentChecks.filter((check: any) => check.status === 'up').length;
+                                  const availability = (upChecks / recentChecks.length) * 100;
+                                  
+                                  return `${availability.toFixed(2)}%`;
+                                })()}
+                              </span>
                             </div>
                           )}
                           
-                          {/* Response Time Chart Section */}
-                          <div className="mt-3">
-                            <div className="flex items-center justify-between text-xs mb-2">
-                              <span className="text-slate-600">Response Time (Last 10 checks)</span>
-                              <button
-                                className="text-blue-600 hover:underline text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onViewHistory?.(service.name);
-                                }}
+                          {/* Average Response Time - moved from Metadata */}
+                          {statusData?.history && statusData.history.length > 0 && (
+                            <div className="flex justify-between py-0.5 text-xs">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Avg Response Time:</span>
+                              <span className="font-medium dark:text-slate-200">
+                                {(() => {
+                                  const validTimes = statusData.history
+                                    .map((c: any) => c.responseTime)
+                                    .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                                  
+                                  if (validTimes.length === 0) return 'N/A';
+                                  
+                                  const avgTime = validTimes.reduce((sum: number, time: number) => sum + time, 0) / validTimes.length;
+                                  return `${Math.round(avgTime)}ms`;
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Response Time Range - moved from Metadata */}
+                          {statusData?.history && statusData.history.length > 0 && (
+                            <div className="flex justify-between py-0.5 text-xs">
+                              <span className="text-slate-600 dark:text-slate-400 mr-2">Response Range:</span>
+                              <span className="font-medium dark:text-slate-200">
+                                {(() => {
+                                  const validTimes = statusData.history
+                                    .map((c: any) => c.responseTime)
+                                    .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                                  
+                                  if (validTimes.length === 0) return 'N/A';
+                                  
+                                  const minTime = Math.min(...validTimes);
+                                  const maxTime = Math.max(...validTimes);
+                                  return `${minTime}ms - ${maxTime}ms`;
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Online Status Section */}
+                          {status === "up" && onlineSince && (
+                            <div className="mt-3 p-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/20">
+                              <h5 className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-2">Online Status</h5>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <Clock className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                <div className="text-xs">
+                                  <span className="text-emerald-600 dark:text-emerald-500 mr-1">Online for:</span>
+                                  <span className="font-medium text-emerald-700 dark:text-emerald-400">{formatOnlineSince(onlineSince)}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                <div className="text-xs">
+                                  <span className="text-emerald-600 dark:text-emerald-500 mr-1">Since:</span>
+                                  <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                    {onlineSince.toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* New dedicated Response Time Chart card - spans full width in both grid layouts */}
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm md:col-span-2">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                            <span className="w-1 h-4 bg-indigo-500 dark:bg-indigo-500/70 rounded-full mr-2"></span>
+                            Response Time Chart
+                          </h4>
+                          
+                          <div className="flex items-center space-x-2">
+                            <div className="relative">
+                              <button 
+                                onClick={(e) => toggleChartInfo(service.name, e)}
+                                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                aria-label="Chart information"
                               >
-                                View Details
+                                <HelpCircle className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                               </button>
+                              
+                              {showChartInfo[service.name] && (
+                                <div className="absolute right-0 top-6 z-10 w-64 p-3 text-xs bg-white dark:bg-slate-950 shadow-lg rounded-md border border-slate-200 dark:border-slate-800">
+                                  <h5 className="font-medium mb-1.5 text-slate-800 dark:text-slate-200">About Response Time Chart</h5>
+                                  <p className="text-slate-600 dark:text-slate-400 mb-2">
+                                    This chart shows the response time trend for recent checks. 
+                                    Higher bars indicate longer response times.
+                                  </p>
+                                  <ul className="space-y-1.5 mt-2">
+                                    <li className="flex items-center">
+                                      <span className="block w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
+                                      <span>Green: Service online</span>
+                                    </li>
+                                    <li className="flex items-center">
+                                      <span className="block w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                                      <span>Red: Service offline</span>
+                                    </li>
+                                    <li className="flex items-center">
+                                      <span className="block w-2 h-2 rounded-full bg-slate-400 mr-2"></span>
+                                      <span>Gray: Status unknown</span>
+                                    </li>
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                             
-                            {/* Response Time Chart */}
-                            {statusData?.history && statusData.history.length > 0 ? (
-                              <div className="mt-1 rounded-md bg-slate-100 overflow-visible">
-                                {/* Bar Chart Section */}
-                                <div className="h-14 flex items-end justify-between px-1.5 pt-1.5 pb-1">
-                                  {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => {
-                                    // Get valid response times only
-                                    const validTimes = statusData.history
-                                      .slice(0, 10)
-                                      .map((c: any) => c.responseTime)
-                                      .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
-                                    
-                                    // Calculate max for normalization, with a reasonable default
-                                    const maxTime = validTimes.length > 0 
-                                      ? Math.max(...validTimes) 
-                                      : 1000;
-                                    
-                                    // Calculate height percentage (10% min to 90% max)
-                                    const hasResponseTime = typeof check.responseTime === 'number' && !isNaN(check.responseTime);
-                                    const heightPx = hasResponseTime 
-                                      ? Math.max(8, Math.min(35, (check.responseTime / maxTime) * 35))
-                                      : 5;
-                                    
-                                    return (
-                                      <div key={index} className="flex-1 flex flex-col items-center justify-end group">
-                                        <div className="text-xs text-slate-800 font-medium text-center mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
-                                          {hasResponseTime ? `${check.responseTime}ms` : 'N/A'}
-                                        </div>
-                                        
-                                        {/* Bar */}
-                                        <div 
-                                          className={`w-full min-w-[4px] max-w-[8px] mx-auto rounded-t-sm group-hover:opacity-80 transition-opacity ${
-                                            check.status === 'up' 
-                                              ? 'bg-emerald-500' 
-                                              : check.status === 'down' 
-                                                ? 'bg-red-500' 
-                                                : 'bg-slate-400'
-                                          }`}
-                                          style={{ height: `${heightPx}px` }}
-                                        />
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                
-                                {/* Timestamp Labels Section - Separated from chart */}
-                                <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 bg-slate-50">
-                                  {statusData.history.slice(0, 10).reverse().map((check: any, index: number) => (
-                                    <div key={`time-${index}`} className="flex-1 text-center">
-                                      <div className="text-[8px] text-slate-500 truncate px-0.5">
-                                        {new Date(check.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-center justify-center h-12 bg-slate-100 rounded-md p-2">
-                                <div className="text-xs text-slate-500">No response time data available</div>
-                              </div>
-                            )}
+                            <button
+                              className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/20"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onViewHistory?.(service.name);
+                              }}
+                            >
+                              Full History
+                            </button>
                           </div>
                         </div>
+                        
+                        {/* Time span selector */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            Last <span className="font-medium text-slate-700 dark:text-slate-300">{responseTimeSpans[service.name] || 10}</span> checks
+                          </div>
+                          
+                          <div className="flex items-center space-x-1">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                changeTimeSpan(service.name, 'next');
+                              }}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              aria-label="Show fewer checks"
+                            >
+                              <ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                changeTimeSpan(service.name, 'prev');
+                              }}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              aria-label="Show more checks"
+                            >
+                              <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Enhanced Response Time Chart */}
+                        {statusData?.history && statusData.history.length > 0 ? (
+                          <div className="rounded-md bg-white dark:bg-slate-950 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+                            {/* Bar Chart Section - enhanced height */}
+                            <div className="h-16 flex items-end justify-between px-1 py-2 relative">
+                              {/* Grid lines */}
+                              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
+                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
+                              </div>
+                              
+                              {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
+                                // Get valid response times only
+                                const validTimes = statusData.history
+                                  .slice(0, responseTimeSpans[service.name] || 10)
+                                  .map((c: any) => c.responseTime)
+                                  .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                                
+                                // Calculate max for normalization with minimum ceiling
+                                const maxTime = validTimes.length > 0 
+                                  ? Math.max(...validTimes, 500) 
+                                  : 1000;
+                                
+                                // Calculate height percentage 
+                                const hasResponseTime = typeof check.responseTime === 'number' && !isNaN(check.responseTime);
+                                const heightPx = hasResponseTime 
+                                  ? Math.max(6, Math.min(48, (check.responseTime / maxTime) * 48))
+                                  : 5;
+                                
+                                return (
+                                  <div key={index} className="flex-1 flex flex-col items-center justify-end group relative h-full">
+                                    {/* Enhanced tooltip with more info - centered */}
+                                    <div className="fixed transform -translate-y-full -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-50 w-max pointer-events-none" style={{top: 'calc(var(--y, 0) - 10px)', left: 'var(--x, 0)'}}>
+                                      <div className="bg-slate-800 dark:bg-slate-900 text-white text-xs rounded px-3 py-2 shadow-lg">
+                                        <div className="font-medium text-center">{hasResponseTime ? `${check.responseTime}ms` : 'No data'}</div>
+                                        <div className="text-slate-300 text-center">{new Date(check.timestamp).toLocaleString()}</div>
+                                      </div>
+                                      <div className="w-3 h-3 transform rotate-45 bg-slate-800 dark:bg-slate-900 absolute -bottom-1.5 left-1/2 -translate-x-1/2"></div>
+                                    </div>
+                                    
+                                    {/* Bar with adjusted width */}
+                                    <div 
+                                      className={`w-[5px] rounded-t-sm group-hover:w-[7px] group-hover:brightness-110 transition-all relative ${
+                                        check.status === 'up' 
+                                          ? 'bg-emerald-500 dark:bg-emerald-400' 
+                                          : check.status === 'down' 
+                                            ? 'bg-red-500 dark:bg-red-400' 
+                                            : 'bg-slate-400 dark:bg-slate-500'
+                                      }`}
+                                      style={{ height: `${heightPx}px` }}
+                                      onMouseMove={(e) => {
+                                        const el = e.currentTarget;
+                                        const rect = el.getBoundingClientRect();
+                                        const centerX = rect.left + rect.width / 2;
+                                        const y = rect.top;
+                                        el.parentElement!.style.setProperty('--x', `${centerX}px`);
+                                        el.parentElement!.style.setProperty('--y', `${y}px`);
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Timestamp Labels Section - Simplified */}
+                            <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                              {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
+                                const date = new Date(check.timestamp);
+                                const now = new Date();
+                                const isToday = date.toDateString() === now.toDateString();
+                                
+                                return (
+                                  <div key={`time-${index}`} className="flex-1 text-center">
+                                    <div className="text-xs text-slate-500 dark:text-slate-500 truncate px-0.5 font-medium">
+                                      {isToday 
+                                        ? date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                                        : date.toLocaleDateString([], {month: 'numeric', day: 'numeric'})
+                                      }
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-28 bg-white dark:bg-slate-950 rounded-md p-4 border border-slate-200 dark:border-slate-800">
+                            <div className="text-[12px] text-slate-500 dark:text-slate-400 mb-2">No response time data available</div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                              Response time history will appear here after checks are performed
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Chart metrics summary - simplified */}
+                        {statusData?.history && statusData.history.length > 0 && (
+                          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {(() => {
+                              const validTimes = statusData.history
+                                .slice(0, responseTimeSpans[service.name] || 10)
+                                .map((c: any) => c.responseTime)
+                                .filter((time: any) => typeof time === 'number' && !isNaN(time) && time > 0);
+                              
+                              if (validTimes.length === 0) return null;
+                              
+                              const avgTime = validTimes.reduce((sum: number, time: number) => sum + time, 0) / validTimes.length;
+                              const minTime = Math.min(...validTimes);
+                              const maxTime = Math.max(...validTimes);
+                              const p90Time = validTimes.sort((a: number, b: number) => a - b)[Math.floor(validTimes.length * 0.9)];
+                              
+                              return (
+                                <>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Average</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{Math.round(avgTime)}ms</div>
+                                  </div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Minimum</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{minTime}ms</div>
+                                  </div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Maximum</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{maxTime}ms</div>
+                                  </div>
+                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">90th Percentile</div>
+                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p90Time}ms</div>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -630,30 +996,34 @@ export function ServicesList({
       
       {/* Delete confirmation dialog */}
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Delete Service</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-slate-700">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
               Are you sure you want to delete <span className="font-semibold">{selectedService?.name}</span>?
               This action cannot be undone.
             </p>
           </div>
+          <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900/50 mb-4">
+            <div className="flex items-start">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5 mr-2" />
+              <div>
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Warning</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                  Deleting this service will remove all its monitoring data and history. 
+                  Historical uptime calculations will also be affected.
+                </p>
+              </div>
+            </div>
+          </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteConfirmOpen(false)}
-              disabled={isUpdating}
-            >
+            <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteService}
-              disabled={isUpdating}
-            >
-              {isUpdating ? "Deleting..." : "Delete Service"}
+            <Button variant="destructive" onClick={handleDeleteService} disabled={isUpdating}>
+              {isUpdating ? 'Deleting...' : 'Delete Service'}
             </Button>
           </DialogFooter>
         </DialogContent>

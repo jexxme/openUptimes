@@ -1,6 +1,7 @@
 # 🛠️ Self-Hosted Status Page – Implementation Plan
 
 ## 🎯 Goals
+
 - One-click deploy on Vercel  
 - Plug-and-play setup  
 - Monitors uptime of custom services  
@@ -52,6 +53,7 @@
 ## 🧩 Core Features
 
 ### ✅ 1. Config: Define Services to Monitor
+
 ```ts
 // lib/config.ts
 export const services = [
@@ -63,6 +65,7 @@ export const services = [
 ---
 
 ### ✅ 2. Uptime Monitoring with Vercel Functions
+
 - File: `app/api/ping/route.ts`
 - Triggered in two ways:
   1. Client-side polling via `UptimePoller.tsx` component (for frequent checks)
@@ -107,6 +110,7 @@ export default function UptimePoller({ interval = 60000 }) {
 ---
 
 ### ✅ 3. Storage: Vercel Redis
+
 ```ts
 // Save status
 await redis.set('status:api', JSON.stringify({ status: 'up', timestamp: Date.now() }))
@@ -121,6 +125,7 @@ await redis.ltrim('history:api', 0, 1439)
 ---
 
 ### ✅ 4. Public Status Page (`/status`)
+
 - Lists all services
 - Shows current status (green/red dot, label)
 - Renders simple uptime chart (last X pings)
@@ -146,6 +151,7 @@ export default function StatusPage() {
 ---
 
 ### ✅ 5. Optional Enhancements
+
 - Light/Dark mode
 - Status badges (`![](https://status.mysite.com/badge/api.svg)`)
 - Authenticated admin panel for editing services (Clerk or NextAuth)
@@ -157,11 +163,15 @@ export default function StatusPage() {
 ---
 
 ## ✨ One-Click Deploy
+
 Add this to your README:
+
 ```md
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/project?template=your-repo-url)
 ```
+
 User just:
+
 1. Clicks the button
 2. Enters service URLs
 3. Gets a live status page with auto-uptime monitoring

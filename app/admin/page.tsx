@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 import dynamic from 'next/dynamic';
@@ -19,13 +19,15 @@ import { Progress } from "@/components/ui/progress";
 
 // Import custom components
 import { SidebarNav } from "../components/admin/SidebarNav";
+import { PageTitle } from "../components/PageTitle";
 
 // Admin content pages - Dynamically import with SSR disabled
-const AdminDashboard = dynamic(() => import("../components/admin/pages/Dashboard").then(mod => mod.AdminDashboard), { ssr: false });
-const AdminServices = dynamic(() => import("../components/admin/pages/Services").then(mod => mod.AdminServices), { ssr: false });
+const AdminDashboardPage = dynamic(() => import("../components/admin/pages/Dashboard").then(mod => mod.AdminDashboard), { ssr: false });
+const AdminServicesPage = dynamic(() => import("../components/admin/pages/Services").then(mod => mod.AdminServices), { ssr: false });
 const AdminStatusPage = dynamic(() => import("../components/admin/pages/StatusPage").then(mod => mod.AdminStatusPage), { ssr: false });
 const AdminHistory = dynamic(() => import("../components/admin/pages/History").then(mod => mod.AdminHistory), { ssr: false });
-const AdminSettings = dynamic(() => import("../components/admin/pages/Settings").then(mod => mod.AdminSettings), { ssr: false });
+const AdminSettingsPage = dynamic(() => import("../components/admin/pages/Settings").then(mod => mod.AdminSettings), { ssr: false });
+const AdminAbout = dynamic(() => import("../components/admin/pages/About").then(mod => mod.AdminAbout), { ssr: false });
 
 // Define types needed for the component
 interface StatusHistoryItem {
@@ -37,7 +39,7 @@ interface StatusHistoryItem {
 }
 
 // Create a client-only wrapper to prevent hydration issues
-const AdminPageClient = () => {
+const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: string; service?: string }> }) => {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -72,25 +74,107 @@ const AdminPageClient = () => {
   // Determine if this is a development environment
   const isDev = process.env.NODE_ENV === 'development';
 
-  // Handle URL parameters on component mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
+  // Add ref to track unsaved changes callbacks from different content components
+  const unsavedChangesCallbacksRef = useRef<Record<string, () => boolean>>({});
+
+  // Function to register an unsaved changes callback
+  const registerUnsavedChangesCallback = useCallback((key: string, callback: () => boolean) => {
+    console.log(`[Admin] Registering callback for ${key}`);
+    unsavedChangesCallbacksRef.current[key] = callback;
+  }, []);
+
+  // Function to check if there are any unsaved changes
+  const hasUnsavedChanges = useCallback(() => {
+    // Check all registered callbacks
+    const keys = Object.keys(unsavedChangesCallbacksRef.current);
+    console.log(`[Admin] Checking unsaved changes, ${keys.length} callbacks registered:`, keys);
     
-    // Set the active tab based on URL parameter
-    if (tabParam) {
-      setActiveTab(tabParam);
+    for (const key in unsavedChangesCallbacksRef.current) {
+      const callback = unsavedChangesCallbacksRef.current[key];
+      if (callback && callback()) {
+        console.log(`[Admin] Found unsaved changes in ${key}`);
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
+  // Add a clearUnsavedChangesCallback function
+  const clearUnsavedChangesCallback = useCallback((key?: string) => {
+    if (key) {
+      console.log(`[Admin] Clearing callback for ${key}`);
+      if (unsavedChangesCallbacksRef.current[key]) {
+        delete unsavedChangesCallbacksRef.current[key];
+      }
+    } else {
+      console.log('[Admin] Clearing all callbacks');
+      // Clear all callbacks
+      unsavedChangesCallbacksRef.current = {};
     }
   }, []);
-  
-  // Update URL when active tab changes
+
+  // Check URL parameters on mount
   useEffect(() => {
-    if (isLoaded) {
+    // Handle Promise-based searchParams
+    const initFromSearchParams = async () => {
+      if (searchParams) {
+        try {
+          const resolvedParams = await searchParams;
+          
+          // Log initial URL parameters
+          console.log('[AdminPage] URL parameters detected:', { 
+            tab: resolvedParams.tab, 
+            service: resolvedParams.service,
+            rawSearchParams: resolvedParams
+          });
+          
+          // Update active tab based on URL
+          if (resolvedParams.tab) {
+            console.log(`[AdminPage] Setting active tab to: ${resolvedParams.tab}`);
+            setActiveTab(resolvedParams.tab);
+          }
+        } catch (error) {
+          console.error('[AdminPage] Error processing search params:', error);
+        }
+      }
+    };
+    
+    initFromSearchParams();
+  }, [searchParams]);
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    console.log(`[AdminPage] Tab changed to: ${value}`);
+    
+    // Update URL with the new tab value
+    if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      url.searchParams.set('tab', activeTab);
+      
+      // Track current parameters before changing
+      const currentService = url.searchParams.get('service');
+      console.log(`[AdminPage] Current service parameter: ${currentService}`);
+      
+      // Set the new tab
+      url.searchParams.set('tab', value);
+      
+      // Preserve service parameter when switching to services tab
+      if (value === 'services' && currentService) {
+        console.log(`[AdminPage] Preserving service parameter: ${currentService}`);
+      } else if (value !== 'services') {
+        // If switching to a different tab, remove service parameter
+        url.searchParams.delete('service');
+      }
+      
+      // Log the final URL parameters
+      console.log(`[AdminPage] Updated URL parameters:`, Object.fromEntries(url.searchParams.entries()));
+      
+      // Update URL
       window.history.pushState({}, '', url.toString());
     }
-  }, [activeTab, isLoaded]);
+    
+    // Update active tab state
+    setActiveTab(value);
+  };
 
   // Save preloaded data in a ref to avoid rerenders on tab change
   const preloadedDataRef = useRef<{
@@ -526,24 +610,51 @@ const AdminPageClient = () => {
   // Ensure the session is valid on page load
   useEffect(() => {
     async function validateSession() {
-      if (process.env.NODE_ENV === 'production') {
-        try {
-          const response = await fetch('/api/auth/validate');
-          const data = await response.json();
-          
-          if (!data.valid) {
-            // Add timestamp to prevent cache issues
-            window.location.href = `/login?from=/admin&t=${Date.now()}`;
-            return;
-          }
-        } catch (error) {
-          console.error("Session validation error:", error);
-          // If we can't validate, let the user stay on the page
+      try {
+        console.log("Validating session...");
+        setLoadingState("Validating session...");
+        setLoadingProgress(10);
+        
+        const response = await fetch('/api/auth/validate', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          credentials: 'include' // Important to include cookies
+        });
+        
+        console.log("Session validation response status:", response.status);
+        
+        if (!response.ok) {
+          console.error('Session validation failed with status:', response.status);
+          redirectToLogin();
+          return;
         }
+        
+        const data = await response.json();
+        console.log("Session validation data:", data);
+        
+        if (!data.valid) {
+          console.log('Invalid session detected, redirecting to login');
+          redirectToLogin();
+          return;
+        }
+        
+        console.log("Session is valid, continuing to load admin page");
+        // Only proceed if session is valid
+        setIsValidatingSession(false);
+      } catch (error) {
+        console.error("Session validation error:", error);
+        redirectToLogin();
+        return;
       }
-      
-      // Set loaded state when validation is complete
-      setIsValidatingSession(false);
+    }
+    
+    function redirectToLogin() {
+      // Add timestamp to prevent cache issues
+      const redirectUrl = `/login?from=/admin&t=${Date.now()}`;
+      console.log("Redirecting to login:", redirectUrl);
+      window.location.href = redirectUrl;
     }
     
     validateSession();
@@ -589,6 +700,15 @@ const AdminPageClient = () => {
   // Pass preloaded data to components
   const logoProps = logoUrl ? { preloadedLogoUrl: logoUrl } : {};
 
+  // For our navigation debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).debugTab = activeTab;
+      (window as any).debugParams = searchParams;
+      console.log('[AdminPage] Debug variables set. Check window.debugTab and window.debugParams');
+    }
+  }, [activeTab, searchParams]);
+
   if (!isLoaded || setupLoading || isValidatingSession) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-background">
@@ -624,40 +744,46 @@ const AdminPageClient = () => {
   const renderContent = () => {
     switch(activeTab) {
       case "dashboard":
-        return <AdminDashboard 
+        return <AdminDashboardPage 
           preloadedServices={preloadedDataRef.current.services} 
           preloadedStatusPageData={preloadedDataRef.current.statusPage}
           preloadedHistoryData={preloadedDataRef.current.history}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       case "services":
-        return <AdminServices 
+        return <AdminServicesPage 
           preloadedServices={preloadedDataRef.current.services}
           preloadedServicesConfig={preloadedDataRef.current.servicesConfig}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       case "statuspage":
         return <AdminStatusPage 
           preloadedStatusPageData={preloadedDataRef.current.statusPage}
           preloadedAppearanceData={preloadedDataRef.current.appearance}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
+          registerUnsavedChangesCallback={registerUnsavedChangesCallback}
         />;
       case "history":
         return <AdminHistory 
           preloadedHistory={preloadedDataRef.current.history}
           preloadedHistoryServices={preloadedDataRef.current.historyServices}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       case "settings":
-        return <AdminSettings 
-          setActiveTab={setActiveTab}
+        return <AdminSettingsPage 
+          setActiveTab={handleTabChange}
+          registerUnsavedChangesCallback={registerUnsavedChangesCallback}
+        />;
+      case "about":
+        return <AdminAbout 
+          setActiveTab={handleTabChange}
         />;
       default:
-        return <AdminDashboard 
+        return <AdminDashboardPage 
           preloadedServices={preloadedDataRef.current.services}
           preloadedStatusPageData={preloadedDataRef.current.statusPage}
           preloadedHistoryData={preloadedDataRef.current.history}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
     }
   };
@@ -675,6 +801,8 @@ const AdminPageClient = () => {
         return "Uptime History";
       case "settings":
         return "Settings";
+      case "about":
+        return "About";
       default:
         return activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     }
@@ -683,13 +811,22 @@ const AdminPageClient = () => {
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-background">
+        {/* Add PageTitle with preloaded data */}
+        {isLoaded && preloadedDataRef.current.statusPage && (
+          <PageTitle 
+            statusPageTitle={preloadedDataRef.current.statusPage?.settings?.title || "Service Status"} 
+          />
+        )}
+        
         {/* Sidebar for larger screens */}
         <UISidebar className="hidden md:block">
           <SidebarNav 
             activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
+            setActiveTab={handleTabChange} 
             handleLogout={handleLogout} 
             isLoggingOut={isLoggingOut} 
+            hasUnsavedChanges={hasUnsavedChanges}
+            clearUnsavedChangesCallback={clearUnsavedChangesCallback}
             {...logoProps}
           />
         </UISidebar>
@@ -707,9 +844,11 @@ const AdminPageClient = () => {
                 <SheetContent side="left" className="w-64 p-0">
                   <SidebarNav 
                     activeTab={activeTab} 
-                    setActiveTab={setActiveTab} 
+                    setActiveTab={handleTabChange} 
                     handleLogout={handleLogout} 
                     isLoggingOut={isLoggingOut} 
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    clearUnsavedChangesCallback={clearUnsavedChangesCallback}
                     {...logoProps}
                   />
                 </SheetContent>
@@ -718,7 +857,7 @@ const AdminPageClient = () => {
             </div>
           </header>
           
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 p-6">
             <div className="mx-auto max-w-6xl">
               <div className="mb-6">
                 <h1 className="text-2xl font-bold tracking-tight">{getTabTitle()}</h1>
@@ -727,28 +866,14 @@ const AdminPageClient = () => {
               {renderContent()}
             </div>
           </main>
-          
-          {/* Development debug badge - only shown in development */}
-          {isDev && (
-            <div className="absolute bottom-4 right-4 z-50">
-              <a
-                href="/debug/ping"
-                target="_blank"
-                className="flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs px-3 py-1.5 rounded-full shadow-sm transition-colors duration-200"
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-                </span>
-                Debug Ping System
-              </a>
-            </div>
-          )}
         </div>
       </div>
     </SidebarProvider>
   );
 };
 
-// Export a client-only wrapper component
-export default dynamic(() => Promise.resolve(AdminPageClient), { ssr: false }); 
+// Create a page component that renders the client component
+export default function Page({ searchParams }: { searchParams?: Promise<{ tab?: string; service?: string }> }) {
+  const AdminPage = dynamic(() => Promise.resolve(AdminPageClient), { ssr: false });
+  return <AdminPage searchParams={searchParams} />;
+} 

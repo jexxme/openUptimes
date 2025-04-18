@@ -49,13 +49,16 @@ export const TimeRangeSelect = ({
           onChange={(e) => handleTimeRangeChange(e.target.value)}
           disabled={isLoading}
         >
+          <option value="15m">Last 15 minutes</option>
           <option value="30m">Last 30 minutes</option>
-          <option value="1h">Last 1 hour</option>
-          <option value="2h">Last 2 hours</option>
+          <option value="1h">Last hour</option>
+          <option value="6h">Last 6 hours</option>
+          <option value="12h">Last 12 hours</option>
           <option value="24h">Last 24 hours</option>
+          <option value="3d">Last 3 days</option>
           <option value="7d">Last 7 days</option>
+          <option value="14d">Last 14 days</option>
           <option value="30d">Last 30 days</option>
-          <option value="all">All time</option>
           <option value="custom">Custom range</option>
         </select>
       </div>
@@ -297,9 +300,9 @@ export const StatusSelect = ({
           onChange={(e) => setSelectedStatus(e.target.value)}
           disabled={isLoading}
         >
-          <option value="all">All Statuses</option>
-          <option value="up">Up</option>
-          <option value="down">Down</option>
+          <option value="all">All statuses</option>
+          <option value="up">Online</option>
+          <option value="down">Offline</option>
           <option value="unknown">Unknown</option>
         </select>
       </div>
@@ -345,96 +348,91 @@ export const ResponseCodeSelect = ({
   );
 };
 
-// Date Time Picker Component
-export const DateTimePicker = ({ 
-  startDateStr, 
-  setStartDateStr, 
-  endDateStr, 
-  setEndDateStr, 
-  startTimeStr, 
-  setStartTimeStr, 
-  endTimeStr, 
-  setEndTimeStr, 
-  isLoading, 
-  handleApplyCustomRange 
-}: { 
-  startDateStr: string; 
-  setStartDateStr: (date: string) => void; 
-  endDateStr: string; 
-  setEndDateStr: (date: string) => void; 
-  startTimeStr: string; 
-  setStartTimeStr: (time: string) => void; 
-  endTimeStr: string; 
-  setEndTimeStr: (time: string) => void; 
-  isLoading: boolean; 
+// Date and time picker for custom range
+interface DateTimePickerProps {
+  startDateStr: string;
+  setStartDateStr: (date: string) => void;
+  endDateStr: string;
+  setEndDateStr: (date: string) => void;
+  startTimeStr: string;
+  setStartTimeStr: (time: string) => void;
+  endTimeStr: string;
+  setEndTimeStr: (time: string) => void;
+  isLoading: boolean;
   handleApplyCustomRange: () => void;
-}) => {
+}
+
+export function DateTimePicker({
+  startDateStr,
+  setStartDateStr,
+  endDateStr,
+  setEndDateStr,
+  startTimeStr,
+  setStartTimeStr,
+  endTimeStr,
+  setEndTimeStr,
+  isLoading,
+  handleApplyCustomRange
+}: DateTimePickerProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-2 w-full mt-2 p-2 bg-muted/20 rounded-md border border-dashed">
-      {/* Start Date/Time Column */}
-      <div className="flex-1">
-        <Label htmlFor="start-date" className="text-xs font-medium inline-flex items-center mb-1">
-          <Calendar className="h-3 w-3 text-muted-foreground mr-1" />
-          Start
-        </Label>
-        <div className="relative flex items-center space-x-1">
-          <Input
+    <div className="p-3 border border-border rounded-md bg-muted/10 dark:bg-muted/5 mt-3 mb-1 shadow-sm">
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="grid gap-1.5">
+          <Label htmlFor="start-date" className="text-xs text-muted-foreground">Start Date</Label>
+          <input
             id="start-date"
             type="date"
             value={startDateStr}
             onChange={(e) => setStartDateStr(e.target.value)}
-            className="w-[130px] bg-background h-8 text-xs px-1 py-0"
+            className="px-3 py-1 text-sm border border-input rounded-md bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
             disabled={isLoading}
           />
-          <Input
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="start-time" className="text-xs text-muted-foreground">Start Time</Label>
+          <input
             id="start-time"
             type="time"
             value={startTimeStr}
             onChange={(e) => setStartTimeStr(e.target.value)}
-            className="w-[85px] bg-background h-8 text-xs px-1 py-0"
+            className="px-3 py-1 text-sm border border-input rounded-md bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
             disabled={isLoading}
           />
         </div>
-      </div>
-      
-      {/* End Date/Time Column */}
-      <div className="flex-1">
-        <Label htmlFor="end-date" className="text-xs font-medium inline-flex items-center mb-1">
-          <Calendar className="h-3 w-3 text-muted-foreground mr-1" />
-          End
-        </Label>
-        <div className="relative flex items-center space-x-1">
-          <Input
+        <div className="self-end text-muted-foreground">to</div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="end-date" className="text-xs text-muted-foreground">End Date</Label>
+          <input
             id="end-date"
             type="date"
             value={endDateStr}
             onChange={(e) => setEndDateStr(e.target.value)}
-            className="w-[130px] bg-background h-8 text-xs px-1 py-0"
+            className="px-3 py-1 text-sm border border-input rounded-md bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
             disabled={isLoading}
           />
-          <Input
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="end-time" className="text-xs text-muted-foreground">End Time</Label>
+          <input
             id="end-time"
             type="time"
             value={endTimeStr}
             onChange={(e) => setEndTimeStr(e.target.value)}
-            className="w-[85px] bg-background h-8 text-xs px-1 py-0"
+            className="px-3 py-1 text-sm border border-input rounded-md bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
             disabled={isLoading}
           />
         </div>
-      </div>
-      
-      {/* Apply Button */}
-      <div className="flex-none self-end">
-        <Button 
-          variant="secondary"
-          onClick={handleApplyCustomRange}
-          disabled={isLoading || !startDateStr || !endDateStr}
-          className="h-8 px-2 text-xs"
-          size="sm"
-        >
-          Apply
-        </Button>
+        <div className="self-end">
+          <Button
+            size="sm"
+            onClick={handleApplyCustomRange}
+            disabled={isLoading}
+            className="h-8"
+          >
+            Apply Range
+          </Button>
+        </div>
       </div>
     </div>
   );
-}; 
+} 

@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { ClientHooks } from "./components/ClientHooks";
+import { ThemeProvider } from "./context/ThemeContext";
 
 const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
-// We'll use Inter as a replacement for Geist Mono as well
-const mono = Inter({
+const robotoMono = Roboto_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -54,11 +56,13 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${inter.variable} ${mono.variable} antialiased`}
+        className={`${inter.variable} ${robotoMono.variable} antialiased`}
       >
-        <ClientHooks>
-          {children}
-        </ClientHooks>
+        <ThemeProvider>
+          <ClientHooks>
+            {children}
+          </ClientHooks>
+        </ThemeProvider>
       </body>
     </html>
   );

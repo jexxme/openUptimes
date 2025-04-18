@@ -1,6 +1,57 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+<<<<<<< HEAD:globals.css.bak
+<<<<<<<< HEAD:globals.css.bak
+========
+=======
+>>>>>>> main:styles/globals.css.bak
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+<<<<<<< HEAD:globals.css.bak
+>>>>>>>> main:styles/globals.css
+=======
+>>>>>>> main:styles/globals.css.bak
 
 :root {
   --radius: 0.625rem;
@@ -35,6 +86,13 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+<<<<<<< HEAD:globals.css.bak
+=======
+  --color-up: #3ba55c;
+  --color-down: #ed4245;
+  --color-degraded: #faa61a;
+  --color-unknown: #6b7280;
+>>>>>>> main:styles/globals.css.bak
 }
 
 .dark {
@@ -73,7 +131,8 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+    outline: 2px solid transparent;
   }
   body {
     @apply bg-background text-foreground;
@@ -88,6 +147,16 @@
   input[type="reset"],
   select,
   summary,
+<<<<<<< HEAD:globals.css.bak
+=======
+  .select-trigger,
+  [data-radix-select-trigger],
+  [data-radix-dropdown-menu-trigger],
+  [data-radix-popover-trigger],
+  [data-radix-dialog-trigger],
+  [data-radix-menu-trigger],
+  details,
+>>>>>>> main:styles/globals.css.bak
   .cursor-pointer {
     cursor: pointer;
   }
@@ -107,7 +176,17 @@
     cursor: not-allowed;
   }
   
+<<<<<<< HEAD:globals.css.bak
   /* Input elements */
+=======
+  /* Special cursors for specific interactive elements */
+  .resize-handle,
+  [data-resize-handle] {
+    cursor: ew-resize;
+  }
+  
+  /* Ensure form controls have appropriate cursors */
+>>>>>>> main:styles/globals.css.bak
   input[type="text"],
   input[type="password"],
   input[type="email"],
@@ -164,7 +243,11 @@
   scrollbar-color: var(--sidebar-border) transparent;
 }
 
+<<<<<<< HEAD:globals.css.bak
 /* Animation keyframes */
+=======
+/* Refresh button rotation animation */
+>>>>>>> main:styles/globals.css.bak
 @keyframes refresh-rotate {
   0% {
     transform: rotate(0deg);
@@ -178,6 +261,7 @@
   animation: refresh-rotate 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+<<<<<<< HEAD:globals.css.bak
 @keyframes highlight-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(var(--primary), 0.4);
@@ -192,4 +276,63 @@
 
 .animate-highlight {
   animation: highlight-pulse 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+=======
+body {
+  @apply bg-white font-sans text-gray-900 antialiased;
+}
+
+.component-container {
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  isolation: isolate;
+}
+
+.component-container:hover {
+  @apply bg-gray-50;
+}
+
+/* Tooltip arrow */
+.tooltip-arrow {
+  @apply absolute transform rotate-45;
+}
+
+/* First border-top-0 utility for the first item in the list */
+.first\:border-t-0:first-child {
+  border-top-width: 0px;
+}
+
+/* Smooth animations */
+.uptime-day {
+  transition: all 0.2s ease-in-out;
+}
+
+.uptime-day:hover {
+  opacity: 0.75;
+  filter: brightness(1.05);
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+}
+
+/* Smooth transitions */
+a, button, .component-container, .uptime-day {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Add subtle shadows to cards and containers */
+.shadow-subtle {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+}
+
+/* Add subtle hover effect to interactive elements */
+.hover-lift {
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+>>>>>>> main:styles/globals.css.bak
 }

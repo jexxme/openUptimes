@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useToast } from "../../ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Lock, RefreshCw, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, RefreshCw, AlertCircle, Database, Copy } from "lucide-react";
 import { Label } from "../../ui/label";
+import { cn } from "@/lib/utils";
 import { 
   Card,
   CardContent,
@@ -44,9 +45,75 @@ export function SecuritySettings() {
   const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   
+  // Redis URL view states
+  const [isRedisUrlDialogOpen, setIsRedisUrlDialogOpen] = useState(false);
+  const [verificationPassword, setVerificationPassword] = useState("");
+  const [showVerificationPassword, setShowVerificationPassword] = useState(false);
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
+  const [savedRedisUrl, setSavedRedisUrl] = useState("");
+  const [isRedisUrlRevealed, setIsRedisUrlRevealed] = useState(false);
+  const [redisUrlError, setRedisUrlError] = useState("");
+  
   // Error states
   const [passwordError, setPasswordError] = useState("");
   const [resetError, setResetError] = useState("");
+
+  // Handle password verification for viewing Redis URL
+  const handleVerifyPassword = async () => {
+    // Clear previous errors
+    setRedisUrlError("");
+    
+    // Validate password
+    if (!verificationPassword) {
+      setRedisUrlError("Password is required for verification");
+      return;
+    }
+    
+    setIsVerifyingPassword(true);
+    
+    try {
+      const response = await fetch('/api/admin/redis/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          password: verificationPassword,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Password verification failed');
+      }
+      
+      const data = await response.json();
+      
+      // Set the fetched Redis URL and mark as revealed
+      setSavedRedisUrl(data.redisUrl);
+      setIsRedisUrlRevealed(true);
+      
+      // Clear password field
+      setVerificationPassword("");
+      
+    } catch (error) {
+      console.error("Password verification error:", error);
+      setRedisUrlError(error instanceof Error ? error.message : "Failed to verify password");
+      setIsRedisUrlRevealed(false);
+    } finally {
+      setIsVerifyingPassword(false);
+    }
+  };
+
+  // Copy Redis URL to clipboard
+  const copyRedisUrlToClipboard = () => {
+    navigator.clipboard.writeText(savedRedisUrl);
+    toast({
+      title: "Copied to clipboard",
+      description: "Redis URL has been copied to your clipboard",
+      duration: 3000,
+    });
+  };
 
   const handleChangePassword = async () => {
     // Clear previous errors
@@ -192,9 +259,9 @@ export function SecuritySettings() {
         </CardHeader>
         <CardContent>
           {passwordError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-md flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-600">{passwordError}</p>
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-md flex items-start">
+              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p>
             </div>
           )}
           
@@ -212,7 +279,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showCurrentPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -236,7 +303,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showNewPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -263,7 +330,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -309,10 +376,51 @@ export function SecuritySettings() {
           <div className="flex justify-end">
             <Button 
               variant="outline"
-              className="bg-black text-white hover:bg-black/90"
+              className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
               onClick={() => setIsResetDialogOpen(true)}
             >
               Reset Password
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* View Redis URL Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            View Redis Connection URL
+          </CardTitle>
+          <CardDescription>
+            View your Redis connection URL (requires password verification)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            For security reasons, your Redis connection details are partially hidden. 
+            Authenticate with your admin password to view the full URL.
+          </p>
+          
+          <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-md mb-4">
+            <div className="flex items-center">
+              <div className="flex-1 font-mono text-sm overflow-hidden">
+                redis://****:****@****.***:****
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button 
+              onClick={() => {
+                setIsRedisUrlDialogOpen(true);
+                setIsRedisUrlRevealed(false);
+                setSavedRedisUrl("");
+                setVerificationPassword("");
+                setRedisUrlError("");
+              }}
+            >
+              View Full URL
             </Button>
           </div>
         </CardContent>
@@ -329,9 +437,9 @@ export function SecuritySettings() {
           </DialogHeader>
           
           {resetError && (
-            <div className="p-3 bg-red-50 border border-red-100 rounded-md flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-red-600">{resetError}</p>
+            <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-md flex items-start">
+              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{resetError}</p>
             </div>
           )}
           
@@ -363,7 +471,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(!showResetPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showResetPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -390,7 +498,7 @@ export function SecuritySettings() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmResetPassword(!showConfirmResetPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                 >
                   {showConfirmResetPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -428,6 +536,102 @@ export function SecuritySettings() {
               ) : "Reset Password"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Redis URL View Dialog */}
+      <Dialog open={isRedisUrlDialogOpen} onOpenChange={setIsRedisUrlDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>View Redis Connection URL</DialogTitle>
+            <DialogDescription>
+              Enter your admin password to view the full Redis connection URL.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {redisUrlError && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/30 rounded-md flex items-start">
+              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{redisUrlError}</p>
+            </div>
+          )}
+          
+          {!isRedisUrlRevealed ? (
+            <div className="space-y-4 p-1">
+              <div className="space-y-2">
+                <Label htmlFor="verification-password">Admin Password</Label>
+                <div className="relative">
+                  <Input
+                    id="verification-password"
+                    type={showVerificationPassword ? "text" : "password"}
+                    value={verificationPassword}
+                    onChange={(e) => setVerificationPassword(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowVerificationPassword(!showVerificationPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+                  >
+                    {showVerificationPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button 
+                  onClick={handleVerifyPassword}
+                  disabled={isVerifyingPassword}
+                >
+                  {isVerifyingPassword ? (
+                    <>
+                      <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                      Verifying...
+                    </>
+                  ) : "Verify Password"}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 p-1">
+              <div className="space-y-2">
+                <Label htmlFor="redis-url-display">Redis URL</Label>
+                <div className="relative">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-md font-mono text-sm break-all">
+                    {savedRedisUrl}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyRedisUrlToClipboard}
+                    className="absolute top-2 right-2 p-1 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    title="Copy to clipboard"
+                  >
+                    <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+                <p className="text-xs text-red-500 dark:text-red-400 font-medium">
+                  Keep this information secure and never share it with unauthorized individuals.
+                </p>
+              </div>
+              
+              <DialogFooter>
+                <Button 
+                  variant="ghost"
+                  onClick={() => {
+                    setIsRedisUrlDialogOpen(false);
+                    setIsRedisUrlRevealed(false);
+                    setSavedRedisUrl("");
+                  }}
+                >
+                  Close
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

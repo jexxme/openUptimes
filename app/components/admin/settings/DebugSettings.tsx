@@ -3,11 +3,12 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ExternalLink, Bug, Github } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function DebugSettings() {
   return (
     <div className="space-y-6">
-      <div className="border rounded-lg shadow-sm">
+      <div className="border rounded-lg shadow-sm dark:border-gray-800 dark:bg-card">
         <div className="p-6">
           <div className="flex flex-col space-y-1.5 mb-4">
             <div className="flex items-center">
@@ -30,7 +31,7 @@ export function DebugSettings() {
         </div>
       </div>
 
-      <div className="border rounded-lg shadow-sm">
+      <div className="border rounded-lg shadow-sm dark:border-gray-800 dark:bg-card">
         <div className="p-6">
           <div className="flex flex-col space-y-1.5 mb-4">
             <div className="flex items-center">

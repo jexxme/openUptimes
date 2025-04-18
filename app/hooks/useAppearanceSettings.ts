@@ -8,7 +8,9 @@ const defaultAppearanceSettings = {
   showServiceDescription: true,
   customCSS: "",
   customHeader: "",
-  historyDays: 90 // Default history range in days
+  historyDays: 90, // Default history range in days
+  copyrightUrl: "https://github.com/jexxme/openUptimes", // Default copyright URL
+  copyrightText: "openUptimes" // Default copyright text
 };
 
 // Global cache for appearance settings
@@ -16,7 +18,7 @@ const appearanceCache = {
   data: null as any,
   timestamp: 0,
   // Longer TTL since appearance settings change less frequently
-  TTL: 60000 // 1 minute
+  TTL: 300000 // 5 minutes
 };
 
 export function useAppearanceSettings() {
@@ -36,6 +38,7 @@ export function useAppearanceSettings() {
       // Use cache if available and not expired
       const now = Date.now();
       if (appearanceCache.data && now - appearanceCache.timestamp < appearanceCache.TTL) {
+        console.log("[useAppearanceSettings] Using cached settings:", appearanceCache.data);
         setSettings(appearanceCache.data);
         return;
       }
@@ -55,12 +58,15 @@ export function useAppearanceSettings() {
         }
         
         const data = await response.json();
+        console.log("[useAppearanceSettings] Fetched settings:", data);
         
         // Merge with default settings to ensure all properties exist
         const mergedData = { 
           ...defaultAppearanceSettings,
           ...data
         };
+        
+        console.log("[useAppearanceSettings] Merged with defaults:", mergedData);
         
         // Update global cache
         appearanceCache.data = mergedData;

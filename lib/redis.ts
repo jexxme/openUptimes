@@ -322,17 +322,29 @@ export async function getAdminPassword(): Promise<string | null> {
 }
 
 /**
- * Store a session token in Redis with expiration
+ * Store a session token in Redis
  */
 export async function storeSession(token: string, expirySeconds: number = 86400): Promise<boolean> {
+  const requestId = Date.now().toString().substring(8);
+  console.log(`[Redis:${requestId}] Storing session token: ${token.substring(0, 6)}...`);
+  
   try {
     const client = await getRedisClient();
+    
+    // Set the session in Redis with expiry
     await client.set(`session:${token}`, 'active', {
       EX: expirySeconds // Expires in 24 hours by default
     });
-    return true;
+    
+    // Verify the session was stored
+    const verifySession = await client.get(`session:${token}`);
+    const success = verifySession === 'active';
+    
+    console.log(`[Redis:${requestId}] Session storage ${success ? 'successful' : 'failed'}, expiry: ${expirySeconds}s`);
+    
+    return success;
   } catch (err) {
-    console.error('Error storing session:', err);
+    console.error(`[Redis:${requestId}] Error storing session:`, err);
     return false;
   }
 }
@@ -341,12 +353,27 @@ export async function storeSession(token: string, expirySeconds: number = 86400)
  * Check if a session token exists and is valid
  */
 export async function isSessionValid(token: string): Promise<boolean> {
+  const requestId = Date.now().toString().substring(8);
+  console.log(`[Redis:${requestId}] Validating session token: ${token.substring(0, 6)}...`);
+  
   try {
     const client = await getRedisClient();
+    
+    // Get session from Redis
     const session = await client.get(`session:${token}`);
-    return session === 'active';
+    const isValid = session === 'active';
+    
+    console.log(`[Redis:${requestId}] Session validation result: ${isValid ? 'valid' : 'invalid'}, value: "${session}"`);
+    
+    // Debug: Check TTL if session exists
+    if (session) {
+      const ttl = await client.ttl(`session:${token}`);
+      console.log(`[Redis:${requestId}] Session TTL: ${ttl} seconds`);
+    }
+    
+    return isValid;
   } catch (err) {
-    console.error('Error checking session:', err);
+    console.error(`[Redis:${requestId}] Error checking session:`, err);
     return false;
   }
 }
@@ -355,12 +382,25 @@ export async function isSessionValid(token: string): Promise<boolean> {
  * Delete a session token from Redis
  */
 export async function deleteSession(token: string): Promise<boolean> {
+  const requestId = Date.now().toString().substring(8);
+  console.log(`[Redis:${requestId}] Deleting session token: ${token.substring(0, 6)}...`);
+  
   try {
     const client = await getRedisClient();
-    await client.del(`session:${token}`);
-    return true;
+    
+    // Check if session exists before deletion
+    const sessionExists = await client.exists(`session:${token}`);
+    console.log(`[Redis:${requestId}] Session exists before deletion: ${sessionExists === 1}`);
+    
+    // Delete the session
+    const deleteResult = await client.del(`session:${token}`);
+    const success = deleteResult === 1;
+    
+    console.log(`[Redis:${requestId}] Session deletion ${success ? 'successful' : 'failed'}, result: ${deleteResult}`);
+    
+    return success;
   } catch (err) {
-    console.error('Error deleting session:', err);
+    console.error(`[Redis:${requestId}] Error deleting session:`, err);
     return false;
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatTime, formatTimeConsistent } from '../../lib/utils/timeUtils';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function PingDebugPage() {
   const [pingStats, setPingStats] = useState<any>(null);
@@ -14,6 +15,23 @@ export default function PingDebugPage() {
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [visibleHistoryCount, setVisibleHistoryCount] = useState<number>(10);
   const router = useRouter();
+  const { setTheme } = useTheme();
+
+  // Force light mode using theme context
+  useEffect(() => {
+    // Store the original theme
+    const originalTheme = localStorage.getItem("openuptimes-theme");
+    
+    // Force light theme
+    setTheme("light");
+    
+    // Restore original theme on unmount
+    return () => {
+      if (originalTheme) {
+        setTheme(originalTheme as "light" | "dark");
+      }
+    };
+  }, [setTheme]);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toISOString();

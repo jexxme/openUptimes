@@ -52,7 +52,8 @@ export function StatusPagePreviewDialog({
       title: unsavedSettings.statusPageTitle,
       description: unsavedSettings.statusPageDescription,
       services: unsavedSettings.serviceVisibility,
-      appearance: unsavedSettings.appearanceSettings
+      appearance: unsavedSettings.appearanceSettings,
+      hasUnsavedChanges: hasUnsavedChanges
     };
     
     // Add serialized settings to URL

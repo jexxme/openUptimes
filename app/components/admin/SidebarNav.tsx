@@ -1,10 +1,20 @@
 "use client";
 
-import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug } from "lucide-react";
+import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug, Moon, Sun, Info } from "lucide-react";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { useTheme } from "../../context/ThemeContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 
 interface SidebarNavProps {
   activeTab: string;
@@ -12,6 +22,8 @@ interface SidebarNavProps {
   handleLogout: () => void;
   isLoggingOut: boolean;
   preloadedLogoUrl?: string;
+  hasUnsavedChanges?: () => boolean;
+  clearUnsavedChangesCallback?: (key?: string) => void;
 }
 
 // NavButton component
@@ -20,17 +32,20 @@ const NavButton = ({
   label, 
   isActive, 
   onClick,
-  disabled = false
+  disabled = false,
+  tab
 }: { 
   icon: React.ElementType; 
   label: string; 
   isActive?: boolean;
   onClick?: () => void;
   disabled?: boolean;
+  tab?: string;
 }) => (
   <Button
     variant={isActive ? "secondary" : "ghost"}
     className={`
+      sidebar-nav-button
       justify-start w-full text-left mb-1.5 
       transition-all duration-200 ease-out
       ${isActive 
@@ -44,6 +59,7 @@ const NavButton = ({
     `}
     onClick={onClick}
     disabled={disabled}
+    data-tab={tab}
   >
     <div className="flex items-center w-full py-0.5">
       <div className={`
@@ -71,12 +87,31 @@ const NavButton = ({
   </Button>
 );
 
-export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut, preloadedLogoUrl }: SidebarNavProps) {
+export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut, preloadedLogoUrl, hasUnsavedChanges = () => false, clearUnsavedChangesCallback }: SidebarNavProps) {
   const [logoUrl, setLogoUrl] = useState(preloadedLogoUrl || "");
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isDev, setIsDev] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showDebug, setShowDebug] = useState(false);
+  const [invertLogo, setInvertLogo] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedPreference = localStorage.getItem("openuptimes-logo-invert");
+      return savedPreference !== null ? savedPreference === "true" : true;
+    }
+    return true; // Default to true
+  });
+  const { theme, toggleTheme } = useTheme();
+  const isDarkMode = theme === "dark";
+
+  // Unsaved changes dialog state
+  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
+  const pendingNavigationRef = useRef<{ tab: string, section?: string } | null>(null);
+  
+  // Add a flag to track if we just handled a dialog confirmation
+  const [recentlyNavigated, setRecentlyNavigated] = useState(false);
+  
+  // Add a ref to track if we're currently processing a dialog action
+  const processingDialogActionRef = useRef(false);
   
   // Detect development environment
   useEffect(() => {
@@ -111,10 +146,40 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
       const img = new Image();
       img.onload = () => {
         setImageLoaded(true);
+        
+        // Only attempt to analyze SVGs
+        if (logoUrl.endsWith('.svg')) {
+          analyzeSvgDarkness(logoUrl);
+        }
       };
       img.src = logoUrl;
     }
   }, [logoUrl]);
+
+  // Analyze SVG to determine if it's dark-dominant
+  const analyzeSvgDarkness = async (svgUrl: string) => {
+    try {
+      const response = await fetch(svgUrl);
+      if (response.ok) {
+        const svgText = await response.text();
+        
+        // Simple heuristic: check for dark colors in fill/stroke attributes
+        const darkColorPattern = /(fill|stroke)="(#0|#1|#2|#3|black|rgb\(0,|rgb\(1[0-9]|rgb\(2[0-5]|rgba\(0,|rgba\(1[0-9]|rgba\(2[0-5])/g;
+        const lightColorPattern = /(fill|stroke)="(#[d-f]|#[D-F]|white|rgb\(2[2-5][0-9]|rgb\(25[0-5]|rgba\(2[2-5][0-9]|rgba\(25[0-5])/g;
+        
+        const darkMatches = (svgText.match(darkColorPattern) || []).length;
+        const lightMatches = (svgText.match(lightColorPattern) || []).length;
+        
+        // If there are significantly more dark colors than light colors, set invertLogo to true
+        if (darkMatches > lightMatches * 1.5) {
+          setInvertLogo(true);
+          localStorage.setItem("openuptimes-logo-invert", "true");
+        }
+      }
+    } catch (error) {
+      console.error('Error analyzing SVG:', error);
+    }
+  };
 
   const handleLogoClick = () => {
     const newCount = logoClickCount + 1;
@@ -124,22 +189,113 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
     }
   };
 
-  // Helper function to handle navigation with sections
-  const handleNavigation = (tab: string, section?: string) => {
-    setActiveTab(tab);
-    
-    // Update URL with the new tab and optional section
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', tab);
+  const handleLogoContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isDarkMode) {
+      const newInvertValue = !invertLogo;
+      setInvertLogo(newInvertValue);
+      localStorage.setItem("openuptimes-logo-invert", newInvertValue.toString());
+    }
+  };
+
+  // Dialog handlers
+  const handleDialogClose = () => {
+    setUnsavedChangesDialogOpen(false);
+    pendingNavigationRef.current = null;
+    // Reset the processing flag after a short delay
+    setTimeout(() => {
+      processingDialogActionRef.current = false;
+    }, 100);
+  };
+
+  const handleDialogConfirm = () => {
+    if (pendingNavigationRef.current) {
+      const { tab, section } = pendingNavigationRef.current;
       
-      if (section) {
-        url.searchParams.set('section', section);
-      } else {
-        url.searchParams.delete('section');
+      // Clear any registered callbacks to prevent further checks
+      if (clearUnsavedChangesCallback) {
+        // Clear all callbacks at once by not providing a key
+        clearUnsavedChangesCallback();
       }
       
-      window.history.pushState({}, '', url.toString());
+      // Set the flag to prevent showing the dialog again immediately
+      setRecentlyNavigated(true);
+      
+      completeNavigation(tab, section);
+      pendingNavigationRef.current = null;
+    }
+    setUnsavedChangesDialogOpen(false);
+    
+    // Reset the processing flag after a short delay
+    setTimeout(() => {
+      processingDialogActionRef.current = false;
+    }, 100);
+  };
+
+  // Add useEffect to reset dialog state when activeTab changes
+  useEffect(() => {
+    // Reset dialog state when tab changes
+    setUnsavedChangesDialogOpen(false);
+    pendingNavigationRef.current = null;
+    processingDialogActionRef.current = false;
+    setRecentlyNavigated(false);
+  }, [activeTab]);
+
+  // Update the completeNavigation function with try/catch for better error handling
+  const completeNavigation = (tab: string, section?: string) => {
+    try {
+      // Special case for logout
+      if (tab === "logout") {
+        handleLogout();
+        return;
+      }
+
+      setActiveTab(tab);
+      
+      // Update URL with the new tab and optional section
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        
+        if (section) {
+          url.searchParams.set('section', section);
+        } else {
+          url.searchParams.delete('section');
+        }
+        
+        window.history.pushState({}, '', url.toString());
+      }
+    } catch (error) {
+      console.error('Error during navigation:', error);
+      // Reset all dialog state in case of error
+      setUnsavedChangesDialogOpen(false);
+      pendingNavigationRef.current = null;
+      processingDialogActionRef.current = false;
+      setRecentlyNavigated(false);
+    }
+  };
+
+  // Helper function to handle navigation with sections
+  const handleNavigation = (tab: string, section?: string) => {
+    // If we're already processing a dialog action, don't show another dialog
+    if (processingDialogActionRef.current) {
+      return;
+    }
+    
+    // If we just navigated, don't show the dialog again
+    if (recentlyNavigated) {
+      setRecentlyNavigated(false);
+      completeNavigation(tab, section);
+      return;
+    }
+    
+    // Check if there are unsaved changes
+    if (hasUnsavedChanges()) {
+      pendingNavigationRef.current = { tab, section };
+      processingDialogActionRef.current = true;
+      setUnsavedChangesDialogOpen(true);
+    } else {
+      completeNavigation(tab, section);
     }
   };
 
@@ -171,13 +327,17 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
         <div className="absolute left-0 bottom-0 w-full h-[1px] bg-gradient-to-r from-transparent via-sidebar-primary/20 to-transparent"></div>
         {logoUrl && imageLoaded ? (
           <div 
-            className="flex items-center justify-center h-full py-2 w-full cursor-pointer"
+            className="flex items-center justify-center h-full py-2 w-full cursor-pointer relative group"
             onClick={handleLogoClick}
+            onContextMenu={handleLogoContextMenu}
+            title={isDarkMode ? "Right-click to toggle logo inversion" : ""}
           >
             <img 
               src={logoUrl} 
               alt="Logo" 
-              className="max-h-full max-w-[140px] object-contain"
+              className={`max-h-full max-w-[140px] object-contain transition-opacity duration-150 ${
+                isDarkMode && invertLogo ? "logo-dark-mode" : ""
+              }`}
             />
           </div>
         ) : (
@@ -190,7 +350,11 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               alt="OpenUptimes" 
               className="w-5 h-5 mr-2"
             />
-            <h2 className="text-lg font-semibold bg-gradient-to-r from-primary via-sidebar-primary to-primary bg-clip-text text-transparent tracking-tight">
+            <h2 className={`text-lg font-semibold tracking-tight ${
+              isDarkMode 
+                ? "text-foreground" 
+                : "bg-gradient-to-r from-primary via-sidebar-primary to-primary bg-clip-text text-transparent"
+            }`}>
               OpenUptimes
             </h2>
           </div>
@@ -218,6 +382,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Overview" 
               isActive={activeTab === "dashboard"} 
               onClick={() => handleNavigation("dashboard")}
+              tab="dashboard"
             />
           </motion.div>
           
@@ -227,6 +392,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Services" 
               isActive={activeTab === "services"}
               onClick={() => handleNavigation("services")} 
+              tab="services"
             />
           </motion.div>
           
@@ -236,6 +402,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Status Page" 
               isActive={activeTab === "statuspage"}
               onClick={() => handleNavigation("statuspage")} 
+              tab="statuspage"
             />
           </motion.div>
           
@@ -245,6 +412,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="History" 
               isActive={activeTab === "history"}
               onClick={() => handleNavigation("history")} 
+              tab="history"
             />
           </motion.div>
         </motion.div>
@@ -270,6 +438,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               label="Settings" 
               isActive={activeTab === "settings"} 
               onClick={() => handleNavigation("settings")}
+              tab="settings"
             />
           </motion.div>
         </motion.div>
@@ -278,10 +447,53 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
       <div className="mt-auto border-t border-sidebar-border/80 p-4 space-y-3 bg-sidebar/95 relative">
         <div className="absolute left-0 top-0 w-full h-[1px] bg-gradient-to-r from-transparent via-sidebar-primary/20 to-transparent"></div>
         
-        <Link href="/" target="_blank" rel="noopener noreferrer" className="w-full block">
+        <motion.div 
+          variants={sectionVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex justify-between items-center mb-3"
+        >
+          <div className="flex items-center space-x-2">
+            <Switch
+              checked={isDarkMode}
+              onCheckedChange={toggleTheme}
+              className={isDarkMode ? "data-[state=checked]:bg-sidebar-primary/70" : ""}
+              aria-label="Toggle dark mode"
+            />
+            <span className="text-sm text-muted-foreground">
+              {isDarkMode ? (
+                <Sun className="h-4 w-4 text-sidebar-primary/80" />
+              ) : (
+                <Moon className="h-4 w-4 text-muted-foreground/70" />
+              )}
+            </span>
+          </div>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center text-muted-foreground hover:text-foreground group sidebar-nav-button"
+            onClick={() => handleNavigation("about")}
+            data-tab="about"
+          >
+            <Info className="h-3.5 w-3.5 mr-1.5 group-hover:text-primary transition-colors" />
+            <span className="text-sm">About</span>
+          </Button>
+        </motion.div>
+        
+        <Link 
+          href="/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="w-full block"
+          onClick={(e) => {
+            // No need to check for unsaved changes for external links
+            // that open in a new tab
+          }}
+        >
           <Button 
             variant="outline"
-            className="w-full justify-start bg-primary/5 hover:bg-primary/10 border-primary/10 hover:border-primary/20 transition-all duration-200 group rounded-md"
+            className="w-full justify-start bg-primary/5 hover:bg-primary/10 border-primary/10 hover:border-primary/20 transition-all duration-200 group rounded-md sidebar-nav-button"
           >
             <div className="flex items-center w-full">
               <div className="flex items-center justify-center w-5 h-5 mr-2">
@@ -295,8 +507,16 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
         
         <Button 
           variant="outline"
-          className="w-full justify-start bg-destructive/5 hover:bg-destructive/10 border-destructive/10 hover:border-destructive/20 transition-all duration-200 group rounded-md"
-          onClick={handleLogout}
+          className="w-full justify-start bg-destructive/5 hover:bg-destructive/10 border-destructive/10 hover:border-destructive/20 transition-all duration-200 group rounded-md sidebar-nav-button"
+          onClick={() => {
+            if (hasUnsavedChanges()) {
+              // Create a specific dialog for logout
+              pendingNavigationRef.current = { tab: "logout" };
+              setUnsavedChangesDialogOpen(true);
+            } else {
+              handleLogout();
+            }
+          }}
           disabled={isLoggingOut}
         >
           <div className="flex items-center w-full">
@@ -312,6 +532,36 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
           </div>
         </Button>
       </div>
+      
+      {/* Conditionally render unsaved changes dialog */}
+      {unsavedChangesDialogOpen && !processingDialogActionRef.current && (
+        <Dialog 
+          key={`dialog-${Date.now()}`} // Ensure a new instance on each render
+          open={unsavedChangesDialogOpen} 
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              handleDialogClose();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Unsaved Changes</DialogTitle>
+              <DialogDescription>
+                You have unsaved changes. Are you sure you want to leave?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={handleDialogClose}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDialogConfirm}>
+                Discard Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </motion.div>
   );
 } 

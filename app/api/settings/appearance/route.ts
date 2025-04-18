@@ -24,7 +24,9 @@ export async function GET() {
       logoUrl: siteConfig.logoUrl || "",
       showServiceUrls: siteConfig.showServiceUrls !== undefined ? siteConfig.showServiceUrls : true,
       showServiceDescription: siteConfig.showServiceDescription !== undefined ? siteConfig.showServiceDescription : true,
-      historyDays: siteConfig.historyDays || 90 // Get historyDays or default to 90
+      historyDays: siteConfig.historyDays || 90, // Get historyDays or default to 90
+      copyrightUrl: siteConfig.copyrightUrl || "", // Get copyright URL or default to empty string
+      copyrightText: siteConfig.copyrightText || "" // Get copyright text or default to empty string
     };
     
     return NextResponse.json(appearanceConfig);
@@ -99,6 +101,16 @@ export async function PUT(request: NextRequest) {
       siteConfig.historyDays = updatedAppearance.historyDays;
     }
     
+    // Update copyright URL setting
+    if (updatedAppearance.copyrightUrl !== undefined) {
+      siteConfig.copyrightUrl = updatedAppearance.copyrightUrl;
+    }
+    
+    // Update copyright text setting
+    if (updatedAppearance.copyrightText !== undefined) {
+      siteConfig.copyrightText = updatedAppearance.copyrightText;
+    }
+    
     await client.set('config:site', JSON.stringify(siteConfig));
     
     return NextResponse.json({ 
@@ -111,7 +123,9 @@ export async function PUT(request: NextRequest) {
       logoUrl: siteConfig.logoUrl,
       showServiceUrls: siteConfig.showServiceUrls,
       showServiceDescription: siteConfig.showServiceDescription,
-      historyDays: siteConfig.historyDays // Return historyDays in response
+      historyDays: siteConfig.historyDays, // Return historyDays in response
+      copyrightUrl: siteConfig.copyrightUrl, // Return copyright URL in response
+      copyrightText: siteConfig.copyrightText // Return copyright text in response
     });
   } catch (error) {
     console.error('Error updating appearance settings:', error);

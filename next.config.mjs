@@ -2,7 +2,9 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["redis"],
+  experimental: {
+    serverComponentsExternalPackages: ["redis"],
+  },
   logging: {
     fetches: {
       fullUrl: true,
@@ -11,7 +13,9 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  transpilePackages: ["tw-animate-css"],
+  webpack: (config) => {
+    return config;
+  },
 };
 
 export default nextConfig;

@@ -2,36 +2,26 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { parseTokenFromCookie } from './lib/edge-auth';
 
-// This is a temporary compatibility layer during transition to Redis-based sessions
-// It's kept for development mode and will be removed in the future
-export const activeSessions = new Set<string>();
-
-// Make dev token available in development for easier testing
-if (process.env.NODE_ENV === 'development') {
-  const DEV_TOKEN = 'dev-token-for-testing-purposes-only';
-  activeSessions.add(DEV_TOKEN);
-  console.log('Added development token for auth testing');
-}
-
-// Compatibility functions for transition period
-export function addSession(token: string) {
-  // Only used in dev environment now
-  if (process.env.NODE_ENV === 'development') {
-    activeSessions.add(token);
-    console.log('Session added to memory store (dev only)');
-  }
-}
-
-export function removeSession(token: string) {
-  // Only used in dev environment now
-  if (process.env.NODE_ENV === 'development') {
-    activeSessions.delete(token);
-    console.log('Session removed from memory store (dev only)');
-  }
-}
+// We're removing the in-memory session management completely
+// All session management will be handled by Redis
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const requestId = Date.now().toString().substring(8);
+  
+  console.log(`[Middleware:${requestId}] Path: ${pathname}`);
+  
+  // Debug cookie details
+  const cookieHeader = request.headers.get('cookie') || '';
+  console.log(`[Middleware:${requestId}] Cookie header exists: ${!!cookieHeader}`);
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    console.log(`[Middleware:${requestId}] Found ${cookies.length} cookies`);
+    
+    // Log if authToken is present
+    const hasAuthToken = cookies.some(cookie => cookie.startsWith('authToken='));
+    console.log(`[Middleware:${requestId}] Has authToken cookie: ${hasAuthToken}`);
+  }
   
   // Skip middleware for static files and API endpoints (handled separately)
   if (
@@ -45,74 +35,28 @@ export async function middleware(request: NextRequest) {
 
   // Always allow access to public pages
   if (pathname === '/reset' || pathname === '/' || pathname === '/login' || pathname === '/setup') {
+    console.log(`[Middleware:${requestId}] Public page, allowed: ${pathname}`);
     return NextResponse.next();
   }
 
-  // For admin routes, check authentication
-  if (pathname.startsWith('/admin')) {
-    // In development, bypass auth check if not required
-    if (process.env.NODE_ENV === 'development' && process.env.REQUIRE_AUTH_IN_DEV !== 'true') {
-      return NextResponse.next();
-    }
+  // For admin and debug routes, check authentication
+  if (pathname.startsWith('/admin') || pathname.startsWith('/debug')) {
+    console.log(`[Middleware:${requestId}] Protected route detected: ${pathname}`);
     
-    const cookieHeader = request.headers.get('cookie') || '';
     const token = parseTokenFromCookie(cookieHeader);
     
     if (!token) {
-      // Redirect to login if no token found
+      console.log(`[Middleware:${requestId}] No auth token found, redirecting to login`);
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       url.searchParams.set('from', pathname);
       return NextResponse.redirect(url);
     }
     
-    // In development, we can use the in-memory session check
-    if (process.env.NODE_ENV === 'development') {
-      if (!activeSessions.has(token)) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        url.searchParams.set('from', pathname);
-        return NextResponse.redirect(url);
-      }
-      return NextResponse.next();
-    }
-    
-    // In production, we'll rely on the API route to validate the session
-    // Since we can't directly access Redis from Edge middleware
-    return NextResponse.next();
-  }
-  
-  // Protect debug routes in all environments
-  if (pathname.startsWith('/debug')) {
-    // In development, bypass auth check if not required
-    if (process.env.NODE_ENV === 'development' && process.env.REQUIRE_AUTH_IN_DEV !== 'true') {
-      return NextResponse.next();
-    }
-    
-    // Check if user is authenticated
-    const cookieHeader = request.headers.get('cookie') || '';
-    const token = parseTokenFromCookie(cookieHeader);
-    
-    if (!token) {
-      // Redirect to login page
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('from', pathname);
-      return NextResponse.redirect(url);
-    }
-    
-    // In development, check against in-memory session
-    if (process.env.NODE_ENV === 'development') {
-      if (!activeSessions.has(token)) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        url.searchParams.set('from', pathname);
-        return NextResponse.redirect(url);
-      }
-      return NextResponse.next();
-    }
-    
-    // For production, allow the request to continue to be checked by API route
+    // We can't directly check Redis from middleware (Edge runtime), 
+    // so we'll allow the request to continue to the page where
+    // client-side validation will check with the /api/auth/validate endpoint
+    console.log(`[Middleware:${requestId}] Auth token found, allowing request to continue for API validation`);
     return NextResponse.next();
   }
   
