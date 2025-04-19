@@ -54,6 +54,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/default-favicon.svg" type="image/svg+xml" />
+        <link rel="shortcut icon" href="/default-favicon.svg" />
+        <link rel="apple-touch-icon" href="/default-favicon.svg" />
+        <meta name="theme-color" content="#0284c7" />
       </head>
       <body
         className={`${inter.variable} ${robotoMono.variable} antialiased`}
