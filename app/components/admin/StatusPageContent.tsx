@@ -551,6 +551,7 @@ export function StatusPageContent({
         title: "Status page settings saved",
         description: "Your status page settings have been updated successfully.",
         duration: 3000,
+        variant: "success",
       });
     } catch (err) {
       console.error("Failed to save status page settings:", err);
@@ -616,6 +617,7 @@ export function StatusPageContent({
         title: "Appearance settings saved",
         description: "Your appearance settings have been updated successfully.",
         duration: 3000,
+        variant: "success",
       });
     } catch (err) {
       console.error("Failed to save appearance settings:", err);
@@ -663,15 +665,16 @@ export function StatusPageContent({
       // Show success notification
       toast({
         title: "Advanced settings saved",
-        description: "Your custom CSS and HTML have been updated successfully.",
+        description: "Your advanced settings have been updated successfully.",
         duration: 3000,
+        variant: "success",
       });
     } catch (err) {
       console.error("Failed to save advanced settings:", err);
       // Show error notification
       toast({
         title: "Error saving advanced settings",
-        description: "There was a problem saving your custom settings. Please try again.",
+        description: "There was a problem saving your advanced settings. Please try again.",
         variant: "destructive",
         duration: 5000,
       });

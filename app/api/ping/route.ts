@@ -20,15 +20,33 @@ export async function GET(request: Request) {
   
   // Check for API key if request comes from GitHub Actions
   const runId = url.searchParams.get('runId');
-  const apiKey = request.headers.get('x-api-key');
+  
+  // Check for API key in various header formats
+  const apiKey = 
+    request.headers.get('x-api-key') || 
+    request.headers.get('X-API-Key') || 
+    extractBearerToken(request.headers.get('Authorization'));
   
   // If run from GitHub Actions, verify API key
-  if (runId && !validateApiKey(apiKey)) {
-    console.error(`[Ping] Unauthorized access attempt with run ID: ${runId}`);
-    return NextResponse.json(
-      { error: 'Unauthorized. Invalid or missing API key.' },
-      { status: 401 }
-    );
+  if (runId) {
+    if (!apiKey) {
+      console.error(`[Ping] Unauthorized access attempt with run ID: ${runId} - No API Key provided`);
+      return NextResponse.json(
+        { error: 'Unauthorized. Missing API key for GitHub Actions request.' },
+        { status: 401 }
+      );
+    }
+    
+    const isValidApiKey = await validateApiKey(apiKey);
+    if (!isValidApiKey) {
+      console.error(`[Ping] Unauthorized access attempt with run ID: ${runId} - Invalid API Key`);
+      return NextResponse.json(
+        { error: 'Unauthorized. Invalid API key.' },
+        { status: 401 }
+      );
+    }
+    
+    console.log(`[Ping] GitHub Actions run ID: ${runId} - API key validation successful`);
   }
   
   // Reset interval analysis
@@ -220,8 +238,8 @@ async function validateApiKey(apiKey: string | null): Promise<boolean> {
     if (!config.githubAction?.enabled) return false;
     
     // Check if we have a stored API key in the configuration
-    // In a real implementation, this would be a secure comparison with a hashed key
     if (config.apiKey) {
+      // Use constant-time comparison if available (not in this example)
       return apiKey === config.apiKey;
     }
     
@@ -310,4 +328,15 @@ async function checkAllServices() {
     console.error('Error reading services from Redis:', error);
     throw error;
   }
+}
+
+/**
+ * Helper function to extract bearer token from Authorization header
+ */
+function extractBearerToken(authHeader: string | null): string | null {
+  if (!authHeader) return null;
+  
+  // Check for 'Bearer ' prefix and extract the token
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1] : null;
 } 

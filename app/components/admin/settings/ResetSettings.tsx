@@ -95,6 +95,7 @@ export function ResetSettings() {
         title: "Factory reset successful",
         description: "The application has been reset to its initial state. You will be redirected to the setup page.",
         duration: 5000,
+        variant: "info",
       });
       
       // Redirect to setup page after a short delay

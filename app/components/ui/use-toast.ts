@@ -15,6 +15,7 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  variant?: "default" | "destructive" | "success" | "info" | "error"
 }
 
 const actionTypes = {
@@ -141,7 +142,7 @@ function addToRemoveQueue(toastId: string) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast(props: Toast) {
+function toast({ variant = "default", ...props }: Toast) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -155,6 +156,7 @@ function toast(props: Toast) {
     type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
+      variant,
       id,
       open: true,
       onOpenChange: (open: boolean) => {
@@ -168,6 +170,19 @@ function toast(props: Toast) {
     dismiss,
     update,
   }
+}
+
+// Helper functions for common toast types
+function success(props: Omit<Toast, "variant">) {
+  return toast({ ...props, variant: "success" })
+}
+
+function error(props: Omit<Toast, "variant">) {
+  return toast({ ...props, variant: "destructive" })
+}
+
+function info(props: Omit<Toast, "variant">) {
+  return toast({ ...props, variant: "info" })
 }
 
 function useToast() {
@@ -186,6 +201,9 @@ function useToast() {
   return {
     ...state,
     toast,
+    success,
+    error,
+    info,
     dismiss: (toastId?: string) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
   }
 }

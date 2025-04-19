@@ -26,10 +26,15 @@ interface PreloadedData {
   loggerStatus: any | null;
   pingStats: any | null;
   generalSettings: any | null;
+  githubSettings: any | null;
 }
 
 export function useAdminLoader() {
-  console.log("[useAdminLoader] Hook initialized");
+  // Only log initialization in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log("[useAdminLoader] Hook initialized");
+  }
+  
   const router = useRouter();
   const [isLoaded, setIsLoaded] = useState(false);
   const [isValidatingSession, setIsValidatingSession] = useState(true);
@@ -52,6 +57,8 @@ export function useAdminLoader() {
   const [systemDataLoaded, setSystemDataLoaded] = useState(false);
   const [generalSettingsData, setGeneralSettingsData] = useState<any>(null);
   const [generalSettingsLoaded, setGeneralSettingsLoaded] = useState(false);
+  const [githubSettingsData, setGithubSettingsData] = useState<any>(null);
+  const [githubSettingsLoaded, setGithubSettingsLoaded] = useState(false);
   
   // Track specifically which services have been loaded for the history dropdown
   const [historyServicesList, setHistoryServicesList] = useState<HistoryServiceItem[]>([]);
@@ -70,7 +77,8 @@ export function useAdminLoader() {
     historyServices: null,
     loggerStatus: null,
     pingStats: null,
-    generalSettings: null
+    generalSettings: null,
+    githubSettings: null
   });
 
   // Preload logo during loading phase
@@ -471,85 +479,97 @@ export function useAdminLoader() {
     }
   }, [systemDataLoaded, generalSettingsLoaded, isLoaded]);
 
+  // Preload GitHub settings data
+  useEffect(() => {
+    async function preloadGithubSettings() {
+      console.log("[useAdminLoader] Starting GitHub settings preload");
+      try {
+        setLoadingState("Loading GitHub settings...");
+        
+        // Fetch GitHub settings directly - no longer dependent on generalSettings
+        try {
+          console.log("[useAdminLoader] Fetching GitHub settings");
+          const githubResponse = await fetch('/api/settings/github');
+          if (githubResponse.ok) {
+            const githubData = await githubResponse.json();
+            console.log("[useAdminLoader] GitHub settings loaded successfully");
+            setGithubSettingsData(githubData);
+          } else {
+            console.error(`[useAdminLoader] Failed to preload GitHub settings: ${githubResponse.status}`);
+          }
+        } catch (error) {
+          console.error("[useAdminLoader] Error preloading GitHub settings:", error);
+        }
+        
+        setGithubSettingsLoaded(true);
+        console.log("[useAdminLoader] GitHub settings preload complete");
+      } catch (error) {
+        console.error("[useAdminLoader] Failed to preload GitHub settings:", error);
+        // Continue even if there's an error
+        setGithubSettingsLoaded(true);
+      }
+    }
+    
+    // Run after system data is loaded, not dependent on general settings anymore
+    if (systemDataLoaded && !githubSettingsLoaded && !isLoaded) {
+      preloadGithubSettings();
+    }
+  }, [systemDataLoaded, githubSettingsLoaded, isLoaded]);
+
   // Enhanced loading logic with progress tracking
   useEffect(() => {
     if (isLoaded) return;
 
-    console.log("[useAdminLoader] Checking loading progress", {
-      isValidatingSession,
-      logoPreloaded,
-      statusPageDataLoaded,
-      servicesDataLoaded,
-      historyDataLoaded, 
-      systemDataLoaded,
-      generalSettingsLoaded,
-      setupLoading
-    });
-
-    // Track loading progress
-    if (isValidatingSession) {
-      setLoadingState("Validating session...");
-      setLoadingProgress(10);
-    } else if (!logoPreloaded) {
-      // Wait for logo to preload (handled in the other effect)
-    } else if (!statusPageDataLoaded) {
-      // Wait for status page data to load (handled in the preloadStatusPageData effect)
-    } else if (!servicesDataLoaded) {
-      // Wait for services data to load (handled in the preloadServicesData effect)
-    } else if (!historyDataLoaded) {
-      // Wait for history data to load (handled in the preloadHistoryData effect)
-    } else if (!systemDataLoaded) {
-      // Wait for system data to load (handled in the preloadSystemData effect)
-    } else if (!generalSettingsLoaded) {
-      // Wait for general settings to load (handled in the preloadGeneralSettings effect)
-    } else if (setupLoading) {
-      setLoadingState("Checking setup status...");
-      setLoadingProgress(99);
-    } else {
-      // Do a final validation of all the preloaded data before showing content
-      console.log("[useAdminLoader] All data loaded, validating final data");
-      
-      let dataValidationMessage = "";
-      
-      // Validate services data
-      if (!servicesData || !Array.isArray(servicesData) || servicesData.length === 0 || 
-          !servicesData.some(s => s && typeof s === 'object' && s.name)) {
-        dataValidationMessage = "Service data validation failed, some features may be limited.";
-        console.warn("Services data validation failed:", servicesData);
-      }
-      
-      // Validate history data
-      if (!historyData || !Array.isArray(historyData) || historyData.length === 0 || 
-          !historyData.some(item => item && typeof item === 'object' && item.service && item.item)) {
-        if (dataValidationMessage) {
-          dataValidationMessage += " History data also failed validation.";
-        } else {
-          dataValidationMessage = "History data validation failed, some features may be limited.";
-        }
-        console.warn("History data validation failed:", historyData);
-      }
-      
-      if (dataValidationMessage) {
-        setLoadingState(dataValidationMessage);
+    // Avoid excessive logging
+    const loadProgress = () => {
+      if (isValidatingSession) {
+        setLoadingState("Validating session...");
+        setLoadingProgress(10);
+      } else if (!logoPreloaded) {
+        // Wait for logo to preload (handled in the other effect)
+      } else if (!statusPageDataLoaded) {
+        // Wait for status page data to load (handled in the preloadStatusPageData effect)
+      } else if (!servicesDataLoaded) {
+        // Wait for services data to load (handled in the preloadServicesData effect)
+      } else if (!historyDataLoaded) {
+        // Wait for history data to load (handled in the preloadHistoryData effect)
+      } else if (!systemDataLoaded) {
+        // Wait for system data to load (handled in the preloadSystemData effect)
+      } else if (!generalSettingsLoaded) {
+        // Wait for general settings to load (handled in the preloadGeneralSettings effect)
+      } else if (!githubSettingsLoaded) {
+        // Wait for GitHub settings to load (handled in the preloadGithubSettings effect)
+        // This now runs independently of general settings
+      } else if (setupLoading) {
+        setLoadingState("Checking setup status...");
+        setLoadingProgress(99);
       } else {
+        // Do a final validation of all the preloaded data before showing content
+        console.log("[useAdminLoader] All data loaded, preparing UI");
+        
+        // Show data loaded message
         setLoadingState("Data loaded successfully!");
+        setLoadingProgress(100);
+        
+        // Small delay before showing content to ensure smooth transition
+        const timer = setTimeout(() => {
+          setIsLoaded(true);
+        }, 300);
+        return () => clearTimeout(timer);
       }
-      
-      setLoadingProgress(100);
-      console.log("[useAdminLoader] Loading complete, preparing to show UI");
-      // Small delay before showing content to ensure smooth transition
-      const timer = setTimeout(() => {
-        console.log("[useAdminLoader] Setting isLoaded to true, UI should now render");
-        setIsLoaded(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoaded, isValidatingSession, logoPreloaded, statusPageDataLoaded, servicesDataLoaded, historyDataLoaded, systemDataLoaded, generalSettingsLoaded, setupLoading, servicesData, historyData]);
+    };
+    
+    loadProgress();
+  }, [
+    isLoaded, isValidatingSession, logoPreloaded, statusPageDataLoaded, 
+    servicesDataLoaded, historyDataLoaded, systemDataLoaded, 
+    generalSettingsLoaded, githubSettingsLoaded, setupLoading
+  ]);
 
   // Update the preloadedDataRef with validated data
   useEffect(() => {
     if (!isLoaded) {
-      console.log("[useAdminLoader] Updating preloaded data reference");
+      // Skip excessive logging to reduce console spam
       
       // Validate services data
       const validServicesData = servicesData && 
@@ -610,6 +630,12 @@ export function useAdminLoader() {
         typeof generalSettingsData === 'object'
           ? generalSettingsData 
           : null;
+          
+      // Validate GitHub settings data
+      const validGithubSettingsData = githubSettingsData && 
+        typeof githubSettingsData === 'object'
+          ? githubSettingsData 
+          : null;
       
       // Update the preloaded data ref with validated data
       preloadedDataRef.current = {
@@ -621,28 +647,36 @@ export function useAdminLoader() {
         historyServices: validHistoryServicesList,
         loggerStatus: validLoggerStatusData,
         pingStats: validPingStatsData,
-        generalSettings: validGeneralSettingsData
+        generalSettings: validGeneralSettingsData,
+        githubSettings: validGithubSettingsData
       };
       
-      console.log("[useAdminLoader] Data reference updated", {
-        hasServices: !!validServicesData,
-        hasServicesConfig: !!validServicesConfigData,
-        hasStatusPage: !!validStatusPageData,
-        hasAppearance: !!validAppearanceData,
-        hasHistory: !!validHistoryData,
-        hasHistoryServices: !!validHistoryServicesList,
-        hasLoggerStatus: !!validLoggerStatusData,
-        hasPingStats: !!validPingStatsData,
-        hasGeneralSettings: !!validGeneralSettingsData
-      });
+      // Only log in development to reduce console spam
+      if (process.env.NODE_ENV === 'development') {
+        console.log("[useAdminLoader] Data reference updated", {
+          hasServices: !!validServicesData,
+          hasServicesConfig: !!validServicesConfigData,
+          hasStatusPage: !!validStatusPageData,
+          hasAppearance: !!validAppearanceData,
+          hasHistory: !!validHistoryData,
+          hasHistoryServices: !!validHistoryServicesList,
+          hasLoggerStatus: !!validLoggerStatusData,
+          hasPingStats: !!validPingStatsData,
+          hasGeneralSettings: !!validGeneralSettingsData,
+          hasGithubSettings: !!validGithubSettingsData
+        });
+      }
     }
-  }, [servicesData, servicesConfigData, statusPageData, appearanceData, historyData, historyServicesList, loggerStatusData, pingStatsData, generalSettingsData, isLoaded]);
+  }, [
+    servicesData, servicesConfigData, statusPageData, appearanceData, 
+    historyData, historyServicesList, loggerStatusData, pingStatsData, 
+    generalSettingsData, githubSettingsData, isLoaded
+  ]);
 
   // Ensure the session is valid on page load
   useEffect(() => {
     async function validateSession() {
       try {
-        console.log("Validating session...");
         setLoadingState("Validating session...");
         setLoadingProgress(10);
         
@@ -654,28 +688,24 @@ export function useAdminLoader() {
           credentials: 'include' // Important to include cookies
         });
         
-        console.log("Session validation response status:", response.status);
-        
         if (!response.ok) {
-          console.error('Session validation failed with status:', response.status);
+          console.error('[useAdminLoader] Session validation failed:', response.status);
           redirectToLogin();
           return;
         }
         
         const data = await response.json();
-        console.log("Session validation data:", data);
         
         if (!data.valid) {
-          console.log('Invalid session detected, redirecting to login');
+          console.log('[useAdminLoader] Invalid session detected, redirecting to login');
           redirectToLogin();
           return;
         }
         
-        console.log("Session is valid, continuing to load admin page");
         // Only proceed if session is valid
         setIsValidatingSession(false);
       } catch (error) {
-        console.error("Session validation error:", error);
+        console.error("[useAdminLoader] Session validation error:", error);
         redirectToLogin();
         return;
       }
@@ -684,7 +714,7 @@ export function useAdminLoader() {
     function redirectToLogin() {
       // Add timestamp to prevent cache issues
       const redirectUrl = `/login?from=/admin&t=${Date.now()}`;
-      console.log("Redirecting to login:", redirectUrl);
+      console.log("[useAdminLoader] Redirecting to login:", redirectUrl);
       window.location.href = redirectUrl;
     }
     
@@ -698,13 +728,8 @@ export function useAdminLoader() {
     }
   }, [setupComplete, setupLoading, router, isValidatingSession]);
 
-  // Return hook values with additional debugging context
-  console.log("[useAdminLoader] Returning hook data", {
-    isLoaded,
-    hasPreloadedData: !!preloadedDataRef.current.services
-  });
-  
-  return {
+  // Return hook values with minimal logging
+  const hookResult = {
     // Loading state
     isLoaded,
     isValidatingSession,
@@ -717,4 +742,14 @@ export function useAdminLoader() {
     // Preloaded data
     preloadedData: preloadedDataRef.current
   };
+  
+  // Log only in development mode
+  if (process.env.NODE_ENV === 'development') {
+    console.log("[useAdminLoader] Returning hook data", {
+      isLoaded: hookResult.isLoaded,
+      hasPreloadedData: !!hookResult.preloadedData.services
+    });
+  }
+  
+  return hookResult;
 } 

@@ -28,16 +28,26 @@ import { AdminStatusPage } from "../components/admin/pages/StatusPage";
 import { AdminHistory } from "../components/admin/pages/History";
 import { AdminSettings } from "../components/admin/pages/Settings";
 import { AdminAbout } from "../components/admin/pages/About";
+import { GitHubActionsPage } from "../components/admin/pages/GitHubActions";
 
 // Create a client-only wrapper to prevent hydration issues
 const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: string; service?: string }> }) => {
-  console.log("[AdminPageClient] Initializing admin page client");
+  // Only log once during initial load
+  const isDevMode = process.env.NODE_ENV === 'development';
+  const initialLoadRef = useRef(true);
+  
+  if (isDevMode && initialLoadRef.current) {
+    console.log("[AdminPageClient] Initializing admin page");
+    initialLoadRef.current = false;
+  }
+  
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [componentMounted, setComponentMounted] = useState(false);
 
   // Use the admin loader hook to handle all loading logic
+  const adminLoader = useAdminLoader();
   const { 
     isLoaded, 
     isValidatingSession, 
@@ -47,92 +57,76 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
     setupError, 
     logoUrl,
     preloadedData
-  } = useAdminLoader();
-
-  // Determine if this is a development environment
-  const isDev = process.env.NODE_ENV === 'development';
+  } = adminLoader;
 
   // Add ref to track unsaved changes callbacks from different content components
   const unsavedChangesCallbacksRef = useRef<Record<string, () => boolean>>({});
 
-  // Log when admin page mounts and loads
+  // Log when admin page mounts
   useEffect(() => {
-    console.log("[AdminPageClient] Component mounted");
+    if (isDevMode) {
+      console.log("[AdminPageClient] Component mounted");
+    }
     setComponentMounted(true);
     
-    // Log loading state updates
-    console.log("[AdminPageClient] Initial loading state:", {
-      isLoaded,
-      isValidatingSession,
-      setupLoading,
-      hasPreloadedData: !!preloadedData?.services,
-      componentMounted
-    });
-    
     return () => {
-      console.log("[AdminPageClient] Component unmounting");
+      if (isDevMode) {
+        console.log("[AdminPageClient] Component unmounting");
+      }
     };
-  }, []);
+  }, [isDevMode]);
 
-  // Log when loading state changes
+  // Log when loading is complete
   useEffect(() => {
-    console.log("[AdminPageClient] Loading state updated:", {
-      isLoaded,
-      isValidatingSession,
-      setupLoading,
-      loadingProgress,
-      loadingState
-    });
-  }, [isLoaded, isValidatingSession, setupLoading, loadingProgress, loadingState]);
-
-  // Log when preloaded data is updated
-  useEffect(() => {
-    if (preloadedData && preloadedData.services) {
-      console.log("[AdminPageClient] Preloaded data is available:", {
-        services: !!preloadedData.services,
-        servicesConfig: !!preloadedData.servicesConfig,
-        statusPage: !!preloadedData.statusPage,
-        history: !!preloadedData.history,
-        pingStats: !!preloadedData.pingStats
+    if (isDevMode && isLoaded && !setupLoading && !isValidatingSession) {
+      console.log("[AdminPageClient] Loading complete", {
+        activeTab
       });
     }
-  }, [preloadedData]);
+  }, [isLoaded, setupLoading, isValidatingSession, activeTab, isDevMode]);
 
   // Function to register an unsaved changes callback
   const registerUnsavedChangesCallback = useCallback((key: string, callback: () => boolean) => {
-    console.log(`[AdminPageClient] Registering callback for ${key}`);
+    if (isDevMode) {
+      console.log(`[AdminPageClient] Registering callback for ${key}`);
+    }
     unsavedChangesCallbacksRef.current[key] = callback;
-  }, []);
+  }, [isDevMode]);
 
   // Function to check if there are any unsaved changes
   const hasUnsavedChanges = useCallback(() => {
     // Check all registered callbacks
     const keys = Object.keys(unsavedChangesCallbacksRef.current);
-    console.log(`[AdminPageClient] Checking unsaved changes, ${keys.length} callbacks registered:`, keys);
     
     for (const key in unsavedChangesCallbacksRef.current) {
       const callback = unsavedChangesCallbacksRef.current[key];
       if (callback && callback()) {
-        console.log(`[AdminPageClient] Found unsaved changes in ${key}`);
+        if (isDevMode) {
+          console.log(`[AdminPageClient] Found unsaved changes in ${key}`);
+        }
         return true;
       }
     }
     return false;
-  }, []);
+  }, [isDevMode]);
 
   // Add a clearUnsavedChangesCallback function
   const clearUnsavedChangesCallback = useCallback((key?: string) => {
     if (key) {
-      console.log(`[AdminPageClient] Clearing callback for ${key}`);
+      if (isDevMode) {
+        console.log(`[AdminPageClient] Clearing callback for ${key}`);
+      }
       if (unsavedChangesCallbacksRef.current[key]) {
         delete unsavedChangesCallbacksRef.current[key];
       }
     } else {
-      console.log('[AdminPageClient] Clearing all callbacks');
+      if (isDevMode) {
+        console.log('[AdminPageClient] Clearing all callbacks');
+      }
       // Clear all callbacks
       unsavedChangesCallbacksRef.current = {};
     }
-  }, []);
+  }, [isDevMode]);
 
   // Check URL parameters on mount
   useEffect(() => {
@@ -142,16 +136,11 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
         try {
           const resolvedParams = await searchParams;
           
-          // Log initial URL parameters
-          console.log('[AdminPageClient] URL parameters detected:', { 
-            tab: resolvedParams.tab, 
-            service: resolvedParams.service,
-            rawSearchParams: resolvedParams
-          });
-          
           // Update active tab based on URL
           if (resolvedParams.tab) {
-            console.log(`[AdminPageClient] Setting active tab to: ${resolvedParams.tab}`);
+            if (isDevMode) {
+              console.log(`[AdminPageClient] Setting active tab from URL: ${resolvedParams.tab}`);
+            }
             setActiveTab(resolvedParams.tab);
           }
         } catch (error) {
@@ -161,11 +150,13 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
     };
     
     initFromSearchParams();
-  }, [searchParams]);
+  }, [searchParams, isDevMode]);
   
   // Handle tab change
   const handleTabChange = (value: string) => {
-    console.log(`[AdminPageClient] Tab changed to: ${value}`);
+    if (isDevMode) {
+      console.log(`[AdminPageClient] Tab changed to: ${value}`);
+    }
     
     // Update URL with the new tab value
     if (typeof window !== 'undefined') {
@@ -173,21 +164,17 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
       
       // Track current parameters before changing
       const currentService = url.searchParams.get('service');
-      console.log(`[AdminPageClient] Current service parameter: ${currentService}`);
       
       // Set the new tab
       url.searchParams.set('tab', value);
       
       // Preserve service parameter when switching to services tab
       if (value === 'services' && currentService) {
-        console.log(`[AdminPageClient] Preserving service parameter: ${currentService}`);
+        // Keep service parameter
       } else if (value !== 'services') {
         // If switching to a different tab, remove service parameter
         url.searchParams.delete('service');
       }
-      
-      // Log the final URL parameters
-      console.log(`[AdminPageClient] Updated URL parameters:`, Object.fromEntries(url.searchParams.entries()));
       
       // Update URL
       window.history.pushState({}, '', url.toString());
@@ -229,26 +216,17 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
     }
   }
 
-  // For our navigation debugging
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).debugTab = activeTab;
-      (window as any).debugParams = searchParams;
-      console.log('[AdminPageClient] Debug variables set. Check window.debugTab and window.debugParams');
-    }
-  }, [activeTab, searchParams]);
-
   // Show loading screen until everything is ready
   // Only proceed when all data is loaded AND the component is mounted
   const showLoadingScreen = !isLoaded || setupLoading || isValidatingSession || !componentMounted;
   
   if (showLoadingScreen) {
-    console.log("[AdminPageClient] Showing loading screen", {
-      isLoaded,
-      setupLoading,
-      isValidatingSession,
-      componentMounted
-    });
+    if (isDevMode) {
+      console.log("[AdminPageClient] Showing loading screen", {
+        loadingState,
+        loadingProgress
+      });
+    }
     return (
       <LoadingScreen
         loadingProgress={loadingProgress}
@@ -261,7 +239,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   }
 
   if (setupError) {
-    console.log("[AdminPageClient] Setup error detected:", setupError);
+    console.error("[AdminPageClient] Setup error detected:", setupError);
     return (
       <LoadingScreen
         loadingProgress={loadingProgress}
@@ -273,7 +251,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
 
   // Ensure preloaded data is available
   if (!preloadedData || !preloadedData.services) {
-    console.log("[AdminPageClient] Missing preloaded data, showing loading screen");
+    console.error("[AdminPageClient] Missing preloaded data, showing loading screen");
     return (
       <LoadingScreen
         loadingProgress={99}
@@ -284,11 +262,11 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
     );
   }
 
-  console.log("[AdminPageClient] Ready to render main content, current tab:", activeTab);
-
   // Render the appropriate content based on active tab
   const renderContent = () => {
-    console.log(`[AdminPageClient] Rendering content for tab: ${activeTab}`);
+    if (isDevMode) {
+      console.log(`[AdminPageClient] Rendering content for tab: ${activeTab}`);
+    }
     
     switch(activeTab) {
       case "dashboard":
@@ -322,6 +300,16 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           preloadedHistoryServices={preloadedData.historyServices}
           setActiveTab={handleTabChange}
         />;
+      case "github-actions":
+        return <div className="max-w-4xl">
+          <GitHubActionsPage 
+            setActiveTab={handleTabChange}
+            registerUnsavedChangesCallback={registerUnsavedChangesCallback}
+            preloadedData={{ 
+              githubSettings: preloadedData.githubSettings 
+            }}
+          />
+        </div>;
       case "settings":
         return <div className="max-w-2xl">
           <AdminSettings 
@@ -337,7 +325,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           />
         </div>;
       default:
-        console.log(`[AdminPageClient] Unknown tab: ${activeTab}, defaulting to dashboard`);
+        console.warn(`[AdminPageClient] Unknown tab: ${activeTab}, defaulting to dashboard`);
         return <AdminDashboard 
           preloadedServices={preloadedData.services}
           preloadedStatusPageData={preloadedData.statusPage}
@@ -359,6 +347,8 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
         return "Status Page";
       case "history":
         return "Uptime History";
+      case "github-actions":
+        return "GitHub Actions";
       case "settings":
         return "Settings";
       case "about":
@@ -379,6 +369,8 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
         return "Configure your public status page";
       case "history":
         return "View uptime logs and incident history";
+      case "github-actions":
+        return "Configure automated monitoring with GitHub Actions";
       case "settings":
         return "Configure system settings and preferences";
       case "about":

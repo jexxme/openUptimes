@@ -1,0 +1,75 @@
+/**
+ * Example of how to test services endpoint with MongoDB instead of Redis
+ * 
+ * This file demonstrates how to adapt the tests to use MongoDB mocks
+ * instead of Redis mocks, while keeping the test cases identical.
+ */
+
+import { NextRequest } from 'next/server';
+import { GET, POST, PUT, DELETE } from '../../../app/api/services/route';
+import * as mongoDBMock from '../../lib/mongodb-mock-example';
+import { ServiceConfig } from '../../../lib/config';
+
+// Interface for mocked response
+interface MockedResponse {
+  status: number;
+  headers: Record<string, string>;
+  data: any;
+  json: () => Promise<any>;
+}
+
+// Mock the Redis module with our MongoDB implementation
+jest.mock('../../../lib/redis', () => {
+  return {
+    // Use the MongoDB mock instead of Redis mock
+    ...jest.requireActual('../../lib/mongodb-mock-example'),
+  };
+});
+
+describe('Services API Endpoints with MongoDB', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Reset MongoDB mocks instead of Redis mocks
+    mongoDBMock.resetMockMongoDB();
+  });
+
+  describe('GET /api/services', () => {
+    it('should return an empty array when no services exist', async () => {
+      const request = new NextRequest('http://localhost:3000/api/services');
+      const response = await GET(request) as unknown as MockedResponse;
+      
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual([]);
+      expect(mongoDBMock.getMongoDBClient).toHaveBeenCalled();
+    });
+
+    it('should return active services', async () => {
+      // Set up test services using MongoDB helper
+      const testServices: ServiceConfig[] = [
+        {
+          name: 'Google',
+          url: 'https://google.com',
+          description: 'Search engine'
+        },
+        {
+          name: 'GitHub',
+          url: 'https://github.com',
+          description: 'Code repository'
+        }
+      ];
+
+      mongoDBMock.setMockServices(testServices);
+      
+      const request = new NextRequest('http://localhost:3000/api/services');
+      const response = await GET(request) as unknown as MockedResponse;
+      
+      expect(response.status).toBe(200);
+      expect(response.data).toHaveLength(2);
+      expect(response.data[0].name).toBe('Google');
+      expect(response.data[1].name).toBe('GitHub');
+    });
+  });
+
+  // The rest of the test cases would be identical to the Redis version
+  // but using mongoDBMock instead of redisMock
+}); 

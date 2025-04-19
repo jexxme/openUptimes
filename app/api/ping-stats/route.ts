@@ -11,6 +11,10 @@ export async function GET(request: Request) {
     const limitParam = url.searchParams.get('limit');
     // Default to 10 entries, unless limit=0 (which means all entries)
     const limit = limitParam === '0' ? -1 : parseInt(limitParam || '10', 10);
+    // Service filter parameter
+    const serviceFilter = url.searchParams.get('service');
+    // Time range filter (e.g., 30m for last 30 minutes, 1h for last hour)
+    const timeRangeParam = url.searchParams.get('timeRange');
     
     const client = await getRedisClient();
     
@@ -52,6 +56,79 @@ export async function GET(request: Request) {
       repository: ''
     };
     
+    const now = Date.now();
+    
+    // Process service statuses into stats data for each service
+    const stats: Record<string, any> = {};
+    
+    if (services) {
+      const serviceList = JSON.parse(services);
+      
+      for (const service of serviceList) {
+        // Skip this service if a service filter is specified and doesn't match
+        if (serviceFilter && service.name !== serviceFilter) {
+          continue;
+        }
+        
+        const statusKey = `ping:stats:${service.name}`;
+        const statsData = await client.get(statusKey);
+        
+        if (statsData) {
+          const pingData = JSON.parse(statsData);
+          
+          // Calculate stats for this service
+          let upCount = 0;
+          let totalResponseTime = 0;
+          
+          // Parse time range if specified (e.g., 30m, 1h, 24h)
+          let timeRangeFilter = 0;
+          if (timeRangeParam) {
+            const match = timeRangeParam.match(/^(\d+)([mhdw])$/);
+            if (match) {
+              const value = parseInt(match[1], 10);
+              const unit = match[2];
+              
+              // Convert to milliseconds
+              switch (unit) {
+                case 'm': // minutes
+                  timeRangeFilter = value * 60 * 1000;
+                  break;
+                case 'h': // hours
+                  timeRangeFilter = value * 60 * 60 * 1000;
+                  break;
+                case 'd': // days
+                  timeRangeFilter = value * 24 * 60 * 60 * 1000;
+                  break;
+                case 'w': // weeks
+                  timeRangeFilter = value * 7 * 24 * 60 * 60 * 1000;
+                  break;
+              }
+            }
+          }
+          
+          // Apply time range filter if specified
+          let filteredPings = pingData;
+          if (timeRangeFilter > 0) {
+            const cutoffTime = Date.now() - timeRangeFilter;
+            filteredPings = pingData.filter((ping: any) => ping.timestamp >= cutoffTime);
+          }
+          
+          filteredPings.forEach((ping: any) => {
+            if (ping.status === 'up') upCount++;
+            if (ping.responseTime) totalResponseTime += ping.responseTime;
+          });
+          
+          // Add stats for this service
+          stats[service.name] = {
+            lastPing: filteredPings[0]?.timestamp || null,
+            avgResponseTime: filteredPings.length ? Math.round(totalResponseTime / filteredPings.length) : 0,
+            uptime: filteredPings.length ? Math.round((upCount / filteredPings.length) * 100) : 0,
+            pings: filteredPings,
+          };
+        }
+      }
+    }
+    
     // Close Redis connection
     await closeRedisConnection();
     
@@ -76,8 +153,6 @@ export async function GET(request: Request) {
       };
     }
     
-    const now = Date.now();
-    
     return NextResponse.json({
       lastPing: lastPing ? parseInt(lastPing, 10) : null,
       nextEstimatedRun: nextRunEstimate,
@@ -87,7 +162,8 @@ export async function GET(request: Request) {
       serviceStatuses,
       recentHistory: parsedPingHistory,
       intervalTrend,
-      currentTime: now
+      currentTime: now,
+      stats: stats || {}
     });
   } catch (error) {
     console.error('Error fetching ping stats:', error);

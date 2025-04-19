@@ -73,4 +73,31 @@ export const formatTime = (timestamp: number | null): string => {
   const seconds = date.getSeconds().toString().padStart(2, '0');
   
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+/**
+ * Format a timestamp as a relative time (e.g., "5m ago")
+ */
+export const formatTimeAgo = (timestamp: number | null): string => {
+  if (!timestamp) return 'Never';
+  
+  const now = Date.now();
+  const diffSeconds = Math.floor((now - timestamp) / 1000);
+  
+  if (diffSeconds < 60) {
+    return `${diffSeconds} second${diffSeconds === 1 ? '' : 's'} ago`;
+  }
+  
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+  }
+  
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  }
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 }; 

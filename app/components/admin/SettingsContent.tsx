@@ -6,6 +6,7 @@ import { Settings, Shield, Trash2, Bug } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { ApplicationTabs } from "@/app/components/ui/application-tabs";
 import { Button } from "@/components/ui/button";
+import { useToast } from "../ui/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -116,15 +117,16 @@ export function SettingsContent({
   registerUnsavedChangesCallback, 
   preloadedData 
 }: SettingsContentProps) {
+  const { toast } = useToast();
+  const [currentTab, setCurrentTab] = useState(activeSection);
+  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
+  
   // Memoize section to tab mapping to prevent unnecessary recalculations  
   const sectionTabValue = useMemo(() => {
     return activeSection === "security" ? "security" : 
            activeSection === "debug" ? "debug" :
            activeSection === "reset" ? "reset" : "general";
   }, [activeSection]);
-  
-  // Current selected tab - use memoized value
-  const [currentTab, setCurrentTab] = useState(sectionTabValue);
   
   // Shared state for general settings - cache loaded settings
   const [generalSettings, setGeneralSettings] = useState<any>(preloadedData?.generalSettings || null);
@@ -148,7 +150,6 @@ export function SettingsContent({
   });
 
   // Dialog state management
-  const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
   const pendingNavigationRef = useRef<{ destination: string } | null>(null);
   
   // Callback function to update the unsaved changes state for a specific tab
@@ -216,34 +217,44 @@ export function SettingsContent({
   
   // Fetch general settings only when needed (lazy loading)
   useEffect(() => {
-    // If preloaded data is available, skip fetching
-    if (preloadedData?.generalSettings || generalSettings !== null) return;
-    
-    // Only fetch settings when the general tab is active and we don't have settings yet
-    if (currentTab !== "general") return;
-    
     async function fetchGeneralSettings() {
-      setSettingsLoading(true);
-      try {
-        const response = await fetch('/api/settings');
-        
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setGeneralSettings(data);
+      if (tabsVisited.general) {
+        setSettingsLoading(true);
         setSettingsError(null);
-      } catch (err) {
-        console.error("Failed to fetch settings:", err);
-        setSettingsError("Failed to load settings. Please refresh the page.");
-      } finally {
-        setSettingsLoading(false);
+        
+        try {
+          // Fetch general settings
+          const response = await fetch('/api/settings');
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch settings: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          // GitHub Actions settings are now in their own page, so we don't need them here
+          setGeneralSettings(data);
+          setSettingsLoading(false);
+        } catch (err) {
+          console.error("Failed to load settings:", err);
+          setSettingsError("Failed to load settings. Please try again later.");
+          setSettingsLoading(false);
+          
+          toast({
+            title: "Error Loading Settings",
+            description: "Failed to load settings from the server. Please try refreshing the page.",
+            variant: "destructive",
+            duration: 5000,
+          });
+        }
       }
     }
     
+    // If preloaded data is available, skip fetching
+    if (preloadedData?.generalSettings || generalSettings !== null) return;
+    
     fetchGeneralSettings();
-  }, [currentTab, generalSettings, preloadedData]);
+  }, [currentTab, generalSettings, preloadedData, tabsVisited.general, toast]);
   
   // Memoized function to check if any tab has unsaved changes
   const hasAnyUnsavedChanges = useMemo(() => {

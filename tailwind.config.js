@@ -16,6 +16,20 @@ module.exports = {
       },
     },
     extend: {
+      keyframes: {
+        "subtle-pulse": {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.85' },
+        },
+        "pulse-slow": {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' },
+        },
+      },
+      animation: {
+        "subtle-pulse": "subtle-pulse 2s ease-in-out infinite",
+        "pulse-slow": "pulse-slow 3s ease-in-out infinite",
+      },
       colors: {
         border: "var(--border)",
         input: "var(--input)",

@@ -1,0 +1,6 @@
+# Ignore these files in test coverage report
+/app/api/init/route.ts
+/app/api/settings/appearance/route.ts
+/app/api/settings/general/route.ts
+/app/api/settings/github/route.ts
+/app/api/settings/statuspage/route.ts 

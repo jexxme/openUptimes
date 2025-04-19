@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
+import { X, CheckCircle2, AlertCircle, Info } from "lucide-react"
 
 import { cn } from "../../../lib/utils"
 
@@ -32,6 +32,10 @@ const toastVariants = cva(
         default: "border bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50",
         destructive:
           "destructive group border-red-500 bg-red-500 text-slate-50 dark:border-red-900 dark:bg-red-900 dark:text-slate-50",
+        success:
+          "success group border-green-500 bg-green-50 text-green-900 dark:border-green-700 dark:bg-green-900/20 dark:text-green-300",
+        info:
+          "info group border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300",
       },
     },
     defaultVariants: {
@@ -40,11 +44,25 @@ const toastVariants = cva(
   }
 )
 
+type IconVariant = "success" | "error" | "info" | "default" | "destructive"
+
+const IconMap: Record<IconVariant, React.ReactNode> = {
+  success: <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />,
+  error: <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400" />,
+  destructive: <AlertCircle className="h-5 w-5 text-white dark:text-white" />,
+  info: <Info className="h-5 w-5 text-blue-500 dark:text-blue-400" />,
+  default: null,
+}
+
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
+    VariantProps<typeof toastVariants> & {
+      showIcon?: boolean;
+    }
+>(({ className, variant, showIcon = true, ...props }, ref) => {
+  const icon = variant && showIcon ? IconMap[variant as IconVariant] : null;
+  
   return (
     <ToastPrimitives.Root
       ref={ref}
@@ -126,4 +144,5 @@ export {
   ToastDescription,
   ToastClose,
   ToastAction,
+  IconMap,
 } 

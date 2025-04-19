@@ -112,6 +112,7 @@ export function SecuritySettings() {
       title: "Copied to clipboard",
       description: "Redis URL has been copied to your clipboard",
       duration: 3000,
+      variant: "info",
     });
   };
 
@@ -170,6 +171,7 @@ export function SecuritySettings() {
         title: "Password updated",
         description: "Your admin password has been changed successfully",
         duration: 3000,
+        variant: "success",
       });
     } catch (error) {
       console.error("Password change error:", error);
@@ -235,6 +237,7 @@ export function SecuritySettings() {
         title: "Password reset successful",
         description: "Your password has been reset successfully. You can now log in with your new password.",
         duration: 5000,
+        variant: "success",
       });
     } catch (error) {
       console.error("Password reset error:", error);

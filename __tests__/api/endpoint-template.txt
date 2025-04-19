@@ -1,0 +1,100 @@
+// Template for testing API endpoints
+
+/**
+ * Example endpoint test for XYZ API endpoint
+ * 
+ * How to use this template:
+ * 1. Copy this file to __tests__/api/[endpoint-name]/[endpoint-name].test.ts
+ * 2. Update imports to match your endpoint path
+ * 3. Replace XYZ with your endpoint name
+ * 4. Add test cases for each HTTP method your endpoint supports
+ * 5. Use mockStorage in the redis-mock.ts to set up test data as needed
+ */
+
+import { NextRequest } from 'next/server';
+import { GET, POST, PUT, DELETE } from '../../../app/api/[endpoint-path]/route';
+import * as redisMock from '../../lib/redis-mock';
+
+// Interface for mocked response
+interface MockedResponse {
+  status: number;
+  headers: Record<string, string>;
+  data: any;
+  json: () => Promise<any>;
+}
+
+// Mock the redis module
+jest.mock('../../../lib/redis', () => {
+  return {
+    ...jest.requireActual('../../lib/redis-mock'),
+  };
+});
+
+describe('XYZ API Endpoints', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    redisMock.resetMockRedis();
+  });
+
+  describe('GET /api/xyz', () => {
+    it('should return data correctly', async () => {
+      // Set up test data
+      // Example: redisMock.setMockServices([...])
+      
+      // Create request
+      const request = new NextRequest('http://localhost:3000/api/xyz');
+      
+      // Call the endpoint
+      const response = await GET(request) as unknown as MockedResponse;
+      
+      // Test the response
+      expect(response.status).toBe(200);
+      expect(response.data).toEqual(/* expected data */);
+    });
+    
+    it('should handle error cases', async () => {
+      // Setup for error condition
+      
+      // Create request
+      const request = new NextRequest('http://localhost:3000/api/xyz?error=true');
+      
+      // Call the endpoint
+      const response = await GET(request) as unknown as MockedResponse;
+      
+      // Test the error response
+      expect(response.status).toBe(404); // Or other error code
+      expect(response.data.error).toBeTruthy();
+    });
+  });
+
+  // Add tests for POST, PUT, DELETE as needed
+  // Example:
+  
+  describe('POST /api/xyz', () => {
+    it('should create a new item', async () => {
+      // Mock request JSON data
+      const mockJson = jest.fn().mockResolvedValue({
+        // Your test data here
+      });
+      
+      // Create request with mocked JSON method
+      const request = new NextRequest('http://localhost:3000/api/xyz');
+      request.json = mockJson;
+      
+      // Call the endpoint
+      const response = await POST(request) as unknown as MockedResponse;
+      
+      // Test the response
+      expect(response.status).toBe(201);
+      expect(response.data).toMatchObject({
+        // Expected response properties
+      });
+      
+      // Verify data was stored correctly
+      // Example:
+      // const client = await redisMock.getRedisClient();
+      // const storedData = JSON.parse(await client.get('key:name'));
+      // expect(storedData).toHaveLength(1);
+    });
+  });
+}); 
