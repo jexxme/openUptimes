@@ -321,7 +321,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="flex h-full flex-col bg-sidebar/90 backdrop-blur-md border-r border-sidebar-border/80"
+      className="flex h-full w-full flex-col bg-sidebar/90 backdrop-blur-md border-r border-sidebar-border/80"
     >
       <div className="flex h-16 items-center justify-center px-5 border-b border-sidebar-border/80 relative">
         <div className="absolute left-0 bottom-0 w-full h-[1px] bg-gradient-to-r from-transparent via-sidebar-primary/20 to-transparent"></div>
@@ -499,7 +499,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
               <div className="flex items-center justify-center w-5 h-5 mr-2">
                 <Globe className="h-[1.05rem] w-[1.05rem] text-primary transition-transform duration-300 ease-out" />
               </div>
-              <span className="flex-1 text-left text-sm tracking-wide">Status Page</span>
+              <span className="flex-1 text-left text-sm tracking-wide">Public Status Page</span>
               <ExternalLink className="h-3 w-3 text-muted-foreground/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200 ease-out" />
             </div>
           </Button>

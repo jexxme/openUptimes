@@ -751,18 +751,22 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           setActiveTab={handleTabChange}
         />;
       case "services":
-        return <AdminServicesPage 
-          preloadedServices={preloadedDataRef.current.services}
-          preloadedServicesConfig={preloadedDataRef.current.servicesConfig}
-          setActiveTab={handleTabChange}
-        />;
+        return <div className="max-w-4xl">
+          <AdminServicesPage 
+            preloadedServices={preloadedDataRef.current.services}
+            preloadedServicesConfig={preloadedDataRef.current.servicesConfig}
+            setActiveTab={handleTabChange}
+          />
+        </div>;
       case "statuspage":
-        return <AdminStatusPage 
-          preloadedStatusPageData={preloadedDataRef.current.statusPage}
-          preloadedAppearanceData={preloadedDataRef.current.appearance}
-          setActiveTab={handleTabChange}
-          registerUnsavedChangesCallback={registerUnsavedChangesCallback}
-        />;
+        return <div className="max-w-4xl">
+          <AdminStatusPage 
+            preloadedStatusPageData={preloadedDataRef.current.statusPage}
+            preloadedAppearanceData={preloadedDataRef.current.appearance}
+            setActiveTab={handleTabChange}
+            registerUnsavedChangesCallback={registerUnsavedChangesCallback}
+          />
+        </div>;
       case "history":
         return <AdminHistory 
           preloadedHistory={preloadedDataRef.current.history}
@@ -770,14 +774,18 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           setActiveTab={handleTabChange}
         />;
       case "settings":
-        return <AdminSettingsPage 
-          setActiveTab={handleTabChange}
-          registerUnsavedChangesCallback={registerUnsavedChangesCallback}
-        />;
+        return <div className="max-w-2xl">
+          <AdminSettingsPage 
+            setActiveTab={handleTabChange}
+            registerUnsavedChangesCallback={registerUnsavedChangesCallback}
+          />
+        </div>;
       case "about":
-        return <AdminAbout 
-          setActiveTab={handleTabChange}
-        />;
+        return <div className="max-w-2xl">
+          <AdminAbout 
+            setActiveTab={handleTabChange}
+          />
+        </div>;
       default:
         return <AdminDashboardPage 
           preloadedServices={preloadedDataRef.current.services}
@@ -808,9 +816,29 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
     }
   };
 
+  // Get a meaningful subtitle for the current tab
+  const getTabSubtitle = () => {
+    switch(activeTab) {
+      case "dashboard":
+        return "Monitor system health and performance";
+      case "services":
+        return "Manage and configure monitored services";
+      case "statuspage":
+        return "Configure your public status page";
+      case "history":
+        return "View uptime logs and incident history";
+      case "settings":
+        return "Configure system settings and preferences";
+      case "about":
+        return "System information and updates";
+      default:
+        return "Manage your OpenUptimes instance";
+    }
+  };
+
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-background">
+      <div className="flex min-h-screen w-full bg-background">
         {/* Add PageTitle with preloaded data */}
         {isLoaded && preloadedDataRef.current.statusPage && (
           <PageTitle 
@@ -818,8 +846,8 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           />
         )}
         
-        {/* Sidebar for larger screens */}
-        <UISidebar className="hidden md:block">
+        {/* Desktop sidebar */}
+        <div className="hidden md:block w-64 h-screen flex-shrink-0 fixed left-0 top-0 bottom-0 z-30">
           <SidebarNav 
             activeTab={activeTab} 
             setActiveTab={handleTabChange} 
@@ -829,15 +857,15 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
             clearUnsavedChangesCallback={clearUnsavedChangesCallback}
             {...logoProps}
           />
-        </UISidebar>
+        </div>
         
         {/* Main content area */}
-        <div className="flex w-full flex-col md:pl-0">
-          <header className="h-16 border-b">
-            <div className="flex h-16 items-center px-4">
+        <div className="w-full md:pl-64 flex flex-col">
+          <header className="h-16 border-b sticky top-0 bg-background/95 backdrop-blur-sm z-10 shadow-sm">
+            <div className="flex h-16 items-center px-6">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" className="mr-2 md:hidden">
+                  <Button variant="outline" size="icon" className="mr-3 md:hidden">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
@@ -853,18 +881,15 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
                   />
                 </SheetContent>
               </Sheet>
-              <h1 className="text-lg font-semibold">OpenUptimes Admin</h1>
+              <div className="flex flex-col justify-center">
+                <h1 className="text-lg font-semibold leading-tight">{getTabTitle()}</h1>
+                <p className="text-xs text-muted-foreground/80 mt-0.5 tracking-wide">{getTabSubtitle()}</p>
+              </div>
             </div>
           </header>
           
-          <main className="flex-1 p-6">
-            <div className="mx-auto max-w-6xl">
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold tracking-tight">{getTabTitle()}</h1>
-                <p className="text-muted-foreground">Manage your OpenUptimes instance</p>
-              </div>
-              {renderContent()}
-            </div>
+          <main className="flex-1 px-6 pt-4 pb-6">
+            {renderContent()}
           </main>
         </div>
       </div>

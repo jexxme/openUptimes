@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Info, Tag, FileText } from "lucide-react";
+import { Info, Tag, FileText, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "../ui/button";
@@ -26,6 +26,7 @@ export function AboutContent({ activeSection = "about" }: AboutContentProps) {
     about: currentTab === "about",
     version: currentTab === "version",
     license: currentTab === "license",
+    limitations: currentTab === "limitations",
   });
   
   // Update current tab when activeSection changes
@@ -64,6 +65,10 @@ export function AboutContent({ activeSection = "about" }: AboutContentProps) {
               <Tag className="h-4 w-4" />
               <span>Version</span>
             </TabsTrigger>
+            <TabsTrigger value="limitations" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Limitations</span>
+            </TabsTrigger>
             <TabsTrigger value="license" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span>License</span>
@@ -97,6 +102,56 @@ export function AboutContent({ activeSection = "about" }: AboutContentProps) {
                     Documentation
                   </Button>
                 </Link>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="limitations">
+            <p className="mb-4 text-sm text-muted-foreground">Understanding OpenUptimes' Limitations</p>
+            
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium mb-3">Not Designed for Real-Time Monitoring</h3>
+                <p className="text-muted-foreground mb-2">
+                  OpenUptimes is primarily designed as a simple status page solution, not a real-time monitoring system. Some important limitations to understand:
+                </p>
+                
+                <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                  <li><span className="font-medium">Polling-based checks:</span> Services are checked on a scheduled basis, not continuously monitored. This means there may be a delay between an actual outage and when it's detected.</li>
+                  <li><span className="font-medium">No alerting system:</span> OpenUptimes doesn't include sophisticated alerting mechanisms like you'd find in dedicated monitoring solutions (e.g., Prometheus, Nagios, DataDog).</li>
+                  <li><span className="font-medium">Simple health checks:</span> Only supports basic HTTP/HTTPS connectivity checks, not deep application health monitoring or metrics collection.</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium mb-3">Not Suitable for High-Availability Requirements</h3>
+                <p className="text-muted-foreground mb-2">
+                  Organizations with strict uptime requirements should consider OpenUptimes as a complementary tool, not a primary monitoring solution:
+                </p>
+                
+                <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                  <li><span className="font-medium">Single point of failure:</span> The status page itself doesn't have built-in high-availability features.</li>
+                  <li><span className="font-medium">Limited redundancy:</span> Checks are typically run from a single location, lacking the geographic distribution needed for robust monitoring.</li>
+                  <li><span className="font-medium">Basic metrics:</span> Limited historical data and performance metrics compared to enterprise monitoring solutions.</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-medium mb-3">Recommended Use Cases</h3>
+                <p className="text-muted-foreground mb-2">
+                  OpenUptimes is ideal for:
+                </p>
+                
+                <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                  <li>Small to medium-sized projects needing a simple status page</li>
+                  <li>Startups wanting to provide service transparency without complex infrastructure</li>
+                  <li>Complementing existing monitoring solutions with a public-facing status portal</li>
+                  <li>Personal projects, developer portfolios, and small business services</li>
+                </ul>
+                
+                <p className="text-muted-foreground mt-3">
+                  For mission-critical applications or environments requiring thorough monitoring, we recommend using OpenUptimes alongside dedicated monitoring platforms like Prometheus, Grafana, New Relic, or DataDog.
+                </p>
               </div>
             </div>
           </TabsContent>

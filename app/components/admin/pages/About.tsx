@@ -15,7 +15,7 @@ export function AdminAbout({ setActiveTab }: AdminAboutProps) {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const section = urlParams.get('section');
-    if (section) {
+    if (section && ['about', 'version', 'license', 'limitations'].includes(section)) {
       setAboutSection(section);
     }
     
@@ -29,8 +29,8 @@ export function AdminAbout({ setActiveTab }: AdminAboutProps) {
       const urlParams = new URLSearchParams(window.location.search);
       const section = urlParams.get('section');
       
-      // Only update if the section has changed from the URL
-      if (section && section !== aboutSection) {
+      // Only update if the section has changed from the URL and is valid
+      if (section && section !== aboutSection && ['about', 'version', 'license', 'limitations'].includes(section)) {
         setAboutSection(section);
       }
     }

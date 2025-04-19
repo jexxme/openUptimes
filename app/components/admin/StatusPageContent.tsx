@@ -861,7 +861,7 @@ export function StatusPageContent({
   }
 
   return (
-    <>
+    <div className="max-w-2xl w-full">
       <PageTitle statusPageTitle={statusPageTitle} />
       
       <Card className="h-full w-full max-w-full">
@@ -1008,11 +1008,36 @@ export function StatusPageContent({
       </Card>
       
       {/* Unsaved changes dialog */}
-      <UnsavedChangesDialog 
-        open={unsavedChangesDialogOpen}
-        onClose={handleDialogClose}
-        onConfirm={handleDialogConfirm}
-      />
-    </>
+      {unsavedChangesDialogOpen && (
+        <UnsavedChangesDialog 
+          open={unsavedChangesDialogOpen}
+          onClose={() => {
+            setUnsavedChangesDialogOpen(false);
+            pendingNavigationRef.current = null;
+          }}
+          onConfirm={() => {
+            setUnsavedChangesDialogOpen(false);
+            if (pendingNavigationRef.current) {
+              navigationApprovedRef.current = true;
+              
+              // Reset the callback to prevent further dialog
+              if (registerUnsavedChangesCallback) {
+                registerUnsavedChangesCallback("statuspage", () => false);
+              }
+              
+              if (pendingNavigationRef.current.destination) {
+                if (setActiveTab) {
+                  setActiveTab(pendingNavigationRef.current.destination);
+                } else {
+                  // Fallback to direct navigation
+                  window.location.href = `/admin?tab=${pendingNavigationRef.current.destination}`;
+                }
+              }
+              pendingNavigationRef.current = null;
+            }
+          }}
+        />
+      )}
+    </div>
   );
 } 
