@@ -166,12 +166,13 @@ export async function GET(request: Request) {
       stats: stats || {}
     });
   } catch (error) {
+    console.error('Failed to fetch ping statistics:', error);
 
     // Ensure Redis connection is closed on error
     try {
       await closeRedisConnection();
     } catch (closeError) {
-
+      console.error('Failed to close Redis connection:', closeError);
     }
     
     return NextResponse.json(
@@ -204,6 +205,7 @@ function estimateNextCronRun(cronExpression: string): number | null {
     
     // Enforce minimum 5-minute interval (GitHub Actions requirement)
     if (isNaN(interval) || interval < 5) {
+      console.warn(`Invalid GitHub Actions cron interval: ${interval}. Using minimum 5-minute interval instead.`);
 
       // Default to 5 minutes if interval is invalid or less than 5
       const safeInterval = 5;

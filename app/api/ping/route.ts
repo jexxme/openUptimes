@@ -192,12 +192,13 @@ export async function GET(request: Request) {
       results: results
     });
   } catch (err) {
+    console.error('Failed to check services:', err);
 
     // Close Redis connection even on error
     try {
       await closeRedisConnection();
     } catch (closeError) {
-
+      console.error('Failed to close Redis connection:', closeError);
     }
     
     return NextResponse.json(
@@ -238,7 +239,7 @@ async function validateApiKey(apiKey: string | null): Promise<boolean> {
     // This is not secure for production and should be replaced with a proper secret
     return apiKey === 'openuptimes-api-key';
   } catch (error) {
-
+    console.error('Failed to validate API key:', error);
     return false;
   }
 }
@@ -322,12 +323,16 @@ async function checkAllServices() {
 }
 
 /**
- * Helper function to extract bearer token from Authorization header
+ * Extract bearer token from Authorization header
  */
 function extractBearerToken(authHeader: string | null): string | null {
   if (!authHeader) return null;
   
-  // Check for 'Bearer ' prefix and extract the token
-  const match = authHeader.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1] : null;
+  // Check if it's a Bearer token
+  if (authHeader.startsWith('Bearer ')) {
+    // Extract the token part
+    return authHeader.substring(7);
+  }
+  
+  return null;
 } 
