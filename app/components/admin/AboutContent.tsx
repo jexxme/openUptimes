@@ -190,33 +190,29 @@ export function AboutContent({ activeSection = "about" }: AboutContentProps) {
             <p className="mb-4 text-sm text-muted-foreground">License information</p>
             
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">MIT License</h3>
+              <h3 className="text-lg font-medium">PolyForm Noncommercial License 1.0.0</h3>
               
               <div className="bg-secondary/30 p-4 rounded-md text-sm text-muted-foreground overflow-auto max-h-64">
-                <p className="mb-4">Copyright (c) 2025 OpenUptimes</p>
+                <p className="mb-4">Copyright (c) 2025 OpenUptimes (jexxme/openuptimes)</p>
                 
-                <p className="mb-4">
-                  Permission is hereby granted, free of charge, to any person obtaining a copy
-                  of this software and associated documentation files (the "Software"), to deal
-                  in the Software without restriction, including without limitation the rights
-                  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-                  copies of the Software, and to permit persons to whom the Software is
-                  furnished to do so, subject to the following conditions:
+                <p className="mb-2">
+                  OpenUptimes is licensed under the PolyForm Noncommercial License 1.0.0.
                 </p>
                 
-                <p className="mb-4">
-                  The above copyright notice and this permission notice shall be included in all
-                  copies or substantial portions of the Software.
+                <p className="mb-2">
+                  You may use this software for any noncommercial purpose, including personal use, research, 
+                  educational purposes, or for use within charitable organizations, educational institutions, 
+                  public research organizations, public safety or health organizations, environmental protection 
+                  organizations, and government institutions.
                 </p>
                 
-                <p>
-                  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-                  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-                  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-                  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-                  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-                  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-                  SOFTWARE.
+                <p className="mb-2">
+                  This license does not permit using the software for commercial purposes or building commercial 
+                  status page systems based on this software.
+                </p>
+                
+                <p className="mb-2">
+                  For the full license text, please visit: <a href="https://polyformproject.org/licenses/noncommercial/1.0.0" target="_blank" rel="noopener noreferrer" className="text-primary underline">https://polyformproject.org/licenses/noncommercial/1.0.0</a>
                 </p>
               </div>
               

@@ -42,17 +42,17 @@ Unlike other solutions that require dedicated servers or costly subscriptions, O
 
 ## Features
 
-- 🚀 **One-click deploy** - Get started in seconds with Vercel
-- 🔌 **Zero configuration** - Everything works out of the box
-- 📊 **GitHub Actions integration** - First-class monitoring system without extra infrastructure
-- 📝 **Historical data** - View uptime history and identify patterns
-- 🛑 **Minimal dependencies** - Uses only GitHub Actions, Redis, and your hosting provider
-- 🧹 **Clean, maintainable codebase** - Easy to understand and extend
-- 🎨 **Beautiful, responsive UI** - Works on all devices
-- 📱 **Mobile-first design** - Perfect experience on any screen size
-- 🔄 **Auto-refreshing data** - Always see the latest status
-- 🌐 **Flexible monitoring** - Use GitHub Actions or your own cronjobs for custom precision
-- 🔧 **Simple Admin Dashboard** - Manage services through a clean web interface
+* 🚀 **One-click deploy** - Get started in seconds with Vercel
+* 🔌 **Zero configuration** - Everything works out of the box
+* 📊 **GitHub Actions integration** - First-class monitoring system without extra infrastructure
+* 📝 **Historical data** - View uptime history and identify patterns
+* 🛑 **Minimal dependencies** - Uses only GitHub Actions, Redis, and your hosting provider
+* 🧹 **Clean, maintainable codebase** - Easy to understand and extend
+* 🎨 **Beautiful, responsive UI** - Works on all devices
+* 📱 **Mobile-first design** - Perfect experience on any screen size
+* 🔄 **Auto-refreshing data** - Always see the latest status
+* 🌐 **Flexible monitoring** - Use GitHub Actions or your own cronjobs for custom precision
+* 🔧 **Simple Admin Dashboard** - Manage services through a clean web interface
 
 ## Motivation
 
@@ -179,8 +179,6 @@ OpenUptimes supports the following environment variables:
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | Short description | "Service Status Monitor" | No |
 | `NEXT_PUBLIC_REFRESH_INTERVAL` | Refresh interval in ms | 60000 | No |
 
-<<<<<<< HEAD
-
 ### Environment Setup
 
 OpenUptimes uses environment variables for configuration. For local development or self-hosted deployment:
@@ -218,9 +216,6 @@ To ensure your Redis credentials and other sensitive data remain secure:
 
 5. **Monitor access:** Regularly check your Redis instance access logs for unusual activity.
 
-=======
->>>>>>> 8fec9776aae84c42d0dc1acac919a26d9cd27c45
->>>>>>>
 ## Authentication
 
 OpenUptimes uses a secure, Redis-based authentication system to protect admin and debug routes.
@@ -570,7 +565,21 @@ Please make sure your code follows our style guidelines and includes appropriate
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+OpenUptimes is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+### License Rationale
+
+OpenUptimes started as a small personal project, built to scratch an itch for simple, clean uptime pages. Over time, it felt right to share it more widely—especially since transparency around service uptime feels like something that should be easy and accessible for everyone.
+
+That’s why OpenUptimes is licensed under the PolyForm Noncommercial License. It’s free to use for:
+ - 👨‍💻 Personal projects
+ - 🏫 Educational work and research
+ - 🏢 Internal or public use by organizations, startups, and small businesses
+ - 🏥 Nonprofits, NGOs, and public institutions
+
+Basically: if you’re using it to show uptime for your own service, cool, that’s what it’s for!
+
+What’s not okay: taking this project, tweaking it, and turning it into a commercial product or hosted service. That’s not the spirit of it.
 
 ---
 
