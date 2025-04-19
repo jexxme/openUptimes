@@ -133,7 +133,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
             }
           }
         } catch (error) {
-          console.error('Error loading logo:', error);
+
         }
       }
     }
@@ -178,7 +178,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
         }
       }
     } catch (error) {
-      console.error('Error analyzing SVG:', error);
+
     }
   };
 
@@ -267,7 +267,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
         window.history.pushState({}, '', url.toString());
       }
     } catch (error) {
-      console.error('Error during navigation:', error);
+
       // Reset all dialog state in case of error
       setUnsavedChangesDialogOpen(false);
       pendingNavigationRef.current = null;

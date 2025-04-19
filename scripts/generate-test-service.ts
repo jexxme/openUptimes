@@ -4,7 +4,7 @@ dotenv.config({ path: '.env.local' });
 
 // Ensure REDIS_URL is available
 if (!process.env.REDIS_URL) {
-  console.error('REDIS_URL environment variable is not set in .env.local');
+
   process.exit(1);
 }
 
@@ -179,7 +179,7 @@ async function addTestService(): Promise<boolean> {
     
     return true;
   } catch (error) {
-    console.error('Error adding test service:', error);
+
     return false;
   }
 }
@@ -202,9 +202,9 @@ async function pingService(): Promise<void> {
     });
     
     const data = await response.json();
-    console.log('Ping service response:', data);
+
   } catch (error) {
-    console.error('Error pinging service:', error);
+
   }
 }
 
@@ -212,23 +212,21 @@ async function pingService(): Promise<void> {
  * Generate test service with fluctuating uptime data
  */
 async function generateTestServiceData() {
-  console.log('Starting to generate test service data with fluctuating uptime...');
-  
+
   try {
     // Get Redis client
     const client = await getRedisClient();
     
     // Add or update test service
     const serviceAdded = await addTestService();
-    console.log(serviceAdded 
-      ? `Test service "${TEST_SERVICE.name}" added successfully` 
-      : `Failed to add test service "${TEST_SERVICE.name}"`
-    );
+
+
+
+
     
     // Clear existing history data
     await client.del(`history:${TEST_SERVICE.name}`);
-    console.log(`Cleared history for ${TEST_SERVICE.name}`);
-    
+
     // Generate data for the last 90 days
     const daysToGenerate = 90;
     const now = Date.now();
@@ -242,9 +240,7 @@ async function generateTestServiceData() {
       
       // Generate random uptime percentage for this day (0-100%)
       const uptimePercentage = generateDailyUptimePercentage();
-      
-      console.log(`Day ${day}: ${new Date(dayTimestamp).toISOString().split('T')[0]} - ${uptimePercentage}% uptime`);
-      
+
       // Generate data points for this day
       const dataPoints = generateDataPointsForDay(dayTimestamp, uptimePercentage);
       
@@ -252,27 +248,23 @@ async function generateTestServiceData() {
       for (let i = dataPoints.length - 1; i >= 0; i--) {
         await appendServiceHistory(TEST_SERVICE.name, dataPoints[i]);
       }
-      
-      console.log(`  Added ${dataPoints.length} data points for day ${day}`);
+
     }
-    
-    console.log(`Generated data for ${daysToGenerate} days with fluctuating uptime`);
-    
+
     // Update current status with the most recent status
     const latestHistory = await client.lRange(`history:${TEST_SERVICE.name}`, 0, 0);
     if (latestHistory && latestHistory.length > 0) {
       await client.set(`status:${TEST_SERVICE.name}`, latestHistory[0]);
-      console.log('Updated current status with latest history item');
+
     }
     
     // Ping the service to trigger a status check
     await pingService();
-    
-    console.log('Test service data generation completed successfully');
+
     await closeRedisConnection();
     
   } catch (error) {
-    console.error('Error generating test service data:', error);
+
   } finally {
     process.exit(0);
   }

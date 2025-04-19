@@ -20,7 +20,7 @@ export function useSetupStatus() {
         const data = await response.json();
         setSetupComplete(data.setupComplete);
       } catch (err) {
-        console.error('Error checking setup status:', err);
+
         setError('Failed to check setup status');
       } finally {
         setLoading(false);

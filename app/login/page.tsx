@@ -7,7 +7,7 @@ import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
 // Debug utility
 function logDebug(message: string, ...args: any[]) {
-  console.log(`[LoginClient] ${message}`, ...args);
+
 }
 
 // The inner component that uses useSearchParams

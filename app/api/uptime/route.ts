@@ -125,13 +125,12 @@ export async function GET(request: Request) {
       services: uptimeData
     });
   } catch (error) {
-    console.error('Error fetching uptime data:', error);
-    
+
     // Close Redis connection on error
     try {
       await closeRedisConnection();
     } catch (closeError) {
-      console.error('Error closing Redis connection:', closeError);
+
     }
     
     return NextResponse.json(

@@ -16,7 +16,7 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
     
     return JSON.parse(services);
   } catch (error) {
-    console.error('Error reading services from Redis:', error);
+
     throw error;
   }
 }
@@ -32,7 +32,7 @@ async function getAllHistoryServiceNames(): Promise<string[]> {
     // Extract service names from the Redis keys (format: "history:serviceName")
     return keys.map((key: string) => key.substring(8)); // Remove "history:" prefix
   } catch (error) {
-    console.error('Error getting history service names:', error);
+
     return [];
   }
 }
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       const rangeInMs = end - start;
       const rangeInMinutes = Math.ceil(rangeInMs / (60 * 1000));
       historyLimit = Math.min(Math.max(rangeInMinutes, 60), 30 * 24 * 60); // Min 60, Max 30 days
-      console.log(`Custom time range: ${new Date(start).toISOString()} to ${new Date(end).toISOString()}, limit: ${historyLimit}`);
+
     } else if (timeRange) {
       // Calculate limit based on predefined ranges
       if (timeRange === '30m') {
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
             // For > 90 days: use 2-hour resolution
             historyLimit = days * 12;
           }
-          console.log(`Custom day range: ${days} days, limit: ${historyLimit}`);
+
         }
       } else if (timeRange === 'all') {
         historyLimit = 90 * 24 * 60; // Max 90 days of data
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     // Fetch history data for each service
     const results = await Promise.all(
       serviceNames.map(async (name) => {
-        console.log(`Fetching history for service: ${name}`);
+
         try {
           const history = await getServiceHistory(name, historyLimit);
           
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
             history: filteredHistory
           };
         } catch (serviceError) {
-          console.error(`Error fetching history for service ${name}:`, serviceError);
+
           return {
             name,
             isDeleted: !activeServiceMap.has(name),
@@ -197,8 +197,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(filteredResults);
   } catch (error) {
-    console.error('Error in history API:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch history data' },
       { status: 500 }

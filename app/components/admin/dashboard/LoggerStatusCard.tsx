@@ -48,7 +48,7 @@ const Tooltip = ({ text, children }: TooltipProps) => (
 );
 
 export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPingStats = null }: LoggerStatusCardProps) => {
-  console.log("[LoggerStatusCard] Rendering with preloaded data:", !!preloadedPingStats);
+
   const [pingStats, setPingStats] = useState<any>(preloadedPingStats);
   const [isLoading, setIsLoading] = useState(!preloadedPingStats);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
   );
 
   const fetchPingStats = async () => {
-    console.log("[LoggerStatusCard] Fetching ping stats. First render:", isFirstRender.current);
+
     try {
       setIsLoading(true);
       const response = await fetch('/api/ping-stats');
@@ -147,7 +147,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
       }
       
       const data = await response.json();
-      console.log("[LoggerStatusCard] Ping stats fetched successfully");
+
       setPingStats(data);
       
       // Calculate interval stats based on fetched data
@@ -157,7 +157,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
       setLastUpdated(Date.now());
       setError(null);
     } catch (err) {
-      console.error("[LoggerStatusCard] Error fetching ping stats:", err);
+
       setError((err as Error).message);
     } finally {
       setIsLoading(false);
@@ -174,17 +174,16 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
       const data = await response.json();
       return data;
     } catch (err) {
-      console.error('Error checking ping status:', err);
+
       return null;
     }
   };
 
   // Initialize interval stats when preloaded data is provided
   useEffect(() => {
-    console.log("[LoggerStatusCard] Initial useEffect for preloaded data. Have data:", !!preloadedPingStats);
-    
+
     if (preloadedPingStats && !intervalStats && !initialSetupComplete.current) {
-      console.log("[LoggerStatusCard] Using preloaded data for initial setup");
+
       const stats = calculateIntervalStats(preloadedPingStats);
       setIntervalStats(stats);
       setIsLoading(false);
@@ -193,11 +192,10 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
   }, [preloadedPingStats, intervalStats]);
 
   useEffect(() => {
-    console.log("[LoggerStatusCard] Setting up data refresh and timer intervals");
-    
+
     // Only fetch initially if we don't have preloaded data and this is the first load
     if (!preloadedPingStats && isFirstRender.current && !initialSetupComplete.current) {
-      console.log("[LoggerStatusCard] No preloaded data available, fetching on first render");
+
       fetchPingStats();
       initialSetupComplete.current = true;
     }
@@ -206,7 +204,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     
     // Refresh ping stats every 15 seconds
     const dataRefreshInterval = setInterval(() => {
-      console.log("[LoggerStatusCard] Refreshing data on interval");
+
       fetchPingStats();
     }, 15000);
     
@@ -216,7 +214,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     }, 1000);
     
     return () => {
-      console.log("[LoggerStatusCard] Cleaning up intervals");
+
       clearInterval(dataRefreshInterval);
       clearInterval(timeUpdateInterval);
     };
@@ -384,12 +382,12 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
   const secondsSinceLastPing = pingStats?.lastPing ? Math.floor((currentTime - pingStats.lastPing) / 1000) : 0;
 
   // Add debug render message
-  console.log("[LoggerStatusCard] Rendering with state:", {
-    hasData: !!pingStats,
-    isLoading,
-    hasError: !!error,
-    hasIntervalStats: !!intervalStats
-  });
+
+
+
+
+
+
 
   return (
     <Card className={`overflow-visible border ${className}`}>

@@ -52,8 +52,7 @@ export function useServicesConfig(initialData?: ServiceConfig[]) {
         throw err;
       }
     } catch (err) {
-      console.error('Error fetching services:', err);
-      
+
       // Special handling for AbortError (timeout)
       if (err instanceof DOMException && err.name === 'AbortError') {
         setError("Request timed out. The server may be busy.");
@@ -71,9 +70,7 @@ export function useServicesConfig(initialData?: ServiceConfig[]) {
         
         // Exponential backoff
         const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 8000);
-        
-        console.log(`Retrying fetch (${retryCount + 1}/${MAX_RETRIES}) in ${backoffDelay}ms`);
-        
+
         setTimeout(() => {
           fetchServices(true);
         }, backoffDelay);
@@ -107,7 +104,7 @@ export function useServicesConfig(initialData?: ServiceConfig[]) {
       await fetchServices(); // Refresh the list
       return true;
     } catch (err) {
-      console.error('Error adding service:', err);
+
       setError((err as Error).message);
       return false;
     } finally {
@@ -135,7 +132,7 @@ export function useServicesConfig(initialData?: ServiceConfig[]) {
       await fetchServices(); // Refresh the list
       return true;
     } catch (err) {
-      console.error('Error updating service:', err);
+
       setError((err as Error).message);
       return false;
     } finally {
@@ -159,7 +156,7 @@ export function useServicesConfig(initialData?: ServiceConfig[]) {
       await fetchServices(); // Refresh the list
       return true;
     } catch (err) {
-      console.error('Error deleting service:', err);
+
       setError((err as Error).message);
       return false;
     } finally {

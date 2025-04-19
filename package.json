@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "generate-mock-data": "npx ts-node scripts/generate-mock-data.ts",
-    "generate-downtime": "npx ts-node scripts/generate-realistic-downtime.ts"
+    "generate-downtime": "npx ts-node scripts/generate-realistic-downtime.ts",
+    "remove-debug": "npx ts-node scripts/remove-debug-logs.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.7",

@@ -55,7 +55,7 @@ export function ResetSettings() {
       // Password verified
       setIsPasswordVerified(true);
     } catch (error) {
-      console.error("Password verification error:", error);
+
       setFactoryResetError(error instanceof Error ? error.message : "Invalid password");
     }
   };
@@ -103,7 +103,7 @@ export function ResetSettings() {
         window.location.href = "/setup";
       }, 3000);
     } catch (error) {
-      console.error("Factory reset error:", error);
+
       setFactoryResetError(error instanceof Error ? error.message : "Failed to reset application");
     } finally {
       setIsResettingApplication(false);

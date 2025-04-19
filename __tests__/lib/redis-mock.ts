@@ -75,7 +75,7 @@ const mockRedisClient = {
       mockStorage[key] = JSON.stringify(trimmedArray);
       return 'OK';
     } catch (error) {
-      console.error('Error in lTrim:', error);
+
       return 'OK'; // Return OK even on error to avoid breaking tests
     }
   },

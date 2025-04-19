@@ -59,7 +59,7 @@ async function resetConfigFile(): Promise<void> {
     
     await fs.writeFile(CONFIG_PATH, updatedContent, 'utf8');
   } catch (error) {
-    console.error('Error resetting config file:', error);
+
     throw error;
   }
 }
@@ -72,7 +72,7 @@ export async function POST() {
     const allKeys = await client.keys('*');
     
     if (allKeys.length > 0) {
-      console.log(`Deleting ${allKeys.length} Redis keys for complete reset...`);
+
       await client.del(allKeys);
     }
     
@@ -88,7 +88,7 @@ export async function POST() {
       keysDeleted: allKeys.length
     });
   } catch (error) {
-    console.error('Error performing complete reset:', error);
+
     return NextResponse.json(
       { error: 'Failed to reset application' },
       { status: 500 }

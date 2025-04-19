@@ -255,7 +255,7 @@ export function StatusPageContent({
   // Effect for updating state when preloadedAppearanceData changes
   useEffect(() => {
     if (preloadedAppearanceData) {
-      console.log("[StatusPageContent] Updating from preloadedAppearanceData:", preloadedAppearanceData);
+
       setLogoUrl(preloadedAppearanceData.logoUrl || "");
       setShowServiceUrls(preloadedAppearanceData.showServiceUrls !== false);
       setShowServiceDescription(preloadedAppearanceData.showServiceDescription !== false);
@@ -269,7 +269,7 @@ export function StatusPageContent({
 
   // Complete the tab change after confirmation
   const completeTabChange = useCallback((newTab: string, isUserAction = false) => {
-    console.log("completeTabChange called with tab:", newTab, "isUserAction:", isUserAction);
+
     setCurrentTab(newTab);
     
     // If this is a user-initiated change, remember it to prevent unwanted reversions
@@ -292,7 +292,7 @@ export function StatusPageContent({
 
   // Handle tab change with custom dialog - no need to check for unsaved changes
   const attemptTabChange = useCallback((newTab: string) => {
-    console.log("attemptTabChange called with tab:", newTab);
+
     // No need to check for unsaved changes when changing tabs
     // as they are saved locally within the same page
     completeTabChange(newTab, true);  // Mark this as a user action
@@ -341,19 +341,19 @@ export function StatusPageContent({
 
   // Update current tab when activeSection changes
   useEffect(() => {
-    console.log("activeSection useEffect triggered", {
-      activeSection,
-      currentTab,
-      sectionTabValue,
-      userSelectedTab
-    });
+
+
+
+
+
+
     
     // Only update from URL/activeSection if:
     // 1. The current tab doesn't match the URL section AND
     // 2. Either this is initial load (no user selection) OR the URL section matches the user selection
     if (currentTab !== sectionTabValue && 
         (userSelectedTab === null || userSelectedTab === sectionTabValue)) {
-      console.log("Updating current tab from activeSection/sectionTabValue");
+
       completeTabChange(sectionTabValue);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -388,7 +388,7 @@ export function StatusPageContent({
           setServiceVisibility(data.services);
         }
       } catch (err) {
-        console.error("Failed to fetch status page settings:", err);
+
         // Set a default value for enabled state to avoid flickering
         setStatusPageEnabled(false);
         
@@ -428,8 +428,7 @@ export function StatusPageContent({
         }
         
         const data = await response.json();
-        console.log("[StatusPageContent] Fetched appearance settings:", data);
-        
+
         // Update state with fetched settings
         setLogoUrl(data.logoUrl || "");
         setShowServiceUrls(data.showServiceUrls !== false);
@@ -439,17 +438,17 @@ export function StatusPageContent({
         // Explicitly set copyright fields
         const copyrightUrlValue = data.copyrightUrl || "";
         const copyrightTextValue = data.copyrightText || "";
-        console.log("[StatusPageContent] Setting copyright values:", {
-          url: copyrightUrlValue,
-          text: copyrightTextValue
-        });
+
+
+
+
         setCopyrightUrl(copyrightUrlValue);
         setCopyrightText(copyrightTextValue);
         
         setCustomCss(data.customCSS || ""); 
         setCustomHeader(data.customHeader || ""); 
       } catch (err) {
-        console.error("Failed to fetch appearance settings:", err);
+
         toast({
           title: "Error loading appearance settings",
           description: "There was a problem loading appearance settings.",
@@ -554,7 +553,7 @@ export function StatusPageContent({
         variant: "success",
       });
     } catch (err) {
-      console.error("Failed to save status page settings:", err);
+
       // Show error notification
       toast({
         title: "Error saving status page settings",
@@ -583,9 +582,7 @@ export function StatusPageContent({
         customCSS: customCss,
         customHeader
       };
-      
-      console.log("[StatusPageContent] Saving appearance settings:", updatedSettings);
-      
+
       // Call API to update settings
       const response = await fetch('/api/settings/appearance', {
         method: 'PUT',
@@ -608,8 +605,7 @@ export function StatusPageContent({
         preloadedAppearanceData.copyrightText = copyrightText;
         preloadedAppearanceData.customCSS = customCss;
         preloadedAppearanceData.customHeader = customHeader;
-        
-        console.log("[StatusPageContent] Updated preloadedAppearanceData:", preloadedAppearanceData);
+
       }
       
       // Show success notification
@@ -620,7 +616,7 @@ export function StatusPageContent({
         variant: "success",
       });
     } catch (err) {
-      console.error("Failed to save appearance settings:", err);
+
       // Show error notification
       toast({
         title: "Error saving appearance settings",
@@ -670,7 +666,7 @@ export function StatusPageContent({
         variant: "success",
       });
     } catch (err) {
-      console.error("Failed to save advanced settings:", err);
+
       // Show error notification
       toast({
         title: "Error saving advanced settings",
@@ -831,7 +827,7 @@ export function StatusPageContent({
       const checkForUnsavedChanges = () => {
         // Add an explicit check to prevent false positives
         const hasChanges = hasUnsavedChanges();
-        console.log('[StatusPage] Checking for unsaved changes:', hasChanges);
+
         return hasChanges;
       };
       

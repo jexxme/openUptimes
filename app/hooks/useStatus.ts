@@ -67,7 +67,7 @@ export function useStatus(
   const fetchStatus = useCallback(async (force = false) => {
     // Skip if we're already fetching and it's not a forced refresh
     if (activeRequest && !force) {
-      console.log(`[useStatus:${instanceId}] Request already in progress, waiting...`);
+
       try {
         const data = await activeRequest;
         setServices(data);
@@ -82,7 +82,7 @@ export function useStatus(
 
     // Use cache if available and not forcing refresh
     if (!force && isCacheValid()) {
-      console.log(`[useStatus:${instanceId}] Using cached data, age: ${Date.now() - globalCache!.timestamp}ms`);
+
       setServices(globalCache!.data);
       setLastUpdated(globalCache!.lastUpdated);
       setLoading(false);
@@ -109,8 +109,6 @@ export function useStatus(
       
       // Add timestamp to prevent browser caching
       url.searchParams.append('_t', Date.now().toString());
-      
-      console.log(`[useStatus:${instanceId}] Fetching status data from: ${url.toString()}`);
 
       // Store the promise to prevent duplicate requests
       const fetchPromise = fetch(url.toString(), {
@@ -131,8 +129,7 @@ export function useStatus(
       activeRequest = fetchPromise;
       
       const data = await fetchPromise;
-      console.log(`[useStatus:${instanceId}] Received status data:`, data);
-      
+
       // Update local state and global cache
       const now = new Date().toLocaleString();
       setServices(data);
@@ -147,11 +144,10 @@ export function useStatus(
         lastUpdated: now
       };
     } catch (err) {
-      console.error(`[useStatus:${instanceId}] Error fetching status:`, err);
-      
+
       // If we still have valid cache data, use it despite the error
       if (globalCache && globalCache.data.length > 0) {
-        console.log(`[useStatus:${instanceId}] Using stale cache data after error`);
+
         setServices(globalCache.data);
         setLastUpdated(`${globalCache.lastUpdated} (stale)`);
       }
@@ -161,30 +157,29 @@ export function useStatus(
       // If we haven't exceeded max retries, try again
       if (retryCount < maxRetries) {
         const nextRetry = retryCount + 1;
-        console.log(`[useStatus:${instanceId}] Scheduling retry ${nextRetry} of ${maxRetries}`);
+
         setRetryCount(nextRetry);
         
         // Exponential backoff for retries
         const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 8000);
-        console.log(`[useStatus:${instanceId}] Will retry in ${backoffTime}ms`);
-        
+
         // Try manual ping if we need data
         if (globalCache === null || globalCache.data.length === 0) {
           try {
-            console.log(`[useStatus:${instanceId}] Triggering manual ping to get fresh data`);
+
             await fetch('/api/ping', { 
               signal: AbortSignal.timeout(5000),
               headers: {
                 'Cache-Control': 'no-cache'
               }
             });
-            console.log(`[useStatus:${instanceId}] Manual ping successful`);
+
           } catch (pingErr) {
-            console.error(`[useStatus:${instanceId}] Manual ping attempt failed:`, pingErr);
+
           }
         }
       } else {
-        console.log(`[useStatus:${instanceId}] Maximum retries (${maxRetries}) exceeded`);
+
       }
     } finally {
       setLoading(false);
@@ -197,10 +192,9 @@ export function useStatus(
     if (retryCount > 0 && retryCount <= maxRetries) {
       // Exponential backoff for retries
       const retryDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 8000);
-      
-      console.log(`[useStatus:${instanceId}] Scheduled retry ${retryCount} of ${maxRetries} in ${retryDelay}ms`);
+
       const retryTimer = setTimeout(() => {
-        console.log(`[useStatus:${instanceId}] Executing retry ${retryCount} of ${maxRetries}`);
+
         fetchStatus(true); // Force refresh on retry
       }, retryDelay);
       
@@ -210,8 +204,7 @@ export function useStatus(
 
   // Initial fetch
   useEffect(() => {
-    console.log(`[useStatus:${instanceId}] Hook instance mounted, initialData:`, !!initialData);
-    
+
     // If we have initial data, don't fetch immediately
     if (initialData && initialData.length > 0) {
       setServices(initialData);
@@ -229,7 +222,7 @@ export function useStatus(
       
       // Schedule a delayed fetch to get fresh data
       const timer = setTimeout(() => {
-        console.log(`[useStatus:${instanceId}] Fetching fresh data after using initialData`);
+
         fetchStatus();
       }, 30000); // 30 seconds
       
@@ -237,7 +230,7 @@ export function useStatus(
     } else {
       // Check cache first
       if (isCacheValid()) {
-        console.log(`[useStatus:${instanceId}] Using cached data on mount`);
+
         setServices(globalCache!.data);
         setLastUpdated(globalCache!.lastUpdated);
         setLoading(false);
@@ -261,7 +254,7 @@ export function useStatus(
     
     // Clean up interval on unmount
     return () => {
-      console.log(`[useStatus:${instanceId}] Hook instance unmounted`);
+
       clearInterval(interval);
     };
   }, [fetchStatus, initialData, instanceId]);

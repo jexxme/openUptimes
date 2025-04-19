@@ -57,7 +57,7 @@ export async function getStatusHistory(
     
     return results;
   } catch (error) {
-    console.error('Error fetching status history:', error);
+
     return [];
   }
 } 

@@ -49,8 +49,7 @@ export async function GET(request: NextRequest) {
       title: titleMatch ? titleMatch[1].trim() : null
     });
   } catch (error) {
-    console.error('Error fetching webpage title:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch webpage title' },
       { status: 500 }

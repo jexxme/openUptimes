@@ -31,8 +31,7 @@ export async function GET() {
     
     return NextResponse.json(appearanceConfig);
   } catch (error) {
-    console.error('Error fetching appearance settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch appearance settings' },
       { status: 500 }
@@ -128,8 +127,7 @@ export async function PUT(request: NextRequest) {
       copyrightText: siteConfig.copyrightText // Return copyright text in response
     });
   } catch (error) {
-    console.error('Error updating appearance settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to update appearance settings' },
       { status: 500 }

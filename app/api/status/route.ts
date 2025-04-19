@@ -26,7 +26,7 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
     
     return JSON.parse(services);
   } catch (error) {
-    console.error('Error reading services from Redis:', error);
+
     throw error;
   }
 }
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
             history
           };
         } catch (error) {
-          console.error(`Error fetching status for service ${service.name}:`, error);
+
           return {
             name: service.name,
             url: service.url,
@@ -110,8 +110,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(results);
   } catch (error) {
-    console.error('Error in status API:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch status data' },
       { status: 500 }

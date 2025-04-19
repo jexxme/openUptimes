@@ -68,7 +68,7 @@ export async function PUT(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error updating admin password:', error);
+
     return NextResponse.json(
       { message: 'Failed to update password' },
       { status: 500 }

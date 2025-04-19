@@ -28,7 +28,7 @@ export const getRedisClient = async (): Promise<any> => {
       await redisClient.ping();
       return redisClient;
     } catch (error) {
-      console.warn('Redis client ping failed, reconnecting...', error);
+
       // Continue to reconnection code
     }
   }
@@ -38,7 +38,7 @@ export const getRedisClient = async (): Promise<any> => {
     try {
       return await connectionPromise;
     } catch (error) {
-      console.error('Shared connection attempt failed:', error);
+
       // Fall through to create a new connection
     }
   }
@@ -66,7 +66,7 @@ export const getRedisClient = async (): Promise<any> => {
 // Helper function to create a new Redis connection
 async function createRedisConnection(): Promise<any> {
   if (!process.env.REDIS_URL) {
-    console.error('REDIS_URL environment variable is not set');
+
     throw new Error('REDIS_URL environment variable is not set');
   }
   
@@ -88,7 +88,7 @@ async function createRedisConnection(): Promise<any> {
         connectTimeout: 5000, // 5s connection timeout
         reconnectStrategy: (retries) => {
           const delay = Math.min(retries * 100, 3000);
-          console.log(`Redis reconnecting in ${delay}ms (attempt ${retries})`);
+
           return delay; // Increasing delay up to 3s
         }
       }
@@ -96,20 +96,20 @@ async function createRedisConnection(): Promise<any> {
     
     // Handle connection events
     newClient.on('connect', () => {
-      console.log('Redis client connecting...');
+
     });
     
     newClient.on('ready', () => {
-      console.log('Redis client ready and connected');
+
     });
     
     // Handle errors
     newClient.on('error', (err) => {
-      console.error('Redis connection error:', err);
+
     });
     
     newClient.on('end', () => {
-      console.log('Redis connection ended');
+
       // Only reset if this is the current client
       if (redisClient === newClient) {
         redisClient = null;
@@ -117,8 +117,7 @@ async function createRedisConnection(): Promise<any> {
     });
     
     await newClient.connect();
-    console.log('Redis client connected successfully');
-    
+
     // Store the new client
     redisClient = newClient;
     
@@ -127,7 +126,7 @@ async function createRedisConnection(): Promise<any> {
     
     return newClient;
   } catch (error) {
-    console.error('Failed to initialize Redis client:', error);
+
     throw error;
   }
 }
@@ -148,7 +147,7 @@ function setupConnectionManagement() {
     
     // If connection has been idle for too long and no operations are in progress
     if (idleTime > CONNECTION_TIMEOUT && redisClient && !isConnecting) {
-      console.log(`Redis connection idle for ${idleTime}ms, closing automatically`);
+
       closeRedisConnection();
     }
   }, 30000); // Check every 30 seconds
@@ -168,18 +167,17 @@ export async function closeRedisConnection(): Promise<void> {
         // and enough time has passed since the last usage
         const idleTime = Date.now() - lastUsedTimestamp;
         if (redisClient && redisClient.isOpen && !isConnecting && idleTime > 10000) {
-          console.log(`Closing idle Redis connection after ${idleTime}ms of inactivity`);
+
           await redisClient.quit();
-          console.log('Redis connection closed after timeout');
+
         } else {
-          console.log('Skipping Redis closure due to active connections or recent usage');
+
         }
       } catch (error) {
-        console.error('Error in delayed Redis connection closure:', error);
+
       }
     }, 5000); // 5 second delay (increased from 1s)
-    
-    console.log('Redis connection scheduled for delayed closure');
+
   }
 }
 
@@ -192,7 +190,7 @@ export async function getServiceStatus(name: string): Promise<ServiceStatus | nu
     const status = await client.get(`status:${name}`);
     return status ? JSON.parse(status) : null;
   } catch (err) {
-    console.error(`Error fetching status for ${name}:`, err);
+
     return null;
   }
 }
@@ -206,7 +204,7 @@ export async function setServiceStatus(name: string, data: ServiceStatus): Promi
     await client.set(`status:${name}`, JSON.stringify(data));
     return true;
   } catch (err) {
-    console.error(`Error setting status for ${name}:`, err);
+
     return false;
   }
 }
@@ -224,7 +222,7 @@ export async function getHistoryTTL(): Promise<number | null> {
     const config = JSON.parse(configStr);
     return config.historyTTL === 0 ? null : (config.historyTTL || 30 * 24 * 60 * 60);
   } catch (err) {
-    console.error('Error fetching history TTL:', err);
+
     return 30 * 24 * 60 * 60; // Default to 30 days on error
   }
 }
@@ -247,7 +245,7 @@ export async function appendServiceHistory(name: string, data: ServiceStatus): P
     
     return true;
   } catch (err) {
-    console.error(`Error appending history for ${name}:`, err);
+
     return false;
   }
 }
@@ -261,7 +259,7 @@ export async function getServiceHistory(name: string, limit: number = 1440): Pro
     const history = await client.lRange(`history:${name}`, 0, limit - 1);
     return history.map((item: string) => JSON.parse(item));
   } catch (err) {
-    console.error(`Error fetching history for ${name}:`, err);
+
     return [];
   }
 }
@@ -275,7 +273,7 @@ export async function isSetupComplete(): Promise<boolean> {
     const setupComplete = await client.get('setup:complete');
     return setupComplete === 'true';
   } catch (err) {
-    console.error('Error checking setup status:', err);
+
     return false;
   }
 }
@@ -289,7 +287,7 @@ export async function markSetupComplete(): Promise<boolean> {
     await client.set('setup:complete', 'true');
     return true;
   } catch (err) {
-    console.error('Error marking setup as complete:', err);
+
     return false;
   }
 }
@@ -303,7 +301,7 @@ export async function setAdminPassword(passwordHash: string): Promise<boolean> {
     await client.set('admin:password', passwordHash);
     return true;
   } catch (err) {
-    console.error('Error setting admin password:', err);
+
     return false;
   }
 }
@@ -316,7 +314,7 @@ export async function getAdminPassword(): Promise<string | null> {
     const client = await getRedisClient();
     return await client.get('admin:password');
   } catch (err) {
-    console.error('Error getting admin password:', err);
+
     return null;
   }
 }
@@ -326,8 +324,7 @@ export async function getAdminPassword(): Promise<string | null> {
  */
 export async function storeSession(token: string, expirySeconds: number = 86400): Promise<boolean> {
   const requestId = Date.now().toString().substring(8);
-  console.log(`[Redis:${requestId}] Storing session token: ${token.substring(0, 6)}...`);
-  
+
   try {
     const client = await getRedisClient();
     
@@ -339,12 +336,10 @@ export async function storeSession(token: string, expirySeconds: number = 86400)
     // Verify the session was stored
     const verifySession = await client.get(`session:${token}`);
     const success = verifySession === 'active';
-    
-    console.log(`[Redis:${requestId}] Session storage ${success ? 'successful' : 'failed'}, expiry: ${expirySeconds}s`);
-    
+
     return success;
   } catch (err) {
-    console.error(`[Redis:${requestId}] Error storing session:`, err);
+
     return false;
   }
 }
@@ -354,26 +349,23 @@ export async function storeSession(token: string, expirySeconds: number = 86400)
  */
 export async function isSessionValid(token: string): Promise<boolean> {
   const requestId = Date.now().toString().substring(8);
-  console.log(`[Redis:${requestId}] Validating session token: ${token.substring(0, 6)}...`);
-  
+
   try {
     const client = await getRedisClient();
     
     // Get session from Redis
     const session = await client.get(`session:${token}`);
     const isValid = session === 'active';
-    
-    console.log(`[Redis:${requestId}] Session validation result: ${isValid ? 'valid' : 'invalid'}, value: "${session}"`);
-    
+
     // Debug: Check TTL if session exists
     if (session) {
       const ttl = await client.ttl(`session:${token}`);
-      console.log(`[Redis:${requestId}] Session TTL: ${ttl} seconds`);
+
     }
     
     return isValid;
   } catch (err) {
-    console.error(`[Redis:${requestId}] Error checking session:`, err);
+
     return false;
   }
 }
@@ -383,24 +375,20 @@ export async function isSessionValid(token: string): Promise<boolean> {
  */
 export async function deleteSession(token: string): Promise<boolean> {
   const requestId = Date.now().toString().substring(8);
-  console.log(`[Redis:${requestId}] Deleting session token: ${token.substring(0, 6)}...`);
-  
+
   try {
     const client = await getRedisClient();
     
     // Check if session exists before deletion
     const sessionExists = await client.exists(`session:${token}`);
-    console.log(`[Redis:${requestId}] Session exists before deletion: ${sessionExists === 1}`);
-    
+
     // Delete the session
     const deleteResult = await client.del(`session:${token}`);
     const success = deleteResult === 1;
-    
-    console.log(`[Redis:${requestId}] Session deletion ${success ? 'successful' : 'failed'}, result: ${deleteResult}`);
-    
+
     return success;
   } catch (err) {
-    console.error(`[Redis:${requestId}] Error deleting session:`, err);
+
     return false;
   }
 }
@@ -422,21 +410,20 @@ export async function initializeRedisWithDefaults(): Promise<void> {
       
       // Store services in Redis
       await client.set('config:services', JSON.stringify(services));
-      console.log('Initialized Redis with default services from config.ts');
-      
+
       // Store site config in Redis
       await client.set('config:site', JSON.stringify(config));
-      console.log('Initialized Redis with default site config from config.ts');
+
     }
     
     // Initialize last interval reset time if it doesn't exist
     const lastIntervalReset = await client.get('ping:last-interval-reset');
     if (!lastIntervalReset) {
       await client.set('ping:last-interval-reset', Date.now().toString());
-      console.log('Initialized ping interval reset time');
+
     }
   } catch (error) {
-    console.error('Error initializing Redis with defaults:', error);
+
     throw error;
   }
 }
@@ -460,7 +447,7 @@ export async function getPingStats() {
       now: Date.now()
     };
   } catch (err) {
-    console.error('Error fetching ping stats:', err);
+
     return {
       lastPing: null,
       nextPing: null,
@@ -479,7 +466,7 @@ export async function getLastIntervalReset(): Promise<number> {
     const lastReset = await client.get('ping:last-interval-reset');
     return lastReset ? parseInt(lastReset, 10) : 0;
   } catch (err) {
-    console.error('Error fetching last interval reset:', err);
+
     return 0;
   }
 }
@@ -493,7 +480,7 @@ export async function setLastIntervalReset(timestamp: number): Promise<boolean> 
     await client.set('ping:last-interval-reset', timestamp.toString());
     return true;
   } catch (err) {
-    console.error('Error setting last interval reset:', err);
+
     return false;
   }
 } 

@@ -27,7 +27,7 @@ async function checkRateLimit(ip: string): Promise<{ allowed: boolean; retryAfte
     
     return { allowed: true };
   } catch (error) {
-    console.error('Rate limit check error:', error);
+
     // Default to allowing the request if Redis fails
     return { allowed: true };
   }
@@ -50,7 +50,7 @@ async function recordFailedAttempt(ip: string): Promise<void> {
     const expiry = Math.min(10 * Math.pow(2, failedAttempts), LOCK_DURATION);
     await client.expire(key, expiry);
   } catch (error) {
-    console.error('Record failed attempt error:', error);
+
   }
 }
 
@@ -59,26 +59,22 @@ async function resetFailedAttempts(ip: string): Promise<void> {
     const client = await getRedisClient();
     await client.del(`ratelimit:login:${ip}`);
   } catch (error) {
-    console.error('Reset failed attempts error:', error);
+
   }
 }
 
 export async function POST(request: NextRequest) {
   const requestId = Date.now().toString().substring(8);
-  console.log(`[LoginAPI:${requestId}] Login request received`);
-  
+
   // Get client IP address
   const ip = request.headers.get('x-forwarded-for') || 
              request.headers.get('x-real-ip') || 
              'unknown';
-             
-  console.log(`[LoginAPI:${requestId}] Request from IP: ${ip}`);
-  
+
   // Check rate limit before processing
   const rateLimitCheck = await checkRateLimit(ip);
   if (!rateLimitCheck.allowed) {
-    console.log(`[LoginAPI:${requestId}] Rate limit exceeded for IP: ${ip}`);
-    
+
     const response = NextResponse.json(
       { error: 'Too many failed login attempts. Please try again later.' },
       { status: 429 }
@@ -96,11 +92,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { password, provider = 'password' } = body;
-    
-    console.log(`[LoginAPI:${requestId}] Authentication provider: ${provider}`);
-    
+
     if (provider === 'password' && !password) {
-      console.log(`[LoginAPI:${requestId}] Error: Password required`);
+
       return NextResponse.json(
         { error: 'Password is required' },
         { status: 400 }
@@ -108,13 +102,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Use the authenticate function that supports multiple providers
-    console.log(`[LoginAPI:${requestId}] Authenticating user...`);
+
     const authResult = await authenticate(body, provider);
-    console.log(`[LoginAPI:${requestId}] Authentication result: ${authResult.success ? 'success' : 'failed'}`);
-    
+
     if (!authResult.success || !authResult.token) {
-      console.error(`[LoginAPI:${requestId}] Authentication failed:`, authResult.error);
-      
+
       // Record failed attempt for rate limiting
       await recordFailedAttempt(ip);
       
@@ -134,15 +126,13 @@ export async function POST(request: NextRequest) {
     await resetFailedAttempts(ip);
     
     const token = authResult.token;
-    console.log(`[LoginAPI:${requestId}] Generated token: ${token.substring(0, 6)}...`);
-    
+
     // Store session in Redis with 24 hour expiry by default
-    console.log(`[LoginAPI:${requestId}] Storing session in Redis...`);
+
     const redisResult = await storeSession(token);
-    console.log(`[LoginAPI:${requestId}] Redis session storage: ${redisResult ? 'success' : 'failed'}`);
-    
+
     if (!redisResult) {
-      console.error(`[LoginAPI:${requestId}] Failed to store session in Redis`);
+
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
@@ -158,8 +148,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json(responseData);
     
     // Set cookie with appropriate settings
-    console.log(`[LoginAPI:${requestId}] Setting auth cookie...`);
-    
+
     response.cookies.set({
       name: 'authToken',
       value: token,
@@ -172,9 +161,8 @@ export async function POST(request: NextRequest) {
     
     // Verify the cookie was set correctly
     const setCookieHeader = response.headers.get('set-cookie');
-    console.log(`[LoginAPI:${requestId}] Set-Cookie header exists: ${!!setCookieHeader}`);
-    console.log(`[LoginAPI:${requestId}] Login successful, sending response with cookie`);
-    
+
+
     // Add security headers
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
@@ -182,7 +170,7 @@ export async function POST(request: NextRequest) {
     
     return response;
   } catch (error) {
-    console.error(`[LoginAPI:${requestId}] Login error:`, error);
+
     return NextResponse.json(
       { error: 'Authentication failed' },
       { status: 500 }

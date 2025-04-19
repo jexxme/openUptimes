@@ -35,7 +35,7 @@ export function AdminHistory({ preloadedHistory, preloadedHistoryServices, setAc
     setHasValidData(isValid);
     
     if (services && Array.isArray(services)) {
-      console.log(`AdminHistory: Validated ${services.length} services, hasValidData=${isValid}`);
+
     }
   }, [services]);
   
@@ -50,9 +50,7 @@ export function AdminHistory({ preloadedHistory, preloadedHistoryServices, setAc
           item.item && 
           item.item.timestamp
         );
-        
-      console.log(`AdminHistory: Validated preloaded history, hasValidData=${isValid}`);
-      
+
       if (!isValid) {
         // Schedule a refresh if preloaded data is invalid
         setTimeout(() => {
@@ -106,9 +104,9 @@ export function AdminHistory({ preloadedHistory, preloadedHistoryServices, setAc
     
     // If we don't have valid data after a short delay, refresh to get data
     if (!hasValidData && !statusLoading && initialDataLoaded) {
-      console.log(`AdminHistory: Data validation failed, scheduling refresh`);
+
       const timer = setTimeout(() => {
-        console.log(`AdminHistory: Running scheduled refresh`);
+
         refresh();
       }, 2000);
       

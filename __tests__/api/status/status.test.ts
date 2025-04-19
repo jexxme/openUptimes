@@ -67,7 +67,7 @@ const mockGetImplementation = async (request: NextRequest) => {
     
     return NextResponse.json(results);
   } catch (error) {
-    console.error('Error in status API:', error);
+
     return NextResponse.json(
       { error: 'Failed to fetch status data' },
       { status: 500 }

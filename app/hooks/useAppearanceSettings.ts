@@ -38,7 +38,7 @@ export function useAppearanceSettings() {
       // Use cache if available and not expired
       const now = Date.now();
       if (appearanceCache.data && now - appearanceCache.timestamp < appearanceCache.TTL) {
-        console.log("[useAppearanceSettings] Using cached settings:", appearanceCache.data);
+
         setSettings(appearanceCache.data);
         return;
       }
@@ -58,16 +58,13 @@ export function useAppearanceSettings() {
         }
         
         const data = await response.json();
-        console.log("[useAppearanceSettings] Fetched settings:", data);
-        
+
         // Merge with default settings to ensure all properties exist
         const mergedData = { 
           ...defaultAppearanceSettings,
           ...data
         };
-        
-        console.log("[useAppearanceSettings] Merged with defaults:", mergedData);
-        
+
         // Update global cache
         appearanceCache.data = mergedData;
         appearanceCache.timestamp = Date.now();
@@ -77,8 +74,7 @@ export function useAppearanceSettings() {
           setSettings(mergedData);
         }
       } catch (err) {
-        console.error('Error fetching appearance settings:', err);
-        
+
         if (isMountedRef.current) {
           setError(err instanceof Error ? err : new Error(String(err)));
         }

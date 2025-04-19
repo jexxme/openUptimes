@@ -4,18 +4,17 @@ import { deleteSession } from '../../../../lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Logout request received');
+
     const cookieHeader = request.headers.get('cookie') || '';
     const token = parseTokenFromCookie(cookieHeader);
     
     if (token) {
-      console.log('Authenticated token found, removing session');
-      
+
       // Remove session from Redis
       const redisResult = await deleteSession(token);
-      console.log('Session removal result:', { redis: redisResult ? 'success' : 'failure' });
+
     } else {
-      console.log('No token found in cookies during logout');
+
     }
     
     // Create response and clear cookie with multiple approaches to ensure it works across browsers
@@ -48,12 +47,10 @@ export async function POST(request: NextRequest) {
     // Approach 3: Force expiration with negative max age
     response.headers.append('Set-Cookie', 
       'authToken=deleted; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; httpOnly; Max-Age=-1');
-    
-    console.log('Logout completed successfully, cookies cleared');
+
     return response;
   } catch (error) {
-    console.error('Logout error:', error);
-    
+
     // Still try to clear cookies even if there was an error
     const response = NextResponse.json(
       { error: 'Logout failed but cookies cleared' },

@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, Shield, Trash2, Bug } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApplicationTabs } from "@/components/ui/application-tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { ApplicationTabs } from "../../../components/ui/application-tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -236,7 +236,7 @@ export function SettingsContent({
           setGeneralSettings(data);
           setSettingsLoading(false);
         } catch (err) {
-          console.error("Failed to load settings:", err);
+
           setSettingsError("Failed to load settings. Please try again later.");
           setSettingsLoading(false);
           
@@ -342,7 +342,7 @@ export function SettingsContent({
       const checkForUnsavedChanges = () => {
         // Add an explicit check to prevent false positives
         const hasChanges = hasAnyUnsavedChanges;
-        console.log('[Settings] Checking for unsaved changes:', hasChanges);
+
         return hasChanges;
       };
       

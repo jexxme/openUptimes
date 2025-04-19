@@ -60,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
   } catch (error) {
-    console.error('Error generating sitemap:', error);
+
     // Continue with basic routes if there's an error
   } finally {
     // Close Redis connection if client was initialized

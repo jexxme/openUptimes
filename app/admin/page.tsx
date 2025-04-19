@@ -37,7 +37,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   const initialLoadRef = useRef(true);
   
   if (isDevMode && initialLoadRef.current) {
-    console.log("[AdminPageClient] Initializing admin page");
+
     initialLoadRef.current = false;
   }
   
@@ -65,13 +65,13 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   // Log when admin page mounts
   useEffect(() => {
     if (isDevMode) {
-      console.log("[AdminPageClient] Component mounted");
+
     }
     setComponentMounted(true);
     
     return () => {
       if (isDevMode) {
-        console.log("[AdminPageClient] Component unmounting");
+
       }
     };
   }, [isDevMode]);
@@ -79,16 +79,16 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   // Log when loading is complete
   useEffect(() => {
     if (isDevMode && isLoaded && !setupLoading && !isValidatingSession) {
-      console.log("[AdminPageClient] Loading complete", {
-        activeTab
-      });
+
+
+
     }
   }, [isLoaded, setupLoading, isValidatingSession, activeTab, isDevMode]);
 
   // Function to register an unsaved changes callback
   const registerUnsavedChangesCallback = useCallback((key: string, callback: () => boolean) => {
     if (isDevMode) {
-      console.log(`[AdminPageClient] Registering callback for ${key}`);
+
     }
     unsavedChangesCallbacksRef.current[key] = callback;
   }, [isDevMode]);
@@ -102,7 +102,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
       const callback = unsavedChangesCallbacksRef.current[key];
       if (callback && callback()) {
         if (isDevMode) {
-          console.log(`[AdminPageClient] Found unsaved changes in ${key}`);
+
         }
         return true;
       }
@@ -114,14 +114,14 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   const clearUnsavedChangesCallback = useCallback((key?: string) => {
     if (key) {
       if (isDevMode) {
-        console.log(`[AdminPageClient] Clearing callback for ${key}`);
+
       }
       if (unsavedChangesCallbacksRef.current[key]) {
         delete unsavedChangesCallbacksRef.current[key];
       }
     } else {
       if (isDevMode) {
-        console.log('[AdminPageClient] Clearing all callbacks');
+
       }
       // Clear all callbacks
       unsavedChangesCallbacksRef.current = {};
@@ -139,12 +139,12 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           // Update active tab based on URL
           if (resolvedParams.tab) {
             if (isDevMode) {
-              console.log(`[AdminPageClient] Setting active tab from URL: ${resolvedParams.tab}`);
+
             }
             setActiveTab(resolvedParams.tab);
           }
         } catch (error) {
-          console.error('[AdminPageClient] Error processing search params:', error);
+
         }
       }
     };
@@ -155,7 +155,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   // Handle tab change
   const handleTabChange = (value: string) => {
     if (isDevMode) {
-      console.log(`[AdminPageClient] Tab changed to: ${value}`);
+
     }
     
     // Update URL with the new tab value
@@ -185,7 +185,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   };
 
   async function handleLogout() {
-    console.log("[AdminPageClient] Logout initiated");
+
     setIsLoggingOut(true);
     try {
       // Make the logout API call
@@ -200,15 +200,14 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
       
       // Add timestamp to prevent cache issues
       const redirectUrl = `/login?from=/admin&t=${Date.now()}`;
-      console.log("[AdminPageClient] Logout successful, redirecting to:", redirectUrl);
-      
+
       // Use a delay to ensure cookies are properly cleared
       setTimeout(() => {
         // Force a full page reload to the login page
         window.location.href = redirectUrl;
       }, 500);
     } catch (error) {
-      console.error('[AdminPageClient] Logout failed:', error);
+
       setIsLoggingOut(false);
       
       // Fallback redirect if the API call fails
@@ -222,10 +221,10 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   
   if (showLoadingScreen) {
     if (isDevMode) {
-      console.log("[AdminPageClient] Showing loading screen", {
-        loadingState,
-        loadingProgress
-      });
+
+
+
+
     }
     return (
       <LoadingScreen
@@ -239,7 +238,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   }
 
   if (setupError) {
-    console.error("[AdminPageClient] Setup error detected:", setupError);
+
     return (
       <LoadingScreen
         loadingProgress={loadingProgress}
@@ -251,7 +250,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
 
   // Ensure preloaded data is available
   if (!preloadedData || !preloadedData.services) {
-    console.error("[AdminPageClient] Missing preloaded data, showing loading screen");
+
     return (
       <LoadingScreen
         loadingProgress={99}
@@ -265,7 +264,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
   // Render the appropriate content based on active tab
   const renderContent = () => {
     if (isDevMode) {
-      console.log(`[AdminPageClient] Rendering content for tab: ${activeTab}`);
+
     }
     
     switch(activeTab) {
@@ -325,7 +324,7 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           />
         </div>;
       default:
-        console.warn(`[AdminPageClient] Unknown tab: ${activeTab}, defaulting to dashboard`);
+
         return <AdminDashboard 
           preloadedServices={preloadedData.services}
           preloadedStatusPageData={preloadedData.statusPage}

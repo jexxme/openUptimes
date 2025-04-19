@@ -24,8 +24,7 @@ export async function GET() {
     
     return NextResponse.json(generalConfig);
   } catch (error) {
-    console.error('Error fetching general settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch general settings' },
       { status: 500 }
@@ -77,8 +76,7 @@ export async function PUT(request: NextRequest) {
       historyTTL: siteConfig.historyTTL
     });
   } catch (error) {
-    console.error('Error updating general settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to update general settings' },
       { status: 500 }

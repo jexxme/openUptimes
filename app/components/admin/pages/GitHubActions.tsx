@@ -274,7 +274,7 @@ export function GitHubActionsPage({
           }
         }
       } catch (error) {
-        console.error('Error fetching ping stats:', error);
+
         // Don't show error to avoid confusion - this is supplementary data
         setPingStats(prev => ({ ...prev, isLoading: false }));
       }
@@ -402,7 +402,7 @@ export function GitHubActionsPage({
         variant: "success",
       });
     } catch (err) {
-      console.error("Failed to save settings:", err);
+
       toast({
         title: "Error saving settings",
         description: "There was a problem saving your settings. Please try again.",
@@ -479,7 +479,7 @@ export function GitHubActionsPage({
       const data = await response.json();
       
       if (!data || !data.githubAction) {
-        console.error("Invalid GitHub settings data received");
+
         setError("Invalid settings data received");
         return;
       }
@@ -493,7 +493,7 @@ export function GitHubActionsPage({
       
       setError(null);
     } catch (err) {
-      console.error("Failed to load GitHub settings:", err);
+
       setError("Failed to load settings. Please try again later.");
       toast({
         title: "Error Loading Settings",
@@ -544,13 +544,13 @@ export function GitHubActionsPage({
     
     // Only log this in development
     if (process.env.NODE_ENV === 'development' && hasChanges) {
-      console.log('Unsaved GitHub settings changes detected:', {
-        hasApiKeyChanged,
-        hasRepoChanged,
-        hasEnabledChanged,
-        hasScheduleChanged,
-        hasSecretNameChanged
-      });
+
+
+
+
+
+
+
     }
     
     return hasChanges;
@@ -562,7 +562,7 @@ export function GitHubActionsPage({
   // Track when apiKey changes but only log if needed
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && apiKey) {
-      console.log('[GitHub Settings] API key loaded');
+
     }
   }, [apiKey]);
 
@@ -574,7 +574,7 @@ export function GitHubActionsPage({
       const delay = setTimeout(() => {
         // Check if the api key is missing but we know it should exist
         if (!apiKey && pingStats.lastPing && isGithubEnabled) {
-          console.log(`${logPrefix} API key missing but GitHub Actions are configured - refreshing settings`);
+
           fetchSettings();
         }
       }, 2000);

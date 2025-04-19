@@ -40,8 +40,7 @@ export async function GET(request: NextRequest) {
       apiKey: config.apiKey || null
     });
   } catch (error) {
-    console.error('Error fetching GitHub settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch GitHub settings' },
       { status: 500 }

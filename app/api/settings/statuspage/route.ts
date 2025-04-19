@@ -33,8 +33,7 @@ export async function GET() {
     
     return NextResponse.json(statusPageConfig);
   } catch (error) {
-    console.error('Error fetching status page settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch status page settings' },
       { status: 500 }
@@ -104,8 +103,7 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating status page settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to update status page settings' },
       { status: 500 }

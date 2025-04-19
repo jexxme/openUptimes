@@ -409,7 +409,7 @@ export function ServiceItem({
   
   // Debug log to verify historyDays is being applied
   useEffect(() => {
-    console.log(`ServiceItem ${name} using historyDays: ${historyDays}`);
+
   }, [name, historyDays]);
   
   const handleMouseEnter = () => {

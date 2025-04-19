@@ -37,15 +37,15 @@ export function DashboardContent({
   pingStatsLoading = false,
   preloadedPingStats = null
 }: DashboardContentProps) {
-  console.log("[DashboardContent] Rendering with props:", {
-    hasServices: !!services && Array.isArray(services),
-    serviceCount: services?.length || 0,
-    statusLoading,
-    hasStatusPageData: !!statusPageData,
-    hasHistoryData: !!historyData,
-    pingCount24h,
-    hasPingStats: !!preloadedPingStats
-  });
+
+
+
+
+
+
+
+
+
 
   // Calculate stats from real data
   const totalServices = services.length;
@@ -66,20 +66,20 @@ export function DashboardContent({
 
   // Log component lifecycle
   useEffect(() => {
-    console.log("[DashboardContent] Component mounted with preloaded data:", {
-      hasStatusPage: !!statusPageData,
-      hasPingStats: !!preloadedPingStats
-    });
+
+
+
+
     
     return () => {
-      console.log("[DashboardContent] Component unmounting");
+
     };
   }, [statusPageData, preloadedPingStats]);
 
   // Log when first render is complete
   useEffect(() => {
     if (isFirstRender.current) {
-      console.log("[DashboardContent] First render complete");
+
       isFirstRender.current = false;
     }
   });
@@ -87,8 +87,7 @@ export function DashboardContent({
   // Handle refresh with animation
   const handleRefresh = useCallback(() => {
     if (isRefreshing || statusLoading) return;
-    
-    console.log("[DashboardContent] Manual refresh triggered");
+
     setIsRefreshing(true);
     
     // Delay the actual refresh to complete animation
@@ -98,7 +97,7 @@ export function DashboardContent({
       // Reset refreshing state after a short delay
       setTimeout(() => {
         setIsRefreshing(false);
-        console.log("[DashboardContent] Manual refresh complete");
+
       }, 100);
     }, 650); // Animation takes ~600ms
   }, [isRefreshing, statusLoading, refresh]);
@@ -106,8 +105,7 @@ export function DashboardContent({
   // Handle status page toggle
   const handleStatusPageToggle = async (enabled: boolean) => {
     if (isTogglingStatusPage) return;
-    
-    console.log("[DashboardContent] Toggling status page:", enabled);
+
     setIsTogglingStatusPage(true);
     setStatusPageEnabled(enabled);
     
@@ -128,11 +126,10 @@ export function DashboardContent({
       if (!response.ok) {
         throw new Error('Failed to update status page settings');
       }
-      
-      console.log("[DashboardContent] Status page toggled successfully");
+
       // Update successful, leave the UI state as is
     } catch (error) {
-      console.error('[DashboardContent] Error toggling status page:', error);
+
       // Revert UI state on error
       setStatusPageEnabled(!enabled);
     } finally {
@@ -143,7 +140,7 @@ export function DashboardContent({
   // Helper function to handle navigation with sections
   const handleNavigation = (tab: string, section?: string) => {
     if (setActiveTab) {
-      console.log(`[DashboardContent] Navigating to tab: ${tab}${section ? `, section: ${section}` : ''}`);
+
       setActiveTab(tab);
       
       // Update URL with the new tab and optional section
@@ -161,13 +158,11 @@ export function DashboardContent({
       }
     } else {
       // Fallback to traditional navigation if setActiveTab not provided
-      console.log(`[DashboardContent] Fallback navigation to: /admin?tab=${tab}${section ? `&service=${section}` : ''}`);
+
       window.location.href = `/admin?tab=${tab}${section ? `&service=${section}` : ''}`;
     }
   };
 
-  console.log("[DashboardContent] Before rendering children with data");
-  
   return (
     <div className="space-y-6">
       {/* Top stats overview - larger cards with more detailed metrics */}

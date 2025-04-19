@@ -26,7 +26,7 @@ export function usePingStats(refreshInterval = 60000) {
       setStats(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching ping stats:', err);
+
       setError((err as Error).message);
     } finally {
       setLoading(false);

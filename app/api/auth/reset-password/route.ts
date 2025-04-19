@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         message: 'Password reset successfully'
       });
     } catch (redisError) {
-      console.error('Redis error during password reset:', redisError);
+
       return NextResponse.json(
         { error: 'Failed to connect to Redis with the provided URL' },
         { status: 400 }
@@ -73,12 +73,12 @@ export async function POST(request: NextRequest) {
         try {
           await tempClient.quit();
         } catch (err) {
-          console.error('Error closing temporary Redis client:', err);
+
         }
       }
     }
   } catch (error) {
-    console.error('Error resetting password:', error);
+
     return NextResponse.json(
       { error: 'Failed to reset password' },
       { status: 500 }

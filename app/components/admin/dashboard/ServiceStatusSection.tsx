@@ -53,13 +53,12 @@ export const ServiceStatusSection = ({
 
   // Log navigation attempts for debugging
   const navigateToService = (tab: string, serviceName?: string) => {
-    console.log(`[ServiceStatus] Navigating to ${tab}${serviceName ? ` with service: ${serviceName}` : ''}`);
-    
+
     // Add debugging for URL params
     if (typeof window !== 'undefined' && serviceName) {
       const url = new URL(window.location.href);
       url.searchParams.set('service', serviceName);
-      console.log(`[ServiceStatus] URL will be: ${url.toString()}`);
+
     }
     
     handleNavigation(tab, serviceName);

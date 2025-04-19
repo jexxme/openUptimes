@@ -4,7 +4,7 @@ dotenv.config({ path: '.env.local' });
 
 // Ensure REDIS_URL is available
 if (!process.env.REDIS_URL) {
-  console.error('REDIS_URL environment variable is not set in .env.local');
+
   process.exit(1);
 }
 
@@ -163,12 +163,10 @@ async function generateDowntimeForService(
 ): Promise<void> {
   const numEvents = getDowntimeEventsCount();
   if (numEvents === 0) {
-    console.log(`No downtime events for ${serviceName} this week`);
+
     return;
   }
-  
-  console.log(`Generating ${numEvents} downtime events for ${serviceName}`);
-  
+
   // Generate random days and times for the events
   // Avoid overlapping events
   const downtimeEvents = [];
@@ -231,7 +229,7 @@ async function generateDowntimeForService(
     
     const startDate = new Date(event.start);
     const endDate = new Date(event.end);
-    console.log(`  Event: ${startDate.toLocaleString()} - ${endDate.toLocaleString()} (${event.duration} minutes)`);
+
   }
 }
 
@@ -239,21 +237,19 @@ async function generateDowntimeForService(
  * Generate realistic downtime for all services
  */
 async function generateRealisticDowntime() {
-  console.log('Starting to generate realistic downtime for all services...');
-  
+
   try {
     const client = await getRedisClient();
     
     // Get all services
     const servicesJson = await client.get('config:services');
     if (!servicesJson) {
-      console.error('No services found in Redis');
+
       return;
     }
     
     const services = JSON.parse(servicesJson);
-    console.log(`Found ${services.length} services`);
-    
+
     // Generate downtime for past weeks (4 weeks)
     const now = new Date();
     const weeksToGenerate = 4;
@@ -263,20 +259,17 @@ async function generateRealisticDowntime() {
       const weekStartDate = new Date(now);
       weekStartDate.setDate(weekStartDate.getDate() - (weekStartDate.getDay() + (7 * week)));
       weekStartDate.setHours(0, 0, 0, 0);
-      
-      console.log(`\nGenerating downtime for week ${week + 1}: ${weekStartDate.toDateString()}`);
-      
+
       // Process each service
       for (const service of services) {
         await generateDowntimeForService(service.name, weekStartDate);
       }
     }
-    
-    console.log('\nDowntime generation completed successfully');
+
     await closeRedisConnection();
     
   } catch (error) {
-    console.error('Error generating realistic downtime:', error);
+
   } finally {
     process.exit(0);
   }

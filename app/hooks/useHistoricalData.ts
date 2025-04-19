@@ -29,8 +29,7 @@ export function useHistoricalData(timeRange = '90d') {
       
       // Add a timestamp to avoid browser caching
       url.searchParams.append('_t', Date.now().toString());
-      
-      console.log(`Fetching historical data with timeRange: ${timeRange}`);
+
       const response = await fetch(url.toString());
       
       if (!response.ok) {
@@ -38,8 +37,7 @@ export function useHistoricalData(timeRange = '90d') {
       }
       
       const historyData = await response.json();
-      console.log(`Received historical data for ${historyData.length} services`);
-      
+
       // Calculate uptime percentage for each service
       const processedData = historyData.map((service: any) => {
         const upEntries = service.history.filter((entry: HistoricalStatus) => entry.status === 'up').length;
@@ -56,7 +54,7 @@ export function useHistoricalData(timeRange = '90d') {
       setError(null);
       return processedData;
     } catch (err) {
-      console.error('Error fetching historical data:', err);
+
       setError((err as Error).message);
       throw err;
     } finally {
@@ -66,7 +64,7 @@ export function useHistoricalData(timeRange = '90d') {
   
   // Explicitly expose a refetch function
   const refetch = useCallback(() => {
-    console.log('Manually refetching historical data...');
+
     return fetchHistoricalData();
   }, [fetchHistoricalData]);
   

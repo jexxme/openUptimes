@@ -23,10 +23,10 @@ export function ClientHooks({ children }: { children: ReactNode }) {
         });
         
         if (!pingResponse.ok) {
-          console.error('Failed to bootstrap ping system');
+
         }
       } catch (error) {
-        console.error('Error bootstrapping ping system:', error);
+
       }
     };
     

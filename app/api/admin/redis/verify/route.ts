@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error verifying admin password:', error);
+
     return NextResponse.json(
       { message: 'Failed to verify password' },
       { status: 500 }

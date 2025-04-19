@@ -216,9 +216,9 @@ function HomeContent() {
         const decoded = decodeURIComponent(previewSettingsParam);
         const parsed = JSON.parse(decoded);
         setPreviewSettings(parsed);
-        console.log('Using preview settings:', parsed);
+
       } catch (error) {
-        console.error('Error parsing preview settings:', error);
+
       }
     }
   }, [isPreview, previewSettingsParam]);
@@ -261,7 +261,7 @@ function HomeContent() {
   // Debug render cycle
   useEffect(() => {
     setRenderCount(prev => {
-      console.log(`HomeContent render count: ${prev + 1}`);
+
       return prev + 1;
     });
   }, []);
@@ -269,15 +269,15 @@ function HomeContent() {
   // Mark when critical content is ready to display
   useEffect(() => {
     if (!appearanceLoading && !setupLoading) {
-      console.log('Critical content ready, appearance loaded:', !appearanceLoading);
+
       setTimeout(() => setContentReady(true), 100); // Small delay to ensure smooth transition
     }
   }, [appearanceLoading, setupLoading]);
   
   // Debug the history time range to verify it's being set correctly
   useEffect(() => {
-    console.log('Using history time range:', historyTimeRange, 'days:', appearanceConfig?.historyDays);
-    console.log('Appearance loading:', appearanceLoading, 'Setup loading:', setupLoading);
+
+
   }, [historyTimeRange, appearanceConfig?.historyDays, appearanceLoading, setupLoading]);
 
   // Fetch site settings
@@ -295,7 +295,7 @@ function HomeContent() {
           setSiteConfig(data);
         }
       } catch (error) {
-        console.error('Error fetching site config:', error);
+
       }
     }
     
@@ -328,17 +328,17 @@ function HomeContent() {
         const response = await fetch('/api/settings/statuspage');
         if (response.ok && isMounted) {
           const data = await response.json();
-          console.log('Status page settings:', data);
+
           // Create a map of service name to visibility
           const visibilityMap = (data.services || []).reduce((acc: Record<string, boolean>, service: any) => {
             acc[service.name] = service.visible;
             return acc;
           }, {});
           setServiceVisibility(visibilityMap);
-          console.log('Service visibility map:', visibilityMap);
+
         }
       } catch (error) {
-        console.error('Error fetching status page settings:', error);
+
       }
     }
     
@@ -369,8 +369,8 @@ function HomeContent() {
   // Debug logging
   useEffect(() => {
     if (services.length > 0) {
-      console.log('All services:', services.map(s => s.name));
-      console.log('Visible services:', visibleServices.map(s => s.name));
+
+
     }
   }, [services, visibleServices]);
 
@@ -381,19 +381,18 @@ function HomeContent() {
     setIsRefreshing(true);
     
     // Only refresh the historical data, not the entire page
-    console.log('Refreshing service data...');
-    
+
     // Just refetch the history data, we don't need to hide/show the entire page
     refetchHistory()
       .then(() => {
-        console.log('Service data refresh complete');
+
         // Keep a short spinner animation to provide feedback
         setTimeout(() => {
           setIsRefreshing(false);
         }, 500);
       })
       .catch(error => {
-        console.error('Error refreshing service data:', error);
+
         setIsRefreshing(false);
       });
   };
@@ -476,7 +475,7 @@ function HomeContent() {
     // Check if both are loaded to avoid flashing titles
     if (contentReady && siteConfig && siteConfig.statusPage) {
       // PageTitle will be updated via the standalone component
-      console.log("Status page title ready:", siteConfig.statusPage.title);
+
     }
   }, [contentReady, siteConfig]);
 
@@ -525,8 +524,8 @@ function HomeContent() {
                 src={appearanceConfig.logoUrl} 
                 alt={`${siteConfig.siteName || 'OpenUptimes'} Logo`}
                 className="h-16 w-auto"
-                onLoad={() => console.log('Logo image loaded')}
-                onError={() => console.log('Logo image failed to load')}
+                onLoad={() => {}}
+                onError={() => {}}
               />
             ) : (
               <div 

@@ -17,7 +17,7 @@ async function getServicesFromRedis(): Promise<ServiceConfig[]> {
     
     return JSON.parse(services);
   } catch (error) {
-    console.error('Error reading services from Redis:', error);
+
     throw error;
   }
 }
@@ -33,7 +33,7 @@ async function getAllHistoryServiceNames(): Promise<string[]> {
     // Extract service names from the Redis keys (format: "history:serviceName")
     return keys.map((key: string) => key.substring(8)); // Remove "history:" prefix
   } catch (error) {
-    console.error('Error getting history service names:', error);
+
     return [];
   }
 }
@@ -46,7 +46,7 @@ async function saveServicesToRedis(services: ServiceConfig[]): Promise<void> {
     const client = await getRedisClient();
     await client.set('config:services', JSON.stringify(services));
   } catch (error) {
-    console.error('Error writing services to Redis:', error);
+
     throw error;
   }
 }
@@ -55,7 +55,7 @@ async function saveServicesToRedis(services: ServiceConfig[]): Promise<void> {
  * Check a single service status immediately
  */
 async function checkService(service: ServiceConfig) {
-  console.log(`Immediate check for service: ${service.name} at URL: ${service.url}`);
+
   const startTime = Date.now();
   
   try {
@@ -72,9 +72,7 @@ async function checkService(service: ServiceConfig) {
     
     const expectedStatus = service.expectedStatus || 200;
     const isUp = response.status === expectedStatus;
-    
-    console.log(`Service ${service.name} status: ${isUp ? 'UP' : 'DOWN'}, Code: ${response.status}, Time: ${responseTime}ms`);
-    
+
     const statusData: ServiceStatus = {
       status: isUp ? 'up' : 'down',
       timestamp: endTime,
@@ -92,9 +90,7 @@ async function checkService(service: ServiceConfig) {
   } catch (error) {
     const endTime = Date.now();
     const responseTime = endTime - startTime;
-    
-    console.error(`Error checking service ${service.name}:`, error);
-    
+
     const statusData: ServiceStatus = {
       status: 'down',
       timestamp: endTime,
@@ -166,13 +162,12 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(allServices);
   } catch (error) {
-    console.error('Error fetching services:', error);
-    
+
     // Close Redis connection on error
     try {
       await closeRedisConnection();
     } catch (closeError) {
-      console.error('Error closing Redis connection:', closeError);
+
     }
     
     return NextResponse.json(
@@ -223,7 +218,7 @@ export async function POST(request: NextRequest) {
     try {
       await closeRedisConnection();
     } catch (closeError) {
-      console.error('Error closing Redis connection:', closeError);
+
     }
     
     return NextResponse.json(
@@ -289,7 +284,7 @@ export async function PUT(request: NextRequest) {
     try {
       await closeRedisConnection();
     } catch (closeError) {
-      console.error('Error closing Redis connection:', closeError);
+
     }
     
     return NextResponse.json(
@@ -341,7 +336,7 @@ export async function DELETE(request: NextRequest) {
     try {
       await closeRedisConnection();
     } catch (closeError) {
-      console.error('Error closing Redis connection:', closeError);
+
     }
     
     return NextResponse.json(

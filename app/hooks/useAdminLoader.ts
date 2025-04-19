@@ -32,7 +32,7 @@ interface PreloadedData {
 export function useAdminLoader() {
   // Only log initialization in development
   if (process.env.NODE_ENV === 'development') {
-    console.log("[useAdminLoader] Hook initialized");
+
   }
   
   const router = useRouter();
@@ -84,7 +84,7 @@ export function useAdminLoader() {
   // Preload logo during loading phase
   useEffect(() => {
     async function preloadLogo() {
-      console.log("[useAdminLoader] Starting logo preload");
+
       try {
         setLoadingState("Loading resources...");
         setLoadingProgress(30);
@@ -116,14 +116,14 @@ export function useAdminLoader() {
           setLoadingProgress(40);
         }
       } catch (error) {
-        console.error("Failed to preload logo:", error);
+
         setLogoPreloaded(true); // Continue even if there's an error
         setLoadingProgress(40);
       }
     }
     
     if (isValidatingSession === false && !isLoaded) {
-      console.log("[useAdminLoader] Session validated, beginning preloading sequence");
+
       preloadLogo();
     }
   }, [isValidatingSession, isLoaded]);
@@ -153,7 +153,7 @@ export function useAdminLoader() {
         setLoadingProgress(60);
         setLoadingState("Almost ready...");
       } catch (error) {
-        console.error("Failed to preload status page data:", error);
+
         // Continue even if there's an error
         setStatusPageDataLoaded(true);
         setLoadingProgress(60);
@@ -179,10 +179,10 @@ export function useAdminLoader() {
             const servicesData = await servicesResponse.json();
             setServicesData(servicesData);
           } else {
-            console.error(`Failed to preload services status: ${servicesResponse.status}`);
+
           }
         } catch (error) {
-          console.error("Error preloading services status:", error);
+
         }
         
         // Fetch services configuration with retry logic
@@ -204,17 +204,17 @@ export function useAdminLoader() {
               break; // Success, exit the retry loop
             } else if (servicesConfigResponse.status >= 500) {
               // Server error, retry
-              console.warn(`Server error (${servicesConfigResponse.status}) when fetching service config. Retrying...`);
+
               retries++;
               // Exponential backoff
               await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retries), 5000)));
             } else {
               // Client error, don't retry
-              console.error(`Failed to preload services config: ${servicesConfigResponse.status}`);
+
               break;
             }
           } catch (error) {
-            console.error("Error preloading services config:", error);
+
             retries++;
             if (retries >= maxRetries) break;
             // Exponential backoff for network errors
@@ -225,7 +225,7 @@ export function useAdminLoader() {
         setServicesDataLoaded(true);
         setLoadingProgress(80);
       } catch (error) {
-        console.error("Failed to preload services data:", error);
+
         // Continue even if there's an error
         setServicesDataLoaded(true);
         setLoadingProgress(80);
@@ -276,7 +276,7 @@ export function useAdminLoader() {
               }
             }
           } catch (error) {
-            console.error("Failed to refresh services data for history:", error);
+
           }
         } else if (Array.isArray(servicesList)) {
           // Extract services info from existing data
@@ -361,19 +361,19 @@ export function useAdminLoader() {
               setHistoryData(allHistory);
               setLoadingState("History data loaded successfully");
             } else {
-              console.warn("Invalid history data format:", allHistory.slice(0, 2));
+
               setLoadingState("History data format is incorrect, will reload when needed");
             }
           }
         } else {
-          console.error(`Failed to load history: ${response.status}`);
+
           setLoadingState("Failed to load history data, continuing anyway...");
         }
         
         setHistoryDataLoaded(true);
         setLoadingProgress(95);
       } catch (error) {
-        console.error("Failed to preload history data:", error);
+
         // Continue even if there's an error
         setHistoryDataLoaded(true);
         setLoadingProgress(95);
@@ -389,46 +389,46 @@ export function useAdminLoader() {
   // Preload system and logger status data
   useEffect(() => {
     async function preloadSystemData() {
-      console.log("[useAdminLoader] Starting system data preload");
+
       try {
         setLoadingState("Loading system data...");
         setLoadingProgress(97);
         
         // Fetch logger status data
         try {
-          console.log("[useAdminLoader] Fetching logger status");
+
           const loggerResponse = await fetch('/api/ping?action=status');
           if (loggerResponse.ok) {
             const loggerData = await loggerResponse.json();
-            console.log("[useAdminLoader] Logger status loaded successfully");
+
             setLoggerStatusData(loggerData);
           } else {
-            console.error(`[useAdminLoader] Failed to preload logger status: ${loggerResponse.status}`);
+
           }
         } catch (error) {
-          console.error("[useAdminLoader] Error preloading logger status:", error);
+
         }
         
         // Fetch ping stats data
         try {
-          console.log("[useAdminLoader] Fetching ping stats");
+
           const pingStatsResponse = await fetch('/api/ping-stats');
           if (pingStatsResponse.ok) {
             const pingStatsData = await pingStatsResponse.json();
-            console.log("[useAdminLoader] Ping stats loaded successfully:", pingStatsData ? "Data received" : "No data");
+
             setPingStatsData(pingStatsData);
           } else {
-            console.error(`[useAdminLoader] Failed to preload ping stats: ${pingStatsResponse.status}`);
+
           }
         } catch (error) {
-          console.error("[useAdminLoader] Error preloading ping stats:", error);
+
         }
         
         setSystemDataLoaded(true);
         setLoadingProgress(98);
-        console.log("[useAdminLoader] System data preload complete");
+
       } catch (error) {
-        console.error("[useAdminLoader] Failed to preload system data:", error);
+
         // Continue even if there's an error
         setSystemDataLoaded(true);
         setLoadingProgress(98);
@@ -443,31 +443,31 @@ export function useAdminLoader() {
   // Preload general settings data
   useEffect(() => {
     async function preloadGeneralSettings() {
-      console.log("[useAdminLoader] Starting general settings preload");
+
       try {
         setLoadingState("Loading general settings...");
         setLoadingProgress(99);
         
         // Fetch general settings data
         try {
-          console.log("[useAdminLoader] Fetching general settings");
+
           const settingsResponse = await fetch('/api/settings');
           if (settingsResponse.ok) {
             const settingsData = await settingsResponse.json();
-            console.log("[useAdminLoader] General settings loaded successfully");
+
             setGeneralSettingsData(settingsData);
           } else {
-            console.error(`[useAdminLoader] Failed to preload general settings: ${settingsResponse.status}`);
+
           }
         } catch (error) {
-          console.error("[useAdminLoader] Error preloading general settings:", error);
+
         }
         
         setGeneralSettingsLoaded(true);
         setLoadingProgress(100);
-        console.log("[useAdminLoader] General settings preload complete");
+
       } catch (error) {
-        console.error("[useAdminLoader] Failed to preload general settings:", error);
+
         // Continue even if there's an error
         setGeneralSettingsLoaded(true);
         setLoadingProgress(100);
@@ -482,29 +482,29 @@ export function useAdminLoader() {
   // Preload GitHub settings data
   useEffect(() => {
     async function preloadGithubSettings() {
-      console.log("[useAdminLoader] Starting GitHub settings preload");
+
       try {
         setLoadingState("Loading GitHub settings...");
         
         // Fetch GitHub settings directly - no longer dependent on generalSettings
         try {
-          console.log("[useAdminLoader] Fetching GitHub settings");
+
           const githubResponse = await fetch('/api/settings/github');
           if (githubResponse.ok) {
             const githubData = await githubResponse.json();
-            console.log("[useAdminLoader] GitHub settings loaded successfully");
+
             setGithubSettingsData(githubData);
           } else {
-            console.error(`[useAdminLoader] Failed to preload GitHub settings: ${githubResponse.status}`);
+
           }
         } catch (error) {
-          console.error("[useAdminLoader] Error preloading GitHub settings:", error);
+
         }
         
         setGithubSettingsLoaded(true);
-        console.log("[useAdminLoader] GitHub settings preload complete");
+
       } catch (error) {
-        console.error("[useAdminLoader] Failed to preload GitHub settings:", error);
+
         // Continue even if there's an error
         setGithubSettingsLoaded(true);
       }
@@ -545,8 +545,7 @@ export function useAdminLoader() {
         setLoadingProgress(99);
       } else {
         // Do a final validation of all the preloaded data before showing content
-        console.log("[useAdminLoader] All data loaded, preparing UI");
-        
+
         // Show data loaded message
         setLoadingState("Data loaded successfully!");
         setLoadingProgress(100);
@@ -653,18 +652,18 @@ export function useAdminLoader() {
       
       // Only log in development to reduce console spam
       if (process.env.NODE_ENV === 'development') {
-        console.log("[useAdminLoader] Data reference updated", {
-          hasServices: !!validServicesData,
-          hasServicesConfig: !!validServicesConfigData,
-          hasStatusPage: !!validStatusPageData,
-          hasAppearance: !!validAppearanceData,
-          hasHistory: !!validHistoryData,
-          hasHistoryServices: !!validHistoryServicesList,
-          hasLoggerStatus: !!validLoggerStatusData,
-          hasPingStats: !!validPingStatsData,
-          hasGeneralSettings: !!validGeneralSettingsData,
-          hasGithubSettings: !!validGithubSettingsData
-        });
+
+
+
+
+
+
+
+
+
+
+
+
       }
     }
   }, [
@@ -689,7 +688,7 @@ export function useAdminLoader() {
         });
         
         if (!response.ok) {
-          console.error('[useAdminLoader] Session validation failed:', response.status);
+
           redirectToLogin();
           return;
         }
@@ -697,7 +696,7 @@ export function useAdminLoader() {
         const data = await response.json();
         
         if (!data.valid) {
-          console.log('[useAdminLoader] Invalid session detected, redirecting to login');
+
           redirectToLogin();
           return;
         }
@@ -705,7 +704,7 @@ export function useAdminLoader() {
         // Only proceed if session is valid
         setIsValidatingSession(false);
       } catch (error) {
-        console.error("[useAdminLoader] Session validation error:", error);
+
         redirectToLogin();
         return;
       }
@@ -714,7 +713,7 @@ export function useAdminLoader() {
     function redirectToLogin() {
       // Add timestamp to prevent cache issues
       const redirectUrl = `/login?from=/admin&t=${Date.now()}`;
-      console.log("[useAdminLoader] Redirecting to login:", redirectUrl);
+
       window.location.href = redirectUrl;
     }
     
@@ -745,10 +744,10 @@ export function useAdminLoader() {
   
   // Log only in development mode
   if (process.env.NODE_ENV === 'development') {
-    console.log("[useAdminLoader] Returning hook data", {
-      isLoaded: hookResult.isLoaded,
-      hasPreloadedData: !!hookResult.preloadedData.services
-    });
+
+
+
+
   }
   
   return hookResult;

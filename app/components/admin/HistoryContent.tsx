@@ -296,7 +296,7 @@ export function HistoryContent({
       });
       
     } catch (err) {
-      console.error('Error fetching history:', err);
+
       setError((err as Error).message);
     } finally {
       setIsLoading(false);
@@ -327,7 +327,7 @@ export function HistoryContent({
   useEffect(() => {
     // If we have preloaded history, use it
     if (preloadedHistory && !lastFetchParams) {
-      console.log("Using preloaded history data on initial load");
+
       setRawHistoryData(preloadedHistory);
       setLastFetchParams({
         service: selectedService,
@@ -342,7 +342,7 @@ export function HistoryContent({
       // If there's a specific service selected, fetch fresh data for that service
       if (selectedService !== 'all') {
         const timer = setTimeout(() => {
-          console.log("Fetching fresh data for selected service:", selectedService);
+
           fetchHistoryData(true);
         }, 1000);
         

@@ -97,7 +97,7 @@ export function SecuritySettings() {
       setVerificationPassword("");
       
     } catch (error) {
-      console.error("Password verification error:", error);
+
       setRedisUrlError(error instanceof Error ? error.message : "Failed to verify password");
       setIsRedisUrlRevealed(false);
     } finally {
@@ -174,7 +174,7 @@ export function SecuritySettings() {
         variant: "success",
       });
     } catch (error) {
-      console.error("Password change error:", error);
+
       setPasswordError(error instanceof Error ? error.message : "Failed to change password");
     } finally {
       setIsChangingPassword(false);
@@ -240,7 +240,7 @@ export function SecuritySettings() {
         variant: "success",
       });
     } catch (error) {
-      console.error("Password reset error:", error);
+
       setResetError(error instanceof Error ? error.message : "Failed to reset password");
     } finally {
       setIsResettingPassword(false);

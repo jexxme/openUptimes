@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   // If run from GitHub Actions, verify API key
   if (runId) {
     if (!apiKey) {
-      console.error(`[Ping] Unauthorized access attempt with run ID: ${runId} - No API Key provided`);
+
       return NextResponse.json(
         { error: 'Unauthorized. Missing API key for GitHub Actions request.' },
         { status: 401 }
@@ -39,14 +39,13 @@ export async function GET(request: Request) {
     
     const isValidApiKey = await validateApiKey(apiKey);
     if (!isValidApiKey) {
-      console.error(`[Ping] Unauthorized access attempt with run ID: ${runId} - Invalid API Key`);
+
       return NextResponse.json(
         { error: 'Unauthorized. Invalid API key.' },
         { status: 401 }
       );
     }
-    
-    console.log(`[Ping] GitHub Actions run ID: ${runId} - API key validation successful`);
+
   }
   
   // Reset interval analysis
@@ -61,7 +60,7 @@ export async function GET(request: Request) {
         timestamp: timestamp
       });
     } catch (error) {
-      console.error('Error resetting interval statistics:', error);
+
       return NextResponse.json(
         { error: 'Failed to reset interval statistics', message: (error as Error).message },
         { status: 500 }
@@ -88,7 +87,7 @@ export async function GET(request: Request) {
         currentTime: Date.now()
       });
     } catch (error) {
-      console.error('Error getting ping status:', error);
+
       return NextResponse.json(
         { error: 'Failed to get ping status', message: (error as Error).message },
         { status: 500 }
@@ -103,17 +102,14 @@ export async function GET(request: Request) {
       scheduledTimeout = null;
     }
     pingLoopActive = false;
-    console.log('Ping loop stopped');
-    
+
     return NextResponse.json({
       status: 'success',
       message: 'Ping loop stopped',
       timestamp: Date.now()
     });
   }
-  
-  console.log(`[Ping] Started at ${new Date(startTime).toISOString()}`);
-  
+
   try {
     // Get site config for refresh interval
     const client = await getRedisClient();
@@ -124,9 +120,7 @@ export async function GET(request: Request) {
       const config = JSON.parse(configStr);
       refreshInterval = config.refreshInterval || 60000;
     }
-    
-    console.log(`[Ping] Using refresh interval: ${refreshInterval}ms (${refreshInterval/1000}s)`);
-    
+
     // Update ping statistics
     const now = Date.now();
     await client.set('ping:last', now.toString());
@@ -134,10 +128,9 @@ export async function GET(request: Request) {
     await client.set('ping:next', nextPing.toString());
     
     // Check all services
-    console.log('[Ping] Checking all services...');
+
     const results = await checkAllServices();
-    console.log(`[Ping] Checked ${results.length} services`);
-    
+
     // Record this ping in history
     const pingRecord = {
       timestamp: now,
@@ -165,7 +158,7 @@ export async function GET(request: Request) {
       // Schedule next ping
       scheduledTimeout = setTimeout(() => {
         // Use fetch to call this endpoint again without awaiting
-        console.log(`[Ping] Triggering scheduled ping at ${new Date().toISOString()}`);
+
         fetch(new URL(request.url).origin + '/api/ping', {
           method: 'GET',
           headers: {
@@ -173,20 +166,19 @@ export async function GET(request: Request) {
             'User-Agent': 'OpenUptimes Self-Scheduler'
           }
         }).catch(error => {
-          console.error('[Ping] Error in scheduled ping:', error);
+
         });
       }, refreshInterval);
       
       lastScheduledTime = Date.now();
       pingLoopActive = true;
-      console.log(`[Ping] Next ping scheduled in ${refreshInterval}ms at ${new Date(nextPing).toISOString()}`);
+
     }
     
     // Calculate total execution time
     const endTime = Date.now();
     const executionTime = endTime - startTime;
-    console.log(`[Ping] Completed in ${executionTime}ms`);
-    
+
     // Close Redis connection
     await closeRedisConnection();
     
@@ -200,13 +192,12 @@ export async function GET(request: Request) {
       results: results
     });
   } catch (err) {
-    console.error('[Ping] Failed to check services:', err);
-    
+
     // Close Redis connection even on error
     try {
       await closeRedisConnection();
     } catch (closeError) {
-      console.error('[Ping] Error closing Redis connection:', closeError);
+
     }
     
     return NextResponse.json(
@@ -247,7 +238,7 @@ async function validateApiKey(apiKey: string | null): Promise<boolean> {
     // This is not secure for production and should be replaced with a proper secret
     return apiKey === 'openuptimes-api-key';
   } catch (error) {
-    console.error('Error validating API key:', error);
+
     return false;
   }
 }
@@ -301,7 +292,7 @@ async function checkService(service: { name: string; url: string; expectedStatus
     await client.lPush(`history:${service.name}`, JSON.stringify(statusData));
     await client.lTrim(`history:${service.name}`, 0, 999);
   } catch (storageError) {
-    console.error(`Failed to store status for ${service.name}:`, storageError);
+
   }
   
   return {
@@ -325,7 +316,7 @@ async function checkAllServices() {
     const parsedServices = JSON.parse(services);
     return Promise.all(parsedServices.map((service: any) => checkService(service)));
   } catch (error) {
-    console.error('Error reading services from Redis:', error);
+
     throw error;
   }
 }

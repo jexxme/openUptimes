@@ -47,7 +47,7 @@ export async function GET() {
     const config = await getSiteConfigFromRedis();
     return NextResponse.json(config);
   } catch (error) {
-    console.error('Error fetching settings:', error);
+
     return NextResponse.json(
       { error: 'Failed to fetch settings' },
       { status: 500 }
@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest) {
     
     // Handle API key separately (only store if provided)
     if (updatedConfig.apiKey) {
-      console.log('Updating API key in configuration');
+
       newConfig.apiKey = updatedConfig.apiKey;
     }
     
@@ -91,8 +91,7 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json(newConfig);
   } catch (error) {
-    console.error('Error updating settings:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to update settings' },
       { status: 500 }

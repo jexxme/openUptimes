@@ -59,33 +59,32 @@ export async function verifyPassword(password: string, storedHash?: string | nul
   try {
     if (!storedHash) {
       // If no hash stored, try to get it from Redis
-      console.log('No hash provided, fetching from Redis');
+
       storedHash = await getAdminPassword();
       if (!storedHash) {
-        console.error('No admin password hash found in Redis');
+
         return false;
       }
     }
     
     if (!storedHash.includes(':')) {
-      console.error('Invalid hash format (missing salt separator)');
+
       return false;
     }
     
     const [hash, salt] = storedHash.split(':');
     
     if (!hash || !salt) {
-      console.error('Invalid hash or salt extracted from stored hash');
+
       return false;
     }
     
     const testHash = await sha256(password + salt);
     const isValid = hash === testHash;
-    
-    console.log('Password verification result:', isValid);
+
     return isValid;
   } catch (error) {
-    console.error('Error in password verification:', error);
+
     return false;
   }
 }
@@ -150,7 +149,7 @@ export async function authenticate(
       userInfo
     };
   } catch (error) {
-    console.error('Authentication error:', error);
+
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -216,7 +215,7 @@ export async function authenticateAdmin(request: Request): Promise<boolean> {
     const token = parseTokenFromCookie(cookieHeader);
     
     if (!token) {
-      console.log('No auth token found in cookies');
+
       return false;
     }
     
@@ -224,13 +223,13 @@ export async function authenticateAdmin(request: Request): Promise<boolean> {
     const valid = await isSessionValid(token);
     
     if (!valid) {
-      console.log('Invalid or expired session token');
+
       return false;
     }
     
     return true;
   } catch (error) {
-    console.error('Admin authentication error:', error);
+
     return false;
   }
 } 

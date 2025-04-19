@@ -16,10 +16,10 @@ export function RedisInitializer() {
         }
         
         const data = await response.json();
-        console.log('Redis initialization result:', data);
+
         setInitStatus('success');
       } catch (error) {
-        console.error('Error initializing Redis:', error);
+
         setInitStatus('error');
       }
     };
