@@ -102,6 +102,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
   });
   const { theme, toggleTheme } = useTheme();
   const isDarkMode = theme === "dark";
+  const [themeIconAnimating, setThemeIconAnimating] = useState(false);
 
   // Unsaved changes dialog state
   const [unsavedChangesDialogOpen, setUnsavedChangesDialogOpen] = useState(false);
@@ -316,6 +317,14 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
     visible: { opacity: 1, transition: { duration: 0.3 } }
   };
 
+  // Theme toggle handler with animation
+  const handleThemeToggle = () => {
+    setThemeIconAnimating(true);
+    toggleTheme();
+    // Reset animation state after animation completes
+    setTimeout(() => setThemeIconAnimating(false), 350);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -456,15 +465,22 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
           <div className="flex items-center space-x-2">
             <Switch
               checked={isDarkMode}
-              onCheckedChange={toggleTheme}
-              className={isDarkMode ? "data-[state=checked]:bg-sidebar-primary/70" : ""}
+              onCheckedChange={handleThemeToggle}
+              className={`theme-toggle-switch ${isDarkMode ? 
+                "border-muted-foreground/30" : 
+                "data-[state=checked]:bg-primary/80"
+              }`}
               aria-label="Toggle dark mode"
             />
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground overflow-hidden">
               {isDarkMode ? (
-                <Sun className="h-4 w-4 text-sidebar-primary/80" />
+                <Sun 
+                  className={`h-4 w-4 text-muted-foreground ${themeIconAnimating ? 'theme-icon-animate' : ''}`} 
+                />
               ) : (
-                <Moon className="h-4 w-4 text-muted-foreground/70" />
+                <Moon 
+                  className={`h-4 w-4 text-muted-foreground/70 ${themeIconAnimating ? 'theme-icon-animate' : ''}`} 
+                />
               )}
             </span>
           </div>
