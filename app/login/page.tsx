@@ -3,16 +3,24 @@
 import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, AlertTriangle, ArrowLeft } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
+import { cn } from "@/lib/utils";
+
+// Import Shadcn components
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 
 // Debug utility
 function logDebug(message: string, ...args: any[]) {
-
+  // Empty implementation
 }
 
 // The inner component that uses useSearchParams
 function LoginForm() {
   const searchParams = useSearchParams();
+  const { theme } = useTheme();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -191,207 +199,220 @@ function LoginForm() {
   }
   
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isResetMode ? "Reset Admin Password" : "Admin Login"}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {isResetMode 
-              ? "Enter your Redis URL to verify your identity and set a new password" 
-              : "Enter your password to access the admin area"}
-          </p>
-        </div>
-        
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          {/* Login Form */}
-          {!isResetMode && (
+        <Card>
+          {isResetMode ? (
             <>
-              {error && (
-                <div className="mb-4 rounded-md bg-red-50 p-3 flex items-start">
-                  <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-              
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Admin Password
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                    placeholder="Enter your password"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                        Logging in...
-                      </div>
-                    ) : (
-                      "Login"
-                    )}
-                  </button>
-                </div>
-              </form>
-            </>
-          )}
-          
-          {/* Reset Password Form */}
-          {isResetMode && (
-            <>
-              {resetSuccess ? (
-                <div className="mb-4 rounded-md bg-green-50 p-4 text-center">
-                  <p className="text-sm font-medium text-green-800 mb-2">Password Reset Successful!</p>
-                  <p className="text-sm text-green-700">Your password has been reset successfully.</p>
-                  <button
+              <CardHeader className="space-y-1 pb-2">
+                <div className="flex items-center mb-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 mr-2"
                     onClick={toggleMode}
-                    className="mt-4 inline-flex items-center justify-center rounded-md bg-green-100 px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-200"
                   >
-                    Return to Login
-                  </button>
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="sr-only">Back to login</span>
+                  </Button>
+                  <h1 className="text-2xl font-semibold">Reset Password</h1>
                 </div>
-              ) : (
-                <>
-                  {resetError && (
-                    <div className="mb-4 rounded-md bg-red-50 p-3 flex items-start">
-                      <AlertCircle className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-red-600">{resetError}</p>
-                    </div>
-                  )}
-                  
-                  <form onSubmit={handleResetPassword} className="space-y-4">
-                    <div>
-                      <label htmlFor="redis-url" className="block text-sm font-medium text-gray-700">
-                        Redis Connection URL
-                      </label>
-                      <input
-                        id="redis-url"
-                        type="text"
-                        value={redisUrl}
-                        onChange={(e) => setRedisUrl(e.target.value)}
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                        placeholder="redis://username:password@host:port"
-                        required
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        This must match the REDIS_URL in your .env file
-                      </p>
-                    </div>
+                <p className="text-sm text-muted-foreground">
+                  Enter your Redis URL to verify your identity and set a new password
+                </p>
+              </CardHeader>
+              
+              <CardContent>
+                {resetSuccess ? (
+                  <div className="mb-4 rounded-md bg-green-100 dark:bg-green-900/20 p-4 text-center">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">Password Reset Successful!</p>
+                    <p className="text-sm text-green-700 dark:text-green-400">Your password has been reset successfully.</p>
+                    <Button
+                      onClick={toggleMode}
+                      className="mt-4"
+                      variant="outline"
+                    >
+                      Return to Login
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {resetError && (
+                      <div className="mb-4 rounded-md bg-destructive/10 p-3 flex items-start">
+                        <AlertTriangle className="h-4 w-4 text-destructive mr-2 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-destructive">{resetError}</p>
+                      </div>
+                    )}
                     
-                    <div>
-                      <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
-                        New Password
-                      </label>
-                      <div className="relative mt-1">
-                        <input
-                          id="new-password"
-                          type={showNewPassword ? "text" : "password"}
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 pr-10 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                          placeholder="Enter new password"
+                    <form onSubmit={handleResetPassword} className="space-y-4">
+                      <div className="space-y-1">
+                        <label htmlFor="redis-url" className="text-sm font-medium text-foreground">
+                          Redis Connection URL
+                        </label>
+                        <Input
+                          id="redis-url"
+                          type="text"
+                          value={redisUrl}
+                          onChange={(e) => setRedisUrl(e.target.value)}
+                          className="w-full"
+                          placeholder="redis://username:password@host:port"
                           required
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
-                        >
-                          {showNewPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          This must match the REDIS_URL in your .env file
+                        </p>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Must be at least 8 characters long
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                        Confirm Password
-                      </label>
-                      <div className="relative mt-1">
-                        <input
-                          id="confirm-password"
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="block w-full rounded-md border border-gray-300 px-3 py-2 pr-10 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                          placeholder="Confirm new password"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
+                      
+                      <div className="space-y-1">
+                        <label htmlFor="new-password" className="text-sm font-medium text-foreground">
+                          New Password
+                        </label>
+                        <div className="relative">
+                          <Input
+                            id="new-password"
+                            type={showNewPassword ? "text" : "password"}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full pr-10"
+                            placeholder="Enter new password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                          >
+                            {showNewPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Must be at least 8 characters long
+                        </p>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <button
+                      
+                      <div className="space-y-1">
+                        <label htmlFor="confirm-password" className="text-sm font-medium text-foreground">
+                          Confirm Password
+                        </label>
+                        <div className="relative">
+                          <Input
+                            id="confirm-password"
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full pr-10"
+                            placeholder="Confirm new password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <Button
                         type="submit"
+                        className="w-full"
                         disabled={isResetting}
-                        className="w-full rounded-md border border-transparent bg-black px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2"
+                        variant="default"
                       >
                         {isResetting ? (
                           <div className="flex items-center justify-center">
-                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
                             Resetting...
                           </div>
                         ) : (
                           "Reset Password"
                         )}
-                      </button>
-                    </div>
-                  </form>
-                </>
-              )}
+                      </Button>
+                    </form>
+                  </>
+                )}
+              </CardContent>
+            </>
+          ) : (
+            <>
+              <CardHeader className="space-y-1 pb-2">
+                <h1 className="text-2xl font-semibold">Admin Login</h1>
+                <p className="text-sm text-muted-foreground">
+                  Enter your password to access the admin area
+                </p>
+              </CardHeader>
+              
+              <CardContent>
+                {error && (
+                  <div className="mb-4 rounded-md bg-destructive/10 p-3 flex items-start">
+                    <AlertCircle className="h-4 w-4 text-destructive mr-2 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-destructive">{error}</p>
+                  </div>
+                )}
+                
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full"
+                      placeholder="Enter your password"
+                      required
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent"></div>
+                        Logging in...
+                      </div>
+                    ) : (
+                      "Login"
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+              
+              <CardFooter className="flex justify-between pb-4 pt-0">
+                <Link
+                  href="/"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Return to Status Page
+                </Link>
+                
+                <button
+                  onClick={toggleMode}
+                  className="text-sm text-primary hover:text-primary/90 transition-colors"
+                  type="button"
+                >
+                  Forgot Password?
+                </button>
+              </CardFooter>
             </>
           )}
-          
-          <div className="mt-4">
-            <div className="flex justify-between items-center">
-              <Link
-                href="/"
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Return to Status Page
-              </Link>
-              
-              <button
-                onClick={toggleMode}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                {isResetMode ? "Back to Login" : "Forgot Password?"}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Card>
+      </div>
+      
+      {/* Simplified footer */}
+      <div className="mt-8 text-center text-sm text-muted-foreground">
+        openUptimes
       </div>
     </div>
   );
@@ -401,7 +422,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
       </div>
     }>

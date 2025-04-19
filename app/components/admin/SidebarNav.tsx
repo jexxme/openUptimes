@@ -502,8 +502,7 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
             onClick={() => handleNavigation("about")}
             data-tab="about"
           >
-            <Info className="h-3.5 w-3.5 mr-1.5 group-hover:text-primary transition-colors" />
-            <span className="text-sm">About</span>
+            <Info className="h-3.5 w-3.5 group-hover:text-primary transition-colors" />
           </Button>
         </motion.div>
         
