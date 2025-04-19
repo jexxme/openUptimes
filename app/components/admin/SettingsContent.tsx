@@ -106,9 +106,16 @@ function SettingsTabs({ currentTab, onTabChange, tabsWithChanges }: SettingTabsP
 interface SettingsContentProps {
   activeSection?: string;
   registerUnsavedChangesCallback?: (key: string, callback: () => boolean) => void;
+  preloadedData?: {
+    generalSettings?: any;
+  };
 }
 
-export function SettingsContent({ activeSection = "general", registerUnsavedChangesCallback }: SettingsContentProps) {
+export function SettingsContent({ 
+  activeSection = "general", 
+  registerUnsavedChangesCallback, 
+  preloadedData 
+}: SettingsContentProps) {
   // Memoize section to tab mapping to prevent unnecessary recalculations  
   const sectionTabValue = useMemo(() => {
     return activeSection === "security" ? "security" : 
@@ -120,7 +127,7 @@ export function SettingsContent({ activeSection = "general", registerUnsavedChan
   const [currentTab, setCurrentTab] = useState(sectionTabValue);
   
   // Shared state for general settings - cache loaded settings
-  const [generalSettings, setGeneralSettings] = useState<any>(null);
+  const [generalSettings, setGeneralSettings] = useState<any>(preloadedData?.generalSettings || null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   
@@ -209,8 +216,11 @@ export function SettingsContent({ activeSection = "general", registerUnsavedChan
   
   // Fetch general settings only when needed (lazy loading)
   useEffect(() => {
+    // If preloaded data is available, skip fetching
+    if (preloadedData?.generalSettings || generalSettings !== null) return;
+    
     // Only fetch settings when the general tab is active and we don't have settings yet
-    if (currentTab !== "general" || generalSettings !== null) return;
+    if (currentTab !== "general") return;
     
     async function fetchGeneralSettings() {
       setSettingsLoading(true);
@@ -233,7 +243,7 @@ export function SettingsContent({ activeSection = "general", registerUnsavedChan
     }
     
     fetchGeneralSettings();
-  }, [currentTab, generalSettings]);
+  }, [currentTab, generalSettings, preloadedData]);
   
   // Memoized function to check if any tab has unsaved changes
   const hasAnyUnsavedChanges = useMemo(() => {
@@ -355,8 +365,8 @@ export function SettingsContent({ activeSection = "general", registerUnsavedChan
             <TabsContent value="general">
               <p className="mb-4 text-sm text-muted-foreground">Configure global settings</p>
               <GeneralSettings 
-                initialSettings={generalSettings}
-                isLoading={settingsLoading && tabsVisited.general}
+                initialSettings={generalSettings || preloadedData?.generalSettings || null}
+                isLoading={!preloadedData?.generalSettings && settingsLoading && tabsVisited.general}
                 error={settingsError}
                 onSettingsUpdate={(newSettings) => {
                   setGeneralSettings(newSettings);

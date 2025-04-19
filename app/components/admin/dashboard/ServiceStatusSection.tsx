@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertTriangle, Server, ChevronRight } from "lucide-react";
 import { ServiceStatusItem } from "./ServiceComponents";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Section on the dashboard that shows the status of all service
 // On left side of the dashboard
@@ -19,6 +20,21 @@ interface ServiceStatusSectionProps {
   handleNavigation: (tab: string, section?: string) => void;
 }
 
+// Skeleton for the service item used during refresh
+const ServiceSkeleton = () => (
+  <div className="flex items-center justify-between py-2 px-3">
+    <div className="flex items-center space-x-2 flex-1 min-w-0">
+      <Skeleton className="w-2.5 h-2.5 rounded-full" />
+      <Skeleton className="h-4 w-36" />
+    </div>
+    <div className="flex items-center space-x-2 flex-shrink-0">
+      <Skeleton className="h-4 w-8" />
+      <Skeleton className="h-5 w-16 rounded-full" />
+      <Skeleton className="h-4 w-4" />
+    </div>
+  </div>
+);
+
 export const ServiceStatusSection = ({
   services,
   statusLoading,
@@ -32,6 +48,9 @@ export const ServiceStatusSection = ({
   const upServices = services.filter(service => service.currentStatus?.status === "up").length;
   const downServices = services.filter(service => service.currentStatus?.status === "down").length;
   
+  // Number of items to show without scrolling
+  const VISIBLE_ITEMS = 6;
+
   // Log navigation attempts for debugging
   const navigateToService = (tab: string, serviceName?: string) => {
     console.log(`[ServiceStatus] Navigating to ${tab}${serviceName ? ` with service: ${serviceName}` : ''}`);
@@ -48,27 +67,29 @@ export const ServiceStatusSection = ({
 
   return (
     <Card className="overflow-hidden border col-span-12 lg:col-span-5 flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4 border-b h-[72px]">
-        <div>
-          <CardTitle className="text-base font-semibold">Service Status</CardTitle>
-          <CardDescription>
-            {lastUpdated ? `Last updated: ${lastUpdated}` : "Loading status..."}
-          </CardDescription>
+      <CardHeader className="border-b px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-medium">Service Status</CardTitle>
+            <CardDescription className="text-xs">
+              {lastUpdated ? `Last updated: ${lastUpdated}` : "Loading status..."}
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-1" 
+            onClick={handleRefresh}
+            disabled={statusLoading}
+            aria-label="Refresh dashboard data"
+            title="Refresh dashboard data"
+          >
+            <RefreshCw 
+              className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-refresh-rotate' : ''}`} 
+            />
+            <span>Refresh</span>
+          </Button>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="gap-1" 
-          onClick={handleRefresh}
-          disabled={statusLoading}
-          aria-label="Refresh dashboard data"
-          title="Refresh dashboard data"
-        >
-          <RefreshCw 
-            className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-refresh-rotate' : ''}`} 
-          />
-          <span>Refresh</span>
-        </Button>
       </CardHeader>
       
       {statusLoading && services.length === 0 ? (
@@ -100,21 +121,37 @@ export const ServiceStatusSection = ({
           <Button>Add Service</Button>
         </div>
       ) : (
-        <div className="px-3 pt-2 pb-0">
+        <div className="p-4">
           <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">Services Overview</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Total: {services.length}</span>
-                <div className="h-3 border-r border-slate-200 dark:border-slate-700"></div>
-                <span className="text-xs text-emerald-600 dark:text-emerald-400">{upServices} online</span>
-                {downServices > 0 && (
-                  <>
-                    <div className="h-3 border-r border-slate-200 dark:border-slate-700"></div>
-                    <span className="text-xs text-red-600 dark:text-red-400">{downServices} offline</span>
-                  </>
-                )}
-              </div>
+              {isRefreshing ? (
+                // Skeleton for stats during refresh
+                <div className="flex items-center gap-2 mt-1">
+                  <Skeleton className="h-3 w-16" /> {/* Total count */}
+                  <div className="h-3 border-r border-slate-200 dark:border-slate-700"></div>
+                  <Skeleton className="h-3 w-16" /> {/* Online count */}
+                  {downServices > 0 && (
+                    <>
+                      <div className="h-3 border-r border-slate-200 dark:border-slate-700"></div>
+                      <Skeleton className="h-3 w-16" /> {/* Offline count */}
+                    </>
+                  )}
+                </div>
+              ) : (
+                // Actual stats
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Total: {services.length}</span>
+                  <div className="h-3 border-r border-slate-200 dark:border-slate-700"></div>
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400">{upServices} online</span>
+                  {downServices > 0 && (
+                    <>
+                      <div className="h-3 border-r border-slate-200 dark:border-slate-700"></div>
+                      <span className="text-xs text-red-600 dark:text-red-400">{downServices} offline</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <div className="rounded-md border overflow-hidden mt-3">
@@ -124,28 +161,39 @@ export const ServiceStatusSection = ({
               dark:scrollbar-thumb-slate-600 dark:hover:scrollbar-thumb-slate-500
               [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full
               [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb:hover]:bg-slate-400
-              dark:[&::-webkit-scrollbar-thumb]:bg-slate-600 dark:[&::-webkit-scrollbar-thumb:hover]:bg-slate-500">
-              {[...services]
-                .sort((a, b) => {
-                  // Sort offline services first
-                  if (a.currentStatus?.status === "down" && b.currentStatus?.status !== "down") return -1;
-                  if (a.currentStatus?.status !== "down" && b.currentStatus?.status === "down") return 1;
-                  return 0;
-                })
-                .map((service, index) => (
-                  <div 
-                    key={service.id || index} 
-                    className="group cursor-pointer"
-                    onClick={() => navigateToService("services", service.name)}
-                  >
-                    <ServiceStatusItem 
-                      key={service.id || index} 
-                      service={service} 
-                      showChevron={true}
-                    />
+              dark:[&::-webkit-scrollbar-thumb]:bg-slate-600 dark:[&::-webkit-scrollbar-thumb:hover]:bg-slate-500"
+              style={{ maxHeight: `${VISIBLE_ITEMS * 40}px` }} // Set fixed height for 7 items (each ~40px tall)
+            >
+              {isRefreshing ? (
+                // Skeleton UI with exactly 7 items
+                Array.from({ length: VISIBLE_ITEMS }).map((_, index) => (
+                  <div key={`skeleton-${index}`} className="divide-y dark:divide-slate-700">
+                    <ServiceSkeleton />
                   </div>
                 ))
-              }
+              ) : (
+                // Actual service list
+                [...services]
+                  .sort((a, b) => {
+                    // Sort offline services first
+                    if (a.currentStatus?.status === "down" && b.currentStatus?.status !== "down") return -1;
+                    if (a.currentStatus?.status !== "down" && b.currentStatus?.status === "down") return 1;
+                    return 0;
+                  })
+                  .map((service, index) => (
+                    <div 
+                      key={service.id || index} 
+                      className="group cursor-pointer"
+                      onClick={() => navigateToService("services", service.name)}
+                    >
+                      <ServiceStatusItem 
+                        key={service.id || index} 
+                        service={service} 
+                        showChevron={true}
+                      />
+                    </div>
+                  ))
+              )}
             </div>
           </div>
         </div>

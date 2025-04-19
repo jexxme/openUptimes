@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -14,10 +14,12 @@ import {
 import { Activity, ExternalLink, AlertTriangle, RotateCw, Clock, Server, Github, Calendar } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface LoggerStatusCardProps {
   handleNavigation?: (tab: string, section?: string) => void;
   className?: string;
+  preloadedPingStats?: any;
 }
 
 interface TooltipProps {
@@ -45,39 +47,21 @@ const Tooltip = ({ text, children }: TooltipProps) => (
   </div>
 );
 
-export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerStatusCardProps) => {
-  const [pingStats, setPingStats] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPingStats = null }: LoggerStatusCardProps) => {
+  console.log("[LoggerStatusCard] Rendering with preloaded data:", !!preloadedPingStats);
+  const [pingStats, setPingStats] = useState<any>(preloadedPingStats);
+  const [isLoading, setIsLoading] = useState(!preloadedPingStats);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
-  const [intervalStats, setIntervalStats] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
   const router = useRouter();
+  
+  // Track if this is the first render
+  const isFirstRender = useRef(true);
+  // Track if we've finished initial setup
+  const initialSetupComplete = useRef(false);
 
-  const fetchPingStats = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/ping-stats');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ping stats: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setPingStats(data);
-      
-      // Calculate interval stats based on fetched data
-      const stats = calculateIntervalStats(data);
-      setIntervalStats(stats);
-      
-      setLastUpdated(Date.now());
-      setError(null);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Define calculateIntervalStats function before using it
   const calculateIntervalStats = (data: any = pingStats) => {
     if (!data?.recentHistory || data.recentHistory.length < 2) {
       return null;
@@ -147,6 +131,38 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
       resetTime: lastResetTime
     };
   };
+  
+  // Calculate initial interval stats from preloaded data if available
+  const [intervalStats, setIntervalStats] = useState<any>(
+    preloadedPingStats ? calculateIntervalStats(preloadedPingStats) : null
+  );
+
+  const fetchPingStats = async () => {
+    console.log("[LoggerStatusCard] Fetching ping stats. First render:", isFirstRender.current);
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/ping-stats');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ping stats: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log("[LoggerStatusCard] Ping stats fetched successfully");
+      setPingStats(data);
+      
+      // Calculate interval stats based on fetched data
+      const stats = calculateIntervalStats(data);
+      setIntervalStats(stats);
+      
+      setLastUpdated(Date.now());
+      setError(null);
+    } catch (err) {
+      console.error("[LoggerStatusCard] Error fetching ping stats:", err);
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getPingStatus = async () => {
     try {
@@ -163,11 +179,36 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
     }
   };
 
+  // Initialize interval stats when preloaded data is provided
   useEffect(() => {
-    fetchPingStats();
+    console.log("[LoggerStatusCard] Initial useEffect for preloaded data. Have data:", !!preloadedPingStats);
+    
+    if (preloadedPingStats && !intervalStats && !initialSetupComplete.current) {
+      console.log("[LoggerStatusCard] Using preloaded data for initial setup");
+      const stats = calculateIntervalStats(preloadedPingStats);
+      setIntervalStats(stats);
+      setIsLoading(false);
+      initialSetupComplete.current = true;
+    }
+  }, [preloadedPingStats, intervalStats]);
+
+  useEffect(() => {
+    console.log("[LoggerStatusCard] Setting up data refresh and timer intervals");
+    
+    // Only fetch initially if we don't have preloaded data and this is the first load
+    if (!preloadedPingStats && isFirstRender.current && !initialSetupComplete.current) {
+      console.log("[LoggerStatusCard] No preloaded data available, fetching on first render");
+      fetchPingStats();
+      initialSetupComplete.current = true;
+    }
+    
+    isFirstRender.current = false;
     
     // Refresh ping stats every 15 seconds
-    const dataRefreshInterval = setInterval(fetchPingStats, 15000);
+    const dataRefreshInterval = setInterval(() => {
+      console.log("[LoggerStatusCard] Refreshing data on interval");
+      fetchPingStats();
+    }, 15000);
     
     // Update time counters every second for real-time display
     const timeUpdateInterval = setInterval(() => {
@@ -175,10 +216,11 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
     }, 1000);
     
     return () => {
+      console.log("[LoggerStatusCard] Cleaning up intervals");
       clearInterval(dataRefreshInterval);
       clearInterval(timeUpdateInterval);
     };
-  }, []);
+  }, [preloadedPingStats]);
 
   // Calculate time since last ping with proper formatting
   const timeSinceLastPing = () => {
@@ -341,12 +383,20 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
   const loggerStatus = getLoggerStatus();
   const secondsSinceLastPing = pingStats?.lastPing ? Math.floor((currentTime - pingStats.lastPing) / 1000) : 0;
 
+  // Add debug render message
+  console.log("[LoggerStatusCard] Rendering with state:", {
+    hasData: !!pingStats,
+    isLoading,
+    hasError: !!error,
+    hasIntervalStats: !!intervalStats
+  });
+
   return (
-    <Card className={`overflow-visible border col-span-6 lg:col-span-3 ${className}`}>
-      <CardHeader className="border-b pb-2 pt-3 px-4 h-[72px] flex items-center">
-        <div className="flex items-center justify-between w-full">
-          <div className="space-y-0.5">
-            <CardTitle className="text-base font-semibold">System Logger</CardTitle>
+    <Card className={`overflow-visible border ${className}`}>
+      <CardHeader className="border-b px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-medium">System Logger</CardTitle>
             <CardDescription className="text-xs">Service monitoring engine</CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -373,8 +423,110 @@ export const LoggerStatusCard = ({ handleNavigation, className = "" }: LoggerSta
       </CardHeader>
       <CardContent className="p-4">
         {isLoading && !pingStats ? (
-          <div className="flex h-[120px] items-center justify-center">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          <div className="space-y-3">
+            {/* Skeleton for the progress bar and status */}
+            <div>
+              <div className="flex justify-between items-center mb-1 text-xs">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <div className="flex justify-between items-center mb-1 text-xs">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              
+              {/* Skeleton for the timeline status bar */}
+              <div className="mt-3 mb-2">
+                <div className="relative h-5 mb-1">
+                  <Skeleton className="h-3 w-8 absolute bottom-0 left-1/3 transform -translate-x-1/2" />
+                </div>
+                <Skeleton className="h-3 w-full rounded-full" />
+                <div className="flex text-[10px] mt-1 relative">
+                  <Skeleton className="h-2 w-4 absolute left-0" />
+                  <Skeleton className="h-2 w-6 absolute left-2/3 transform -translate-x-1/2" />
+                  <Skeleton className="h-2 w-6 absolute right-0" />
+                </div>
+                <div className="h-5"></div>
+              </div>
+            </div>
+            
+            {/* Skeleton for the stats grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Left Column: GitHub + Performance */}
+              <div className="space-y-3">
+                {/* GitHub Actions Status Skeleton */}
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
+                  <div className="flex items-center mb-1.5">
+                    <Skeleton className="h-2 w-2 rounded-full mr-1.5" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-y-1 text-xs">
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-14" />
+                      <Skeleton className="h-3 w-12" />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-18" />
+                      <Skeleton className="h-3 w-10" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Performance Skeleton */}
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
+                  <div className="flex items-center mb-1.5">
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-y-1 text-xs">
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-14" />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-14" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right Column: Timing */}
+              <div className="space-y-3">
+                {/* Timing Skeleton */}
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
+                  <div className="flex items-center mb-1.5">
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-y-1 text-xs">
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-18" />
+                      <Skeleton className="h-3 w-10" />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-14" />
+                      <Skeleton className="h-3 w-12" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Stats Skeleton */}
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
+                  <div className="flex items-center mb-1.5">
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-y-1 text-xs">
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-5" />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-18" />
+                      <Skeleton className="h-3 w-10" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : error ? (
           <div className="h-[120px] flex items-center justify-center flex-col space-y-2">

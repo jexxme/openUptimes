@@ -6,9 +6,12 @@ import { SettingsContent } from "@/app/components/admin/SettingsContent";
 interface AdminSettingsProps {
   setActiveTab?: (tab: string) => void;
   registerUnsavedChangesCallback?: (key: string, callback: () => boolean) => void;
+  preloadedData?: {
+    generalSettings?: any;
+  };
 }
 
-export function AdminSettings({ setActiveTab, registerUnsavedChangesCallback }: AdminSettingsProps) {
+export function AdminSettings({ setActiveTab, registerUnsavedChangesCallback, preloadedData }: AdminSettingsProps) {
   const [settingsSection, setSettingsSection] = useState("general");
   const [initialized, setInitialized] = useState(false);
   
@@ -41,6 +44,7 @@ export function AdminSettings({ setActiveTab, registerUnsavedChangesCallback }: 
     <SettingsContent 
       activeSection={settingsSection}
       registerUnsavedChangesCallback={registerUnsavedChangesCallback}
+      preloadedData={preloadedData}
     />
   );
 } 

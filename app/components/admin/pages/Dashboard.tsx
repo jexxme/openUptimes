@@ -9,6 +9,7 @@ interface AdminDashboardProps {
   preloadedServices?: any;
   preloadedStatusPageData?: any;
   preloadedHistoryData?: any;
+  preloadedPingStats?: any;
   setActiveTab?: (tab: string) => void;
 }
 
@@ -16,8 +17,17 @@ export function AdminDashboard({
   preloadedServices, 
   preloadedStatusPageData,
   preloadedHistoryData,
+  preloadedPingStats,
   setActiveTab
 }: AdminDashboardProps) {
+  console.log("[AdminDashboard] Rendering with preloaded data:", {
+    hasServices: !!preloadedServices && Array.isArray(preloadedServices),
+    serviceCount: preloadedServices?.length || 0,
+    hasStatusPage: !!preloadedStatusPageData,
+    hasHistory: !!preloadedHistoryData,
+    hasPingStats: !!preloadedPingStats
+  });
+
   const [showHistory, setShowHistory] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [errorRetries, setErrorRetries] = useState(0);
@@ -38,9 +48,19 @@ export function AdminDashboard({
   const { getPingFrequency } = usePingStats(30000);
   const { count: pingCount24h, loading: pingStatsLoading } = getPingFrequency();
 
+  // Log component lifecycle
+  useEffect(() => {
+    console.log("[AdminDashboard] Component mounted");
+    
+    return () => {
+      console.log("[AdminDashboard] Component unmounting");
+    };
+  }, []);
+
   // Track if this is the initial render with preloaded data
   useEffect(() => {
     if (isFirstRender.current && preloadedServices) {
+      console.log("[AdminDashboard] Using preloaded services data");
       isFirstRender.current = false;
       setInitialDataLoaded(true);
     }
@@ -50,6 +70,7 @@ export function AdminDashboard({
   const handleRefresh = useCallback(() => {
     if (isRefreshing || statusLoading) return;
     
+    console.log("[AdminDashboard] Manual refresh triggered");
     setIsRefreshing(true);
     
     // Delay the actual refresh to complete animation
@@ -59,6 +80,7 @@ export function AdminDashboard({
       // Reset refreshing state after a short delay
       setTimeout(() => {
         setIsRefreshing(false);
+        console.log("[AdminDashboard] Manual refresh complete");
       }, 100);
     }, 650); // Animation takes ~600ms
   }, [isRefreshing, statusLoading, refresh]);
@@ -66,8 +88,9 @@ export function AdminDashboard({
   // Auto-retry on error
   useEffect(() => {
     if (statusError && errorRetries < MAX_ERROR_RETRIES) {
+      console.log(`[AdminDashboard] Planning auto-retry (${errorRetries + 1}/${MAX_ERROR_RETRIES})...`);
       const timer = setTimeout(() => {
-        console.log(`Auto-retrying dashboard refresh (${errorRetries + 1}/${MAX_ERROR_RETRIES})...`);
+        console.log(`[AdminDashboard] Auto-retrying dashboard refresh (${errorRetries + 1}/${MAX_ERROR_RETRIES})...`);
         setErrorRetries(prev => prev + 1);
         handleRefresh();
       }, Math.min(1000 * Math.pow(2, errorRetries), 8000)); // Exponential backoff
@@ -95,6 +118,12 @@ export function AdminDashboard({
     return `${statusError} (Attempt ${errorRetries}/${MAX_ERROR_RETRIES})`;
   };
 
+  console.log("[AdminDashboard] Before rendering DashboardContent with data:", {
+    usingPreloadedServices: isFirstRender.current && !!preloadedServices,
+    displayLoading,
+    errorMessage: getErrorMessage()
+  });
+
   return (
     <DashboardContent 
       services={displayServices} 
@@ -107,6 +136,7 @@ export function AdminDashboard({
       setActiveTab={setActiveTab}
       pingCount24h={pingCount24h}
       pingStatsLoading={pingStatsLoading}
+      preloadedPingStats={preloadedPingStats}
     />
   );
 } 

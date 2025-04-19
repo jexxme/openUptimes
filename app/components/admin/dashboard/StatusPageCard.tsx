@@ -51,11 +51,11 @@ export const StatusPageCard = ({
 
   return (
     <>
-      <Card className={`overflow-hidden border col-span-6 lg:col-span-3 ${className}`}>
-        <CardHeader className="border-b pb-2 pt-3 px-4 h-[72px] flex items-center">
-          <div className="flex items-center justify-between w-full">
-            <div className="space-y-0.5">
-              <CardTitle className="text-base font-semibold">Status Page</CardTitle>
+      <Card className={`overflow-hidden border ${className}`}>
+        <CardHeader className="border-b px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-medium">Status Page</CardTitle>
               <CardDescription className="text-xs">Public status dashboard</CardDescription>
             </div>
             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -68,7 +68,7 @@ export const StatusPageCard = ({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-5">
+        <CardContent className="p-4">
           {statusPageData ? (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -92,7 +92,7 @@ export const StatusPageCard = ({
               </div>
               
               {/* Service visibility stats */}
-              <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-3 mt-4">
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-3">
                 <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">Status Page Services</h4>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ export const StatusPageCard = ({
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant="outline"
                   size="default"
