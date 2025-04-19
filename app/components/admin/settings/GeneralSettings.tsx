@@ -684,56 +684,15 @@ export function GeneralSettings({
             
             <div className="space-y-6">
               {/* Required Secrets & Variables Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 {/* API Key Section */}
                 <div className="space-y-3 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-medium">
-                      <span>1. API Key</span>
+                    <h4 className="text-sm font-medium flex items-center gap-1.5">
+                      <span className="flex items-center justify-center bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 h-5 w-5 rounded-full text-xs font-semibold">1</span>
+                      <span>API Key</span>
+                      <span className="text-xs text-muted-foreground font-normal">Add as a GitHub Secret</span>
                     </h4>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={handleGenerateKeyClick}
-                      className="h-7 text-xs"
-                    >
-                      Generate Key
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        type={showApiKey ? "text" : "password"}
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="No API key generated yet"
-                        className="pr-20"
-                      />
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="absolute right-0 top-0 h-full px-3 text-xs"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                      >
-                        {showApiKey ? "Hide" : "Show"}
-                      </Button>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={copyApiKey}
-                      disabled={!apiKey}
-                      className="h-10 w-10 flex-shrink-0"
-                    >
-                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      Add to GitHub as a <strong>Secret</strong>
-                    </p>
                     <a 
                       href={repository ? `https://github.com/${repository}/settings/secrets/actions` : 'https://github.com/settings/secrets'}
                       target="_blank"
@@ -743,55 +702,96 @@ export function GeneralSettings({
                       Add Secret <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
-
-                  <div>
-                    <h5 className="text-xs font-medium mb-1.5">Secret Name (default: PING_API_KEY)</h5>
-                    <Input
-                      placeholder="PING_API_KEY"
-                      value={secretName}
-                      onChange={(e) => setSecretName(e.target.value)}
-                      className="h-8 text-sm"
-                    />
+                  
+                  <div className="grid gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Secret Name</label>
+                        <div className={cn(
+                          "px-1.5 py-0.5 rounded-md text-xs font-medium flex items-center gap-1",
+                          pingStats.lastPing && isGithubEnabled
+                            ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400"
+                            : apiKey 
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" 
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400"
+                        )}>
+                          <div className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            pingStats.lastPing && isGithubEnabled
+                              ? "bg-green-500 dark:bg-green-400"
+                              : apiKey 
+                                ? "bg-blue-500 dark:bg-blue-400" 
+                                : "bg-amber-500 dark:bg-amber-400"
+                          )}></div>
+                          {pingStats.lastPing && isGithubEnabled 
+                            ? 'Configured' 
+                            : apiKey 
+                              ? 'Pending' 
+                              : 'Required'}
+                        </div>
+                      </div>
+                      <Input
+                        placeholder="PING_API_KEY"
+                        value={secretName}
+                        onChange={(e) => setSecretName(e.target.value)}
+                        className="h-9 text-sm mb-1"
+                      />
+                      <p className="text-xs text-muted-foreground">Default: PING_API_KEY</p>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Secret Value</label>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={handleGenerateKeyClick}
+                          className="h-6 text-xs px-2"
+                        >
+                          {apiKey ? 'Regenerate' : 'Generate'} Key
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            type={showApiKey ? "text" : "password"}
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="No API key generated yet"
+                            className="pr-16 h-9"
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="absolute right-0 top-0 h-full px-3 text-xs"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                            disabled={!apiKey}
+                          >
+                            {showApiKey ? "Hide" : "Show"}
+                          </Button>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={copyApiKey}
+                          disabled={!apiKey}
+                          className="h-9 w-9 flex-shrink-0"
+                        >
+                          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* APP_URL Section */}
                 <div className="space-y-3 bg-gray-50 dark:bg-gray-900/40 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-medium">
-                      <span>2. APP_URL</span>
+                    <h4 className="text-sm font-medium flex items-center gap-1.5">
+                      <span className="flex items-center justify-center bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 h-5 w-5 rounded-full text-xs font-semibold">2</span>
+                      <span>APP_URL</span>
+                      <span className="text-xs text-muted-foreground font-normal">Add as a GitHub Variable</span>
                     </h4>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        value={window.location.origin}
-                        readOnly
-                        className="bg-gray-100 dark:bg-gray-800"
-                      />
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.origin);
-                        toast({
-                          title: "Copied to clipboard",
-                          description: "Current URL has been copied",
-                          duration: 3000,
-                        });
-                      }}
-                      className="h-10 w-10 flex-shrink-0"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      Add to GitHub as a <strong>Variable</strong> named <code className="bg-gray-200 dark:bg-gray-800 px-1 py-0.5 rounded">APP_URL</code>
-                    </p>
                     <a 
                       href={repository ? `https://github.com/${repository}/settings/variables/actions` : 'https://github.com/settings/variables'}
                       target="_blank"
@@ -800,6 +800,62 @@ export function GeneralSettings({
                     >
                       Add Variable <ExternalLink className="h-3 w-3" />
                     </a>
+                  </div>
+                  
+                  <div className="grid gap-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Variable Name</label>
+                        <div className={cn(
+                          "px-1.5 py-0.5 rounded-md text-xs font-medium flex items-center gap-1",
+                          pingStats.lastPing && isGithubEnabled
+                            ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400"
+                        )}>
+                          <div className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            pingStats.lastPing && isGithubEnabled
+                              ? "bg-green-500 dark:bg-green-400"
+                              : "bg-blue-500 dark:bg-blue-400"
+                          )}></div>
+                          {pingStats.lastPing && isGithubEnabled ? 'Configured' : 'Required'}
+                        </div>
+                      </div>
+                      <Input
+                        value="APP_URL"
+                        readOnly
+                        className="h-9 text-sm bg-gray-100 dark:bg-gray-800 mb-1"
+                      />
+                      <p className="text-xs text-muted-foreground">This name cannot be changed</p>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Variable Value</label>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          value={window.location.origin}
+                          readOnly
+                          className="h-9 bg-gray-100 dark:bg-gray-800 flex-1"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => {
+                            navigator.clipboard.writeText(window.location.origin);
+                            toast({
+                              title: "Copied to clipboard",
+                              description: "Current URL has been copied",
+                              duration: 3000,
+                            });
+                          }}
+                          className="h-9 w-9 flex-shrink-0"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
