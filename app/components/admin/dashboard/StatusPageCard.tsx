@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/app/components/ui/switch";
+import { Switch } from "@/components/ui/switch";
 import { 
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/app/components/ui/dialog";
+} from "@/components/ui/dialog";
 import { ExternalLink, Settings, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 

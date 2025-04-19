@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { EyeOff, Layout } from "lucide-react";
-import { Switch } from "@/app/components/ui/switch";
+import { Switch } from "@/components/ui/switch";
 
 interface ServicesTabProps {
   serviceVisibility: {name: string, visible: boolean}[];

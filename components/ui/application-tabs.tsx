@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useToast } from "../../ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Github, Key, Clock, ExternalLink, Copy, Check, ChevronDown, ChevronUp, Info, AlertTriangle } from "lucide-react";
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "../../ui/dialog";
+} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,

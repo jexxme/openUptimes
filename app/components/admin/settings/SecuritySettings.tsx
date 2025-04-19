@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useToast } from "../../ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Lock, RefreshCw, AlertCircle, Database, Copy } from "lucide-react";
-import { Label } from "../../ui/label";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { 
   Card,
@@ -22,7 +22,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../ui/dialog";
+} from "@/components/ui/dialog";
 
 export function SecuritySettings() {
   const { toast } = useToast();

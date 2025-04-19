@@ -10,7 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/app/components/ui/dialog";
+} from "@/components/ui/dialog";
 import { Activity, ExternalLink, AlertTriangle, RotateCw, Clock, Server, Github, Calendar } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";

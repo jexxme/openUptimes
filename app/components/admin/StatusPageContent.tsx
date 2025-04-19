@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Button } from "../../../components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Globe, Palette, ExternalLink, EyeOff, Eye, Layout, Sliders, Image } from "lucide-react";
-import { Switch } from "../ui/switch";
-import { Label } from "../ui/label";
-import { useToast } from "../ui/use-toast";
-import { Input } from "../../../components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
 
 // Dialog components for preview
 import {
@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../ui/dialog";
+} from "@/components/ui/dialog";
 
 import { GeneralTab } from "@/app/components/admin/status-page/GeneralTab";
 import { ServicesTab } from "@/app/components/admin/status-page/ServicesTab";

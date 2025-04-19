@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, Shield, Trash2, Bug } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { ApplicationTabs } from "@/app/components/ui/application-tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ApplicationTabs } from "@/components/ui/application-tabs";
 import { Button } from "@/components/ui/button";
-import { useToast } from "../ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@/app/components/ui/dialog";
+} from "@/components/ui/dialog";
 
 // Import settings section components
 import { GeneralSettings } from "./settings/GeneralSettings";

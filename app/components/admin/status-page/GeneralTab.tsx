@@ -2,9 +2,9 @@ import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Globe, ChevronDown, ChevronUp, Edit3, Link2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/app/components/ui/slider";
+import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import DOMPurify from "dompurify";
 
 interface GeneralTabProps {

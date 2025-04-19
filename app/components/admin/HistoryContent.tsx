@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Download } from "lucide-react";
 import { format } from "date-fns";
-import { Label } from "@/app/components/ui/label";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 // Import extracted components

@@ -1,6 +1,6 @@
 "use client";
 
-import { ApplicationTabs } from "@/app/components/ui/application-tabs";
+import { ApplicationTabs } from "@/components/ui/application-tabs";
 import { Globe, Layout, Palette, Sliders } from "lucide-react";
 
 interface StatusPageTabsProps {

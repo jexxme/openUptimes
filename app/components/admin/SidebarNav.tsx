@@ -1,8 +1,8 @@
 "use client";
 
 import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug, Moon, Sun, Info, Github } from "lucide-react";
-import { Button } from "../ui/button";
-import { Switch } from "../ui/switch";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
+} from "@/components/ui/dialog";
 
 interface SidebarNavProps {
   activeTab: string;

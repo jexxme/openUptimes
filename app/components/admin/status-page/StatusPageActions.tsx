@@ -1,8 +1,8 @@
 "use client";
 
-import { Switch } from "@/app/components/ui/switch";
-import { Label } from "@/app/components/ui/label";
-import { Button } from "@/app/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Eye, ExternalLink } from "lucide-react";
 
 interface StatusPageActionsProps {

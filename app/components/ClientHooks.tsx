@@ -4,7 +4,7 @@ import { ReactNode, useEffect } from 'react';
 import { CustomCSS } from './CustomCSS';
 import { CustomHeader } from './CustomHeader';
 import { RedisInitializer } from './RedisInitializer';
-import { Toaster } from './ui/toaster';
+import { Toaster } from '@/components/ui/toaster';
 
 // This component wraps all client-side functionality to keep the root layout as a server component
 export function ClientHooks({ children }: { children: ReactNode }) {
