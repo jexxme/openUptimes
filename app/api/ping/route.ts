@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server';
 import { getRedisClient, closeRedisConnection, setLastIntervalReset } from '@/lib/redis';
+import { initializeServerSystems } from '@/lib/utils';
 
 // Global state to track ping loop
 let pingLoopActive = false;
 let lastScheduledTime = 0;
 let scheduledTimeout: NodeJS.Timeout | null = null;
+let systemsInitialized = false;
+
+// Initialize server systems on module load (runs once on first import)
+(async () => {
+  if (!systemsInitialized) {
+    try {
+      await initializeServerSystems();
+      systemsInitialized = true;
+      console.log('Server systems initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize server systems:', error);
+    }
+  }
+})();
 
 /**
  * Single endpoint that handles both service checking and scheduling

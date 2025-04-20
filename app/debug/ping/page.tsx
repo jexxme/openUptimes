@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatTime, formatTimeConsistent } from '../../lib/utils/timeUtils';
 import { useTheme } from '../../context/ThemeContext';
+import Link from 'next/link';
+import DebugNav from '@/app/components/debug/DebugNav';
 
 export default function PingDebugPage() {
   const [pingStats, setPingStats] = useState<any>(null);
@@ -288,684 +290,679 @@ export default function PingDebugPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      {/* Header Section */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ping System Debug</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Monitor and troubleshoot the service monitoring system
-          </p>
-        </div>
-        <div className="flex space-x-3">
-          <button 
-            onClick={() => router.push('/debug/ping/github')} 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-            GitHub Actions Config
-          </button>
-          <button 
-            onClick={() => router.push('/admin')} 
-            className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Admin Dashboard
-          </button>
-        </div>
-      </div>
-      
-      {/* System Status and Interval Analysis Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-sm font-medium text-gray-800 mb-3 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            System Status
-          </h2>
-          
-          {isLoading && !pingStats ? (
-            <div className="flex justify-center py-6">
-              <div className="flex flex-col items-center">
-                <div className="animate-spin h-8 w-8 border-3 border-blue-500 border-t-transparent rounded-full"></div>
-                <p className="mt-2 text-sm text-gray-600">Loading stats...</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-600">
-              <div className="flex">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <div>
+      <DebugNav />
+      <div className="p-6 max-w-6xl mx-auto">
+        {/* Header Section */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Ping System Debug</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Monitor and manage the ping system that checks your services
+            </p>
+          </div>
+          {pingStats?.githubAction && (
+            <div className="flex space-x-3">
+              <button
+                onClick={triggerPing}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span>{error}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-              {/* Status Header with Badge */}
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm font-medium text-gray-700">Ping Service</span>
-                <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${
-                  pingStats?.lastPing && (Date.now() - pingStats.lastPing > 90000)
-                    ? "bg-red-100 text-red-800"
-                    : pingStats?.lastPing && (Date.now() - pingStats.lastPing > 60000)
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-green-100 text-green-800"
-                }`}>
-                  {pingStats?.lastPing 
-                    ? (Date.now() - pingStats.lastPing > 90000)
-                      ? "Critical: Overdue"
-                      : (Date.now() - pingStats.lastPing > 60000)
-                      ? "Warning: Delayed"
-                      : "Healthy"
-                    : "No Data"}
-                </span>
-              </div>
-              
-              {/* Visual Progress Bar */}
-              {pingStats?.lastPing && (
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-1 text-xs">
-                    <Tooltip text="Time elapsed since the last ping">
-                      <span className="text-gray-600">Last ping: {formatTime(pingStats?.lastPing)}</span>
-                    </Tooltip>
-                    <span className="font-medium">
-                      {Math.floor((Date.now() - pingStats.lastPing) / 1000)}s ago
-                    </span>
-                  </div>
-                  <div className="bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className={`h-full ${
-                        Math.floor((Date.now() - pingStats.lastPing) / 1000) > 90 ? 'bg-red-500' : 
-                        Math.floor((Date.now() - pingStats.lastPing) / 1000) > 60 ? 'bg-yellow-500' : 
-                        'bg-green-500'
-                      }`} 
-                      style={{ width: `${Math.min(100, Math.floor((Date.now() - pingStats.lastPing) / 1000) / (pingStats.intervalSeconds || 300) * 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Key Information */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <div className="flex justify-between">
-                  <Tooltip text="Estimated time for the next GitHub Action run">
-                    <span className="text-gray-600 border-b border-dotted border-gray-300">Next run:</span>
-                  </Tooltip>
-                  <span>{pingStats?.nextEstimatedRun ? formatTimeConsistent(pingStats.nextEstimatedRun) : 'Unknown'}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <Tooltip text="Time remaining until next ping">
-                    <span className="text-gray-600 border-b border-dotted border-gray-300">Wait time:</span>
-                  </Tooltip>
-                  <span>{timeUntilNextRun()}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <Tooltip text="GitHub Action schedule">
-                    <span className="text-gray-600 border-b border-dotted border-gray-300">Schedule:</span>
-                  </Tooltip>
-                  <span>
-                    {pingStats?.githubAction?.schedule ? 
-                      formatCronSchedule(pingStats.githubAction.schedule) : 
-                      'Not configured'}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <Tooltip text="Last time this page was refreshed">
-                    <span className="text-gray-600 border-b border-dotted border-gray-300">Updated:</span>
-                  </Tooltip>
-                  <span>{formatTimeConsistent(lastUpdate.getTime())}</span>
-                </div>
-              </div>
+                Trigger Manual Ping
+              </button>
             </div>
           )}
         </div>
         
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 md:col-span-2">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-sm font-medium text-gray-800 flex items-center">
+        {/* System Status and Interval Analysis Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <h2 className="text-sm font-medium text-gray-800 mb-3 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              Interval Analysis
+              System Status
             </h2>
-          </div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              {intervalStats && (
-                <>
-                  <Tooltip text="Only using ping data since last reset">
-                    <span className="text-xs text-gray-600 border-dotted border-b border-gray-300">
-                      Since: {formatTime(pingStats?.lastIntervalReset || 0)}
+            
+            {isLoading && !pingStats ? (
+              <div className="flex justify-center py-6">
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin h-8 w-8 border-3 border-blue-500 border-t-transparent rounded-full"></div>
+                  <p className="mt-2 text-sm text-gray-600">Loading stats...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 text-sm text-red-600">
+                <div className="flex">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                {/* Status Header with Badge */}
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-sm font-medium text-gray-700">Ping Service</span>
+                  <span className={`font-medium px-2 py-0.5 rounded-full text-xs ${
+                    pingStats?.lastPing && (Date.now() - pingStats.lastPing > 90000)
+                      ? "bg-red-100 text-red-800"
+                      : pingStats?.lastPing && (Date.now() - pingStats.lastPing > 60000)
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-green-100 text-green-800"
+                  }`}>
+                    {pingStats?.lastPing 
+                      ? (Date.now() - pingStats.lastPing > 90000)
+                        ? "Critical: Overdue"
+                        : (Date.now() - pingStats.lastPing > 60000)
+                        ? "Warning: Delayed"
+                        : "Healthy"
+                      : "No Data"}
+                  </span>
+                </div>
+                
+                {/* Visual Progress Bar */}
+                {pingStats?.lastPing && (
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-1 text-xs">
+                      <Tooltip text="Time elapsed since the last ping">
+                        <span className="text-gray-600">Last ping: {formatTime(pingStats?.lastPing)}</span>
+                      </Tooltip>
+                      <span className="font-medium">
+                        {Math.floor((Date.now() - pingStats.lastPing) / 1000)}s ago
+                      </span>
+                    </div>
+                    <div className="bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                      <div 
+                        className={`h-full ${
+                          Math.floor((Date.now() - pingStats.lastPing) / 1000) > 90 ? 'bg-red-500' : 
+                          Math.floor((Date.now() - pingStats.lastPing) / 1000) > 60 ? 'bg-yellow-500' : 
+                          'bg-green-500'
+                        }`} 
+                        style={{ width: `${Math.min(100, Math.floor((Date.now() - pingStats.lastPing) / 1000) / (pingStats.intervalSeconds || 300) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Key Information */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <Tooltip text="Estimated time for the next GitHub Action run">
+                      <span className="text-gray-600 border-b border-dotted border-gray-300">Next run:</span>
+                    </Tooltip>
+                    <span>{pingStats?.nextEstimatedRun ? formatTimeConsistent(pingStats.nextEstimatedRun) : 'Unknown'}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Tooltip text="Time remaining until next ping">
+                      <span className="text-gray-600 border-b border-dotted border-gray-300">Wait time:</span>
+                    </Tooltip>
+                    <span>{timeUntilNextRun()}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Tooltip text="GitHub Action schedule">
+                      <span className="text-gray-600 border-b border-dotted border-gray-300">Schedule:</span>
+                    </Tooltip>
+                    <span>
+                      {pingStats?.githubAction?.schedule ? 
+                        formatCronSchedule(pingStats.githubAction.schedule) : 
+                        'Not configured'}
                     </span>
-                  </Tooltip>
-                </>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Tooltip text="Last time this page was refreshed">
+                      <span className="text-gray-600 border-b border-dotted border-gray-300">Updated:</span>
+                    </Tooltip>
+                    <span>{formatTimeConsistent(lastUpdate.getTime())}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 md:col-span-2">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-sm font-medium text-gray-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Interval Analysis
+              </h2>
+            </div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                {intervalStats && (
+                  <>
+                    <Tooltip text="Only using ping data since last reset">
+                      <span className="text-xs text-gray-600 border-dotted border-b border-gray-300">
+                        Since: {formatTime(pingStats?.lastIntervalReset || 0)}
+                      </span>
+                    </Tooltip>
+                  </>
+                )}
+              </div>
+              {intervalStats && (
+                <button 
+                  onClick={() => fetchPingStats(true)} 
+                  className="text-xs text-red-600 hover:text-red-800 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Reset Stats
+                </button>
               )}
             </div>
-            {intervalStats && (
+            <div className="bg-gray-50 p-3 rounded-md border border-gray-200 text-sm">
+              {!intervalStats ? (
+                <p className="text-gray-500 py-2 text-center">Not enough data for interval analysis (need at least 2 pings)</p>
+              ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between">
+                        <Tooltip text="The expected interval based on GitHub Actions schedule">
+                          <span className="text-gray-600 border-b border-dotted border-gray-300">Expected interval:</span>
+                        </Tooltip>
+                        <span className="font-medium">{intervalStats.expectedInterval}s</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <Tooltip text="Average time between recorded pings">
+                          <span className="text-gray-600 border-b border-dotted border-gray-300">Actual avg interval:</span>
+                        </Tooltip>
+                        <span className={`font-medium ${Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval) > 5 ? 'text-amber-600' : 'text-gray-800'}`}>
+                          {intervalStats.avgInterval}s
+                          {Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval) > 5 && 
+                            <span className="ml-1 text-xs">
+                              ({intervalStats.avgInterval > intervalStats.expectedInterval ? '+' : '-'}
+                              {Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval)}s)
+                            </span>
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <Tooltip text="Average deviation from expected interval">
+                          <span className="text-gray-600 border-b border-dotted border-gray-300">Average drift:</span>
+                        </Tooltip>
+                        <span className={`font-medium ${intervalStats.avgDrift > 5 ? 'text-amber-600' : 'text-green-600'}`}>±{intervalStats.avgDrift}s</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <Tooltip text="Range of observed intervals">
+                          <span className="text-gray-600 border-b border-dotted border-gray-300">Min/Max interval:</span>
+                        </Tooltip>
+                        <span className="font-medium">{intervalStats.minInterval}s / {intervalStats.maxInterval}s</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <Tooltip text="How consistently GitHub Actions maintains the schedule">
+                          <span className="font-medium text-gray-700 border-b border-dotted border-gray-300">Timing Consistency</span>
+                        </Tooltip>
+                        <div className="flex items-center space-x-1.5">
+                          <Tooltip text="Intervals analyzed since last reset">
+                            <div className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                              </svg>
+                              {intervalStats.sampleSize} / {intervalStats.totalSamples - 1}
+                            </div>
+                          </Tooltip>
+                        </div>
+                      </div>
+                      <div className="bg-gray-100 rounded-lg p-2">
+                        <div className="bg-gray-200 rounded-full h-5 overflow-hidden mb-2">
+                          <div 
+                            className={`h-full ${
+                              intervalStats.consistency > 90 ? 'bg-green-500' : 
+                              intervalStats.consistency > 70 ? 'bg-yellow-500' : 
+                              'bg-orange-500'
+                            }`} 
+                            style={{ width: `${intervalStats.consistency}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between items-center px-1">
+                          <span className="text-xs text-gray-500">Poor</span>
+                          <span className="text-xs font-medium">
+                            {intervalStats.consistency}% ({
+                              intervalStats.consistency > 90 ? 'Excellent' : 
+                              intervalStats.consistency > 70 ? 'Good' : 
+                              intervalStats.consistency > 50 ? 'Fair' : 
+                              'Poor'
+                            })
+                          </span>
+                          <span className="text-xs text-gray-500">Excellent</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center">
+                        <div className={`w-2 h-2 rounded-full mr-1 ${
+                          intervalStats.sampleSize < 3 ? 'bg-amber-500' : 
+                          intervalStats.sampleSize < 10 ? 'bg-yellow-500' : 
+                          'bg-green-500'
+                        }`}></div>
+                        <span className="text-xs text-gray-600">
+                          {intervalStats.sampleSize < 3 ? 
+                            'Limited data - more samples needed for reliable analysis' : 
+                            intervalStats.sampleSize < 10 ? 
+                            'Moderate sample size - analysis is becoming more reliable' : 
+                            'Good sample size - analysis is statistically reliable'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Configuration Status Card */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center">
+              <h2 className="text-sm font-medium text-gray-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Configuration Status
+              </h2>
               <button 
-                onClick={() => fetchPingStats(true)} 
+                onClick={() => router.push('/debug/ping/github')} 
+                className="ml-3 text-xs text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z" />
+                </svg>
+                Configure Settings
+              </button>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center ${
+                pingStats?.lastPing && (Date.now() - pingStats.lastPing > 90000)
+                  ? "bg-red-100 text-red-800"
+                  : pingStats?.lastPing && (Date.now() - pingStats.lastPing > 60000)
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-green-100 text-green-800"
+              }`}>
+                <span className="mr-1">Ping Status:</span>
+                {pingStats?.lastPing 
+                  ? (Date.now() - pingStats.lastPing > 90000)
+                    ? "Critical"
+                    : (Date.now() - pingStats.lastPing > 60000)
+                    ? "Warning"
+                    : "Healthy"
+                  : "Unknown"}
+              </div>
+              <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center ${
+                (!pingStats?.githubAction?.enabled || !pingStats?.githubAction?.repository || !siteSettings?.apiKey)
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-green-100 text-green-800"
+              }`}>
+                <span className="mr-1">Setup:</span>
+                {(!pingStats?.githubAction?.enabled || !pingStats?.githubAction?.repository || !siteSettings?.apiKey)
+                  ? "Incomplete"
+                  : "Complete"}
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-3">
+              {/* GitHub Actions Status */}
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                <div className="flex items-center mb-2">
+                  <div className={`h-3 w-3 rounded-full mr-2 ${pingStats?.githubAction?.enabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  <h3 className="text-sm font-medium text-gray-700">GitHub Actions</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-y-2 text-xs">
+                  <div className="text-gray-600">Status:</div>
+                  <div className="font-medium">
+                    {pingStats?.githubAction?.enabled ? 
+                      <span className="text-green-600">Enabled</span> : 
+                      <span className="text-gray-600">Disabled</span>}
+                  </div>
+                  
+                  <div className="text-gray-600">Schedule:</div>
+                  <div className="font-medium text-gray-800">
+                    {pingStats?.githubAction?.schedule || 'Not set'}
+                  </div>
+                  
+                  <div className="text-gray-600">Repository:</div>
+                  <div className="font-medium text-gray-800 truncate">
+                    {pingStats?.githubAction?.repository || 'Not configured'}
+                  </div>
+                  
+                  <div className="text-gray-600">Workflow:</div>
+                  <div className="font-medium text-gray-800">
+                    {pingStats?.githubAction?.workflow || 'Not set'}
+                  </div>
+                </div>
+                {!pingStats?.githubAction?.enabled && (
+                  <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-1.5 rounded">
+                    <div className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>GitHub Actions workflow is disabled</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {/* API Authentication Status */}
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                <div className="flex items-center mb-2">
+                  <div className={`h-3 w-3 rounded-full mr-2 ${siteSettings?.apiKey ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                  <h3 className="text-sm font-medium text-gray-700">API Authentication</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-y-2 text-xs">
+                  <div className="text-gray-600">API Key:</div>
+                  <div className="font-medium">
+                    {siteSettings?.apiKey ? 
+                      <span className="text-green-600">Configured</span> : 
+                      <span className="text-amber-600">Not configured</span>}
+                  </div>
+                  
+                  <div className="text-gray-600">Secret Name:</div>
+                  <div className="font-medium text-gray-800">
+                    {siteSettings?.githubAction?.secretName || 'PING_API_KEY'}
+                  </div>
+                </div>
+                {!siteSettings?.apiKey && pingStats?.githubAction?.enabled && (
+                  <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-1.5 rounded">
+                    <div className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>API key not configured. Authentication may fail.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Activity Logs and Manual Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">        
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-sm font-medium text-gray-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Activity Logs
+              </h2>
+              <button 
+                onClick={() => setLogs([])} 
                 className="text-xs text-red-600 hover:text-red-800 flex items-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                Reset Stats
+                Clear Logs
               </button>
-            )}
-          </div>
-          <div className="bg-gray-50 p-3 rounded-md border border-gray-200 text-sm">
-            {!intervalStats ? (
-              <p className="text-gray-500 py-2 text-center">Not enough data for interval analysis (need at least 2 pings)</p>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2.5">
-                    <div className="flex justify-between">
-                      <Tooltip text="The expected interval based on GitHub Actions schedule">
-                        <span className="text-gray-600 border-b border-dotted border-gray-300">Expected interval:</span>
-                      </Tooltip>
-                      <span className="font-medium">{intervalStats.expectedInterval}s</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <Tooltip text="Average time between recorded pings">
-                        <span className="text-gray-600 border-b border-dotted border-gray-300">Actual avg interval:</span>
-                      </Tooltip>
-                      <span className={`font-medium ${Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval) > 5 ? 'text-amber-600' : 'text-gray-800'}`}>
-                        {intervalStats.avgInterval}s
-                        {Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval) > 5 && 
-                          <span className="ml-1 text-xs">
-                            ({intervalStats.avgInterval > intervalStats.expectedInterval ? '+' : '-'}
-                            {Math.abs(intervalStats.avgInterval - intervalStats.expectedInterval)}s)
-                          </span>
-                        }
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <Tooltip text="Average deviation from expected interval">
-                        <span className="text-gray-600 border-b border-dotted border-gray-300">Average drift:</span>
-                      </Tooltip>
-                      <span className={`font-medium ${intervalStats.avgDrift > 5 ? 'text-amber-600' : 'text-green-600'}`}>±{intervalStats.avgDrift}s</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <Tooltip text="Range of observed intervals">
-                        <span className="text-gray-600 border-b border-dotted border-gray-300">Min/Max interval:</span>
-                      </Tooltip>
-                      <span className="font-medium">{intervalStats.minInterval}s / {intervalStats.maxInterval}s</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <Tooltip text="How consistently GitHub Actions maintains the schedule">
-                        <span className="font-medium text-gray-700 border-b border-dotted border-gray-300">Timing Consistency</span>
-                      </Tooltip>
-                      <div className="flex items-center space-x-1.5">
-                        <Tooltip text="Intervals analyzed since last reset">
-                          <div className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                            </svg>
-                            {intervalStats.sampleSize} / {intervalStats.totalSamples - 1}
-                          </div>
-                        </Tooltip>
-                      </div>
-                    </div>
-                    <div className="bg-gray-100 rounded-lg p-2">
-                      <div className="bg-gray-200 rounded-full h-5 overflow-hidden mb-2">
-                        <div 
-                          className={`h-full ${
-                            intervalStats.consistency > 90 ? 'bg-green-500' : 
-                            intervalStats.consistency > 70 ? 'bg-yellow-500' : 
-                            'bg-orange-500'
-                          }`} 
-                          style={{ width: `${intervalStats.consistency}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-xs text-gray-500">Poor</span>
-                        <span className="text-xs font-medium">
-                          {intervalStats.consistency}% ({
-                            intervalStats.consistency > 90 ? 'Excellent' : 
-                            intervalStats.consistency > 70 ? 'Good' : 
-                            intervalStats.consistency > 50 ? 'Fair' : 
-                            'Poor'
-                          })
-                        </span>
-                        <span className="text-xs text-gray-500">Excellent</span>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center">
-                      <div className={`w-2 h-2 rounded-full mr-1 ${
-                        intervalStats.sampleSize < 3 ? 'bg-amber-500' : 
-                        intervalStats.sampleSize < 10 ? 'bg-yellow-500' : 
-                        'bg-green-500'
-                      }`}></div>
-                      <span className="text-xs text-gray-600">
-                        {intervalStats.sampleSize < 3 ? 
-                          'Limited data - more samples needed for reliable analysis' : 
-                          intervalStats.sampleSize < 10 ? 
-                          'Moderate sample size - analysis is becoming more reliable' : 
-                          'Good sample size - analysis is statistically reliable'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* Configuration Status Card */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center">
-            <h2 className="text-sm font-medium text-gray-800 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Configuration Status
-            </h2>
-            <button 
-              onClick={() => router.push('/debug/ping/github')} 
-              className="ml-3 text-xs text-blue-600 hover:text-blue-800 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z" />
-              </svg>
-              Configure Settings
-            </button>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center ${
-              pingStats?.lastPing && (Date.now() - pingStats.lastPing > 90000)
-                ? "bg-red-100 text-red-800"
-                : pingStats?.lastPing && (Date.now() - pingStats.lastPing > 60000)
-                ? "bg-amber-100 text-amber-800"
-                : "bg-green-100 text-green-800"
-            }`}>
-              <span className="mr-1">Ping Status:</span>
-              {pingStats?.lastPing 
-                ? (Date.now() - pingStats.lastPing > 90000)
-                  ? "Critical"
-                  : (Date.now() - pingStats.lastPing > 60000)
-                  ? "Warning"
-                  : "Healthy"
-                : "Unknown"}
             </div>
-            <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center ${
-              (!pingStats?.githubAction?.enabled || !pingStats?.githubAction?.repository || !siteSettings?.apiKey)
-                ? "bg-amber-100 text-amber-800"
-                : "bg-green-100 text-green-800"
-            }`}>
-              <span className="mr-1">Setup:</span>
-              {(!pingStats?.githubAction?.enabled || !pingStats?.githubAction?.repository || !siteSettings?.apiKey)
-                ? "Incomplete"
-                : "Complete"}
+            <div className="bg-gray-50 border border-gray-200 rounded-md h-64 overflow-y-auto font-mono text-xs">
+              {logs.length === 0 ? (
+                <p className="text-gray-500 p-3">No logs yet</p>
+              ) : (
+                logs.map((log, i) => (
+                  <div key={i} className="px-3 py-1.5 hover:bg-gray-100 break-all border-b border-gray-100 last:border-0">{log}</div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <h2 className="text-sm font-medium text-gray-800 mb-3 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Manual Actions
+            </h2>
+            <div className="space-y-3">
+              <button 
+                onClick={triggerPing}
+                className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-green-300 flex items-center transition-all duration-200"
+              >
+                <div className="h-9 w-9 bg-green-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                <div className="ml-3 text-left">
+                  <h3 className="font-medium text-gray-900 text-sm">Trigger Manual Ping</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Run an immediate check of all services and update their status
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => router.push('/debug/ping/github')}
+                className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-blue-300 flex items-center transition-all duration-200"
+              >
+                <div className="h-9 w-9 bg-blue-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                <div className="ml-3 text-left">
+                  <h3 className="font-medium text-gray-900 text-sm">Configure GitHub Actions</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Manage schedule, API key, and workflow settings
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="space-y-3">
-            {/* GitHub Actions Status */}
-            <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-              <div className="flex items-center mb-2">
-                <div className={`h-3 w-3 rounded-full mr-2 ${pingStats?.githubAction?.enabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                <h3 className="text-sm font-medium text-gray-700">GitHub Actions</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-y-2 text-xs">
-                <div className="text-gray-600">Status:</div>
-                <div className="font-medium">
-                  {pingStats?.githubAction?.enabled ? 
-                    <span className="text-green-600">Enabled</span> : 
-                    <span className="text-gray-600">Disabled</span>}
-                </div>
-                
-                <div className="text-gray-600">Schedule:</div>
-                <div className="font-medium text-gray-800">
-                  {pingStats?.githubAction?.schedule || 'Not set'}
-                </div>
-                
-                <div className="text-gray-600">Repository:</div>
-                <div className="font-medium text-gray-800 truncate">
-                  {pingStats?.githubAction?.repository || 'Not configured'}
-                </div>
-                
-                <div className="text-gray-600">Workflow:</div>
-                <div className="font-medium text-gray-800">
-                  {pingStats?.githubAction?.workflow || 'Not set'}
-                </div>
-              </div>
-              {!pingStats?.githubAction?.enabled && (
-                <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-1.5 rounded">
-                  <div className="flex items-start">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span>GitHub Actions is disabled. Scheduled checks won't run.</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            {/* API Authentication Status */}
-            <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-              <div className="flex items-center mb-2">
-                <div className={`h-3 w-3 rounded-full mr-2 ${siteSettings?.apiKey ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                <h3 className="text-sm font-medium text-gray-700">API Authentication</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-y-2 text-xs">
-                <div className="text-gray-600">API Key:</div>
-                <div className="font-medium">
-                  {siteSettings?.apiKey ? 
-                    <span className="text-green-600">Configured</span> : 
-                    <span className="text-amber-600">Not configured</span>}
-                </div>
-                
-                <div className="text-gray-600">Secret Name:</div>
-                <div className="font-medium text-gray-800">
-                  {siteSettings?.githubAction?.secretName || 'PING_API_KEY'}
-                </div>
-              </div>
-              {!siteSettings?.apiKey && pingStats?.githubAction?.enabled && (
-                <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-1.5 rounded">
-                  <div className="flex items-start">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span>API key not configured. Authentication may fail.</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Activity Logs and Manual Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">        
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        {/* Recent Ping History */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-sm font-medium text-gray-800 flex items-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              Activity Logs
+              Recent Ping History
             </h2>
-            <button 
-              onClick={() => setLogs([])} 
-              className="text-xs text-red-600 hover:text-red-800 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Clear Logs
-            </button>
+            <div className="flex items-center space-x-3">
+              <span className="text-xs text-gray-500">
+                {pingStats?.recentHistory?.length || 0} entries
+              </span>
+              <button 
+                onClick={() => fetchPingStats()} 
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh Data
+              </button>
+            </div>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-md h-64 overflow-y-auto font-mono text-xs">
-            {logs.length === 0 ? (
-              <p className="text-gray-500 p-3">No logs yet</p>
-            ) : (
-              logs.map((log, i) => (
-                <div key={i} className="px-3 py-1.5 hover:bg-gray-100 break-all border-b border-gray-100 last:border-0">{log}</div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-sm font-medium text-gray-800 mb-3 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Manual Actions
-          </h2>
-          <div className="space-y-3">
-            <button 
-              onClick={triggerPing}
-              className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-green-300 flex items-center transition-all duration-200"
-            >
-              <div className="h-9 w-9 bg-green-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              <div className="ml-3 text-left">
-                <h3 className="font-medium text-gray-900 text-sm">Trigger Manual Ping</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Run an immediate check of all services and update their status
-                </p>
+          
+          {/* Performance Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+            <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
+              <div className="text-xs text-gray-500 mb-1">Average Execution</div>
+              <div className="text-sm font-medium">
+                {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
+                  ? `${Math.round(pingStats.recentHistory.reduce((sum: number, entry: any) => sum + entry.executionTime, 0) / pingStats.recentHistory.length)}ms` 
+                  : 'N/A'}
               </div>
-            </button>
-
-            <button
-              onClick={() => router.push('/debug/ping/github')}
-              className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-blue-300 flex items-center transition-all duration-200"
-            >
-              <div className="h-9 w-9 bg-blue-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-              <div className="ml-3 text-left">
-                <h3 className="font-medium text-gray-900 text-sm">Configure GitHub Actions</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Manage schedule, API key, and workflow settings
-                </p>
+            </div>
+            
+            <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
+              <div className="text-xs text-gray-500 mb-1">Fastest Ping</div>
+              <div className="text-sm font-medium text-green-600">
+                {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
+                  ? `${Math.min(...pingStats.recentHistory.map((entry: any) => entry.executionTime))}ms` 
+                  : 'N/A'}
               </div>
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* Recent Ping History */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-sm font-medium text-gray-800 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Recent Ping History
-          </h2>
-          <div className="flex items-center space-x-3">
-            <span className="text-xs text-gray-500">
-              {pingStats?.recentHistory?.length || 0} entries
-            </span>
-            <button 
-              onClick={() => fetchPingStats()} 
-              className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh Data
-            </button>
-          </div>
-        </div>
-        
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
-            <div className="text-xs text-gray-500 mb-1">Average Execution</div>
-            <div className="text-sm font-medium">
-              {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
-                ? `${Math.round(pingStats.recentHistory.reduce((sum: number, entry: any) => sum + entry.executionTime, 0) / pingStats.recentHistory.length)}ms` 
-                : 'N/A'}
+            </div>
+            
+            <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
+              <div className="text-xs text-gray-500 mb-1">Slowest Ping</div>
+              <div className="text-sm font-medium text-amber-600">
+                {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
+                  ? `${Math.max(...pingStats.recentHistory.map((entry: any) => entry.executionTime))}ms` 
+                  : 'N/A'}
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
+              <div className="text-xs text-gray-500 mb-1">Services Checked</div>
+              <div className="text-sm font-medium">
+                {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
+                  ? pingStats.recentHistory[0].servicesChecked 
+                  : 'N/A'}
+              </div>
             </div>
           </div>
           
-          <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
-            <div className="text-xs text-gray-500 mb-1">Fastest Ping</div>
-            <div className="text-sm font-medium text-green-600">
-              {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
-                ? `${Math.min(...pingStats.recentHistory.map((entry: any) => entry.executionTime))}ms` 
-                : 'N/A'}
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
-            <div className="text-xs text-gray-500 mb-1">Slowest Ping</div>
-            <div className="text-sm font-medium text-amber-600">
-              {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
-                ? `${Math.max(...pingStats.recentHistory.map((entry: any) => entry.executionTime))}ms` 
-                : 'N/A'}
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 rounded-md p-3 border border-gray-200 text-center">
-            <div className="text-xs text-gray-500 mb-1">Services Checked</div>
-            <div className="text-sm font-medium">
-              {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
-                ? pingStats.recentHistory[0].servicesChecked 
-                : 'N/A'}
-            </div>
-          </div>
-        </div>
-        
-        {/* History Table */}
-        <div className="overflow-auto rounded-md border border-gray-200">
-          <table className="w-full text-xs">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="text-left py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">#</th>
-                <th className="text-left py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Timestamp</th>
-                <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Execution</th>
-                <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Services</th>
-                <th className="text-center py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Source</th>
-                <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Interval</th>
-                <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Run ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pingStats?.recentHistory?.slice(0, visibleHistoryCount).map((entry: any, i: number) => {
-                // Calculate trend indicators for execution time
-                const prevEntry = i < pingStats.recentHistory.length - 1 ? pingStats.recentHistory[i+1] : null;
-                const executionTrend = prevEntry ? 
-                  entry.executionTime > prevEntry.executionTime ? '↑' : 
-                  entry.executionTime < prevEntry.executionTime ? '↓' : '→' 
-                  : '';
-                
-                const executionDiff = prevEntry ? 
-                  `${Math.abs(entry.executionTime - prevEntry.executionTime)}ms` : '';
-                
-                // Calculate interval since last ping of the same source type
-                let intervalDisplay = '-';
-                if (entry.source && entry.source !== 'internal' && entry.source !== 'manual') {
-                  // Find the previous entry with the same source
-                  const prevSameSourceIndex = pingStats.recentHistory.findIndex((item: any, idx: number) => 
-                    idx > i && item.source === entry.source && (item.source !== 'internal' && item.source !== 'manual')
-                  );
+          {/* History Table */}
+          <div className="overflow-auto rounded-md border border-gray-200">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="text-left py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">#</th>
+                  <th className="text-left py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Timestamp</th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Execution</th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Services</th>
+                  <th className="text-center py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Source</th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Interval</th>
+                  <th className="text-right py-2.5 px-3 font-medium text-gray-700 border-b border-gray-200">Run ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pingStats?.recentHistory?.slice(0, visibleHistoryCount).map((entry: any, i: number) => {
+                  // Calculate trend indicators for execution time
+                  const prevEntry = i < pingStats.recentHistory.length - 1 ? pingStats.recentHistory[i+1] : null;
+                  const executionTrend = prevEntry ? 
+                    entry.executionTime > prevEntry.executionTime ? '↑' : 
+                    entry.executionTime < prevEntry.executionTime ? '↓' : '→' 
+                    : '';
                   
-                  if (prevSameSourceIndex !== -1) {
-                    const prevSameSource = pingStats.recentHistory[prevSameSourceIndex];
-                    const intervalMs = entry.timestamp - prevSameSource.timestamp;
-                    const intervalSec = Math.round(intervalMs / 1000);
-                    const intervalMin = Math.floor(intervalSec / 60);
+                  const executionDiff = prevEntry ? 
+                    `${Math.abs(entry.executionTime - prevEntry.executionTime)}ms` : '';
+                  
+                  // Calculate interval since last ping of the same source type
+                  let intervalDisplay = '-';
+                  if (entry.source && entry.source !== 'internal' && entry.source !== 'manual') {
+                    // Find the previous entry with the same source
+                    const prevSameSourceIndex = pingStats.recentHistory.findIndex((item: any, idx: number) => 
+                      idx > i && item.source === entry.source && (item.source !== 'internal' && item.source !== 'manual')
+                    );
                     
-                    if (intervalMin > 0) {
-                      intervalDisplay = `${intervalMin}m ${intervalSec % 60}s`;
-                    } else {
-                      intervalDisplay = `${intervalSec}s`;
+                    if (prevSameSourceIndex !== -1) {
+                      const prevSameSource = pingStats.recentHistory[prevSameSourceIndex];
+                      const intervalMs = entry.timestamp - prevSameSource.timestamp;
+                      const intervalSec = Math.round(intervalMs / 1000);
+                      const intervalMin = Math.floor(intervalSec / 60);
+                      
+                      if (intervalMin > 0) {
+                        intervalDisplay = `${intervalMin}m ${intervalSec % 60}s`;
+                      } else {
+                        intervalDisplay = `${intervalSec}s`;
+                      }
                     }
                   }
-                }
-                
-                return (
-                  <tr key={i} className={i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}>
-                    <td className="py-2.5 px-3 border-b border-gray-100">{i + 1}</td>
-                    <td className="py-2.5 px-3 border-b border-gray-100">{formatTime(entry.timestamp)}</td>
-                    <td className="py-2.5 px-3 text-right border-b border-gray-100">
-                      <Tooltip text={executionDiff ? `Changed by ${executionDiff} ${executionTrend}` : 'Execution time'}>
-                      <span className={entry.executionTime > 1000 ? 'text-red-500 font-medium' : 
-                                       entry.executionTime > 500 ? 'text-amber-500' : 
-                                       'text-green-600'}>
-                        {entry.executionTime}ms
-                      {executionTrend && (
-                            <span className="ml-1 text-gray-500">
-                          {executionTrend}
+                  
+                  return (
+                    <tr key={i} className={i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}>
+                      <td className="py-2.5 px-3 border-b border-gray-100">{i + 1}</td>
+                      <td className="py-2.5 px-3 border-b border-gray-100">{formatTime(entry.timestamp)}</td>
+                      <td className="py-2.5 px-3 text-right border-b border-gray-100">
+                        <Tooltip text={executionDiff ? `Changed by ${executionDiff} ${executionTrend}` : 'Execution time'}>
+                        <span className={entry.executionTime > 1000 ? 'text-red-500 font-medium' : 
+                                         entry.executionTime > 500 ? 'text-amber-500' : 
+                                         'text-green-600'}>
+                          {entry.executionTime}ms
+                        {executionTrend && (
+                              <span className="ml-1 text-gray-500">
+                            {executionTrend}
+                          </span>
+                        )}
+                          </span>
+                        </Tooltip>
+                      </td>
+                      <td className="py-2.5 px-3 text-right border-b border-gray-100 font-medium">{entry.servicesChecked}</td>
+                      <td className="py-2.5 px-3 text-center border-b border-gray-100">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          entry.source === 'github-action' ? 'bg-blue-100 text-blue-800' :
+                          entry.source === 'manual' ? 'bg-green-100 text-green-800' :
+                          entry.source === 'internal' ? 'bg-gray-100 text-gray-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                        {entry.source || 'legacy'}
                         </span>
-                      )}
-                        </span>
-                      </Tooltip>
-                    </td>
-                    <td className="py-2.5 px-3 text-right border-b border-gray-100 font-medium">{entry.servicesChecked}</td>
-                    <td className="py-2.5 px-3 text-center border-b border-gray-100">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${
-                        entry.source === 'github-action' ? 'bg-blue-100 text-blue-800' :
-                        entry.source === 'manual' ? 'bg-green-100 text-green-800' :
-                        entry.source === 'internal' ? 'bg-gray-100 text-gray-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                      {entry.source || 'legacy'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right border-b border-gray-100 font-mono">
-                      {intervalDisplay}
-                    </td>
-                    <td className="py-2.5 px-3 text-right border-b border-gray-100 font-mono">
-                      {entry.runId || '-'}
-                    </td>
+                      </td>
+                      <td className="py-2.5 px-3 text-right border-b border-gray-100 font-mono">
+                        {intervalDisplay}
+                      </td>
+                      <td className="py-2.5 px-3 text-right border-b border-gray-100 font-mono">
+                        {entry.runId || '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(!pingStats?.recentHistory || pingStats.recentHistory.length === 0) && (
+                  <tr>
+                    <td colSpan={6} className="py-4 px-3 text-center text-gray-500">No ping history available</td>
                   </tr>
-                );
-              })}
-              {(!pingStats?.recentHistory || pingStats.recentHistory.length === 0) && (
-                <tr>
-                  <td colSpan={6} className="py-4 px-3 text-center text-gray-500">No ping history available</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Show More Button */}
-        {pingStats?.recentHistory && pingStats.recentHistory.length > visibleHistoryCount && (
-          <div className="mt-3 flex justify-center">
-            <button 
-              onClick={showMoreHistory} 
-              className="text-blue-600 hover:text-blue-800 text-xs flex items-center px-3 py-1.5 border border-blue-200 rounded-md hover:bg-blue-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              Show More ({Math.min(10, pingStats.recentHistory.length - visibleHistoryCount)} of {pingStats.recentHistory.length - visibleHistoryCount} remaining)
-            </button>
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-        
-        {/* Execution Time Legend */}
-        <div className="mt-3 text-xs text-gray-600 flex flex-wrap">
-          <span className="inline-flex items-center mr-4 mb-1">
-            <span className="inline-block w-2 h-2 bg-green-600 rounded-full mr-1"></span> Fast (&lt;500ms)
-          </span>
-          <span className="inline-flex items-center mr-4 mb-1">
-            <span className="inline-block w-2 h-2 bg-amber-500 rounded-full mr-1"></span> Moderate (500-1000ms)
-          </span>
-          <span className="inline-flex items-center mr-4 mb-1">
-            <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span> Slow (&gt;1000ms)
-          </span>
-          <span className="inline-flex items-center mb-1">
-            <span className="text-gray-500 mr-1">↑↓</span> Change from previous ping
-          </span>
+          
+          {/* Show More Button */}
+          {pingStats?.recentHistory && pingStats.recentHistory.length > visibleHistoryCount && (
+            <div className="mt-3 flex justify-center">
+              <button 
+                onClick={showMoreHistory} 
+                className="text-blue-600 hover:text-blue-800 text-xs flex items-center px-3 py-1.5 border border-blue-200 rounded-md hover:bg-blue-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Show More ({Math.min(10, pingStats.recentHistory.length - visibleHistoryCount)} of {pingStats.recentHistory.length - visibleHistoryCount} remaining)
+              </button>
+            </div>
+          )}
+          
+          {/* Execution Time Legend */}
+          <div className="mt-3 text-xs text-gray-600 flex flex-wrap">
+            <span className="inline-flex items-center mr-4 mb-1">
+              <span className="inline-block w-2 h-2 bg-green-600 rounded-full mr-1"></span> Fast (&lt;500ms)
+            </span>
+            <span className="inline-flex items-center mr-4 mb-1">
+              <span className="inline-block w-2 h-2 bg-amber-500 rounded-full mr-1"></span> Moderate (500-1000ms)
+            </span>
+            <span className="inline-flex items-center mr-4 mb-1">
+              <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span> Slow (&gt;1000ms)
+            </span>
+            <span className="inline-flex items-center mb-1">
+              <span className="text-gray-500 mr-1">↑↓</span> Change from previous ping
+            </span>
+          </div>
         </div>
-      </div>
-      
-      {/* Footer */}
-      <div className="text-xs text-gray-500 text-center pb-4">
-        OpenUptimes Ping System Debug v3.0 (GitHub Actions)
+        
+        {/* Footer */}
+        <div className="text-xs text-gray-500 text-center pb-4">
+          OpenUptimes Ping System Debug v3.0 (GitHub Actions)
+        </div>
       </div>
     </div>
   );
-} 
+}

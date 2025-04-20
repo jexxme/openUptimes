@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { initCronSystem } from "./cron"
 
 /**
  * Utility function to merge Tailwind CSS classes
@@ -58,4 +59,16 @@ export function generateRandomPassword(length: number = 12): string {
   
   // Shuffle the password characters
   return password.split('').sort(() => 0.5 - Math.random()).join('');
+}
+
+/**
+ * Initialize server-side systems (called on app startup)
+ */
+export async function initializeServerSystems(): Promise<void> {
+  try {
+    // Initialize cron system
+    await initCronSystem();
+  } catch (error) {
+    console.error('Failed to initialize server systems:', error);
+  }
 }

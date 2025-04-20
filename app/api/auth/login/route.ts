@@ -63,116 +63,93 @@ async function resetFailedAttempts(ip: string): Promise<void> {
   }
 }
 
+// Login endpoint
 export async function POST(request: NextRequest) {
-  const requestId = Date.now().toString().substring(8);
-
-  // Get client IP address
-  const ip = request.headers.get('x-forwarded-for') || 
-             request.headers.get('x-real-ip') || 
-             'unknown';
-
-  // Check rate limit before processing
-  const rateLimitCheck = await checkRateLimit(ip);
-  if (!rateLimitCheck.allowed) {
-
-    const response = NextResponse.json(
-      { error: 'Too many failed login attempts. Please try again later.' },
-      { status: 429 }
-    );
-    
-    // Add security headers
-    response.headers.set('Retry-After', String(rateLimitCheck.retryAfter || 30));
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    
-    return response;
-  }
+  console.log('Login request received');
   
   try {
+    // Parse request body
     const body = await request.json();
-    const { password, provider = 'password' } = body;
-
-    if (provider === 'password' && !password) {
-
+    const { password } = body;
+    
+    if (!password) {
+      console.error('Login attempt with missing password');
       return NextResponse.json(
         { error: 'Password is required' },
         { status: 400 }
       );
     }
     
-    // Use the authenticate function that supports multiple providers
-
-    const authResult = await authenticate(body, provider);
-
+    console.log('Authenticating user...');
+    
+    // Authenticate user
+    const authResult = await authenticate({ password });
+    
     if (!authResult.success || !authResult.token) {
-
-      // Record failed attempt for rate limiting
-      await recordFailedAttempt(ip);
-      
-      const response = NextResponse.json(
-        { error: authResult.error || 'Authentication failed' },
+      console.error('Authentication failed');
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
         { status: 401 }
       );
-      
-      // Add security headers
-      response.headers.set('X-Content-Type-Options', 'nosniff');
-      response.headers.set('X-Frame-Options', 'DENY');
-      
-      return response;
     }
     
-    // Reset failed attempts counter on successful login
-    await resetFailedAttempts(ip);
+    console.log('Authentication successful, storing session');
     
-    const token = authResult.token;
-
-    // Store session in Redis with 24 hour expiry by default
-
-    const redisResult = await storeSession(token);
-
-    if (!redisResult) {
-
+    // Store session in Redis (default 24h expiry)
+    const sessionStored = await storeSession(authResult.token);
+    
+    if (!sessionStored) {
+      console.error('Failed to store session');
       return NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
       );
     }
     
-    // Create response with user info (if available) and success status
-    const responseData = {
-      success: true,
-      ...(authResult.userInfo ? { user: authResult.userInfo } : {})
-    };
+    console.log('Session stored successfully');
     
-    const response = NextResponse.json(responseData);
+    // Set cookie for the browser
+    const cookieMaxAge = 24 * 60 * 60; // 24 hours
     
-    // Set cookie with appropriate settings
-
+    // Create response with success message
+    const response = NextResponse.json(
+      { 
+        success: true,
+        message: 'Login successful'
+      },
+      { status: 200 }
+    );
+    
+    // Set both session and authToken cookies for compatibility
     response.cookies.set({
-      name: 'authToken',
-      value: token,
+      name: 'session',
+      value: authResult.token,
       httpOnly: true,
-      secure: true,
-      maxAge: 60 * 60 * 24, // 24 hours
-      path: '/',
-      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: cookieMaxAge,
+      path: '/'
     });
     
-    // Verify the cookie was set correctly
-    const setCookieHeader = response.headers.get('set-cookie');
-
-
-    // Add security headers
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    response.headers.set('X-Frame-Options', 'DENY');
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.cookies.set({
+      name: 'authToken',
+      value: authResult.token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: cookieMaxAge,
+      path: '/'
+    });
+    
+    console.log('Login successful - cookies set');
     
     return response;
   } catch (error) {
-
+    console.error('Login error:', error);
+    
     return NextResponse.json(
-      { error: 'Authentication failed' },
+      { 
+        error: 'Login failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

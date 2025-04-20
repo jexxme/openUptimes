@@ -87,7 +87,7 @@ function LoginForm() {
         logDebug('Verifying session...');
         
         // Use a short delay to ensure cookie is set first
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         const verifyResponse = await fetch('/api/auth/validate', {
           headers: {
@@ -102,6 +102,14 @@ function LoginForm() {
         
         if (!verifyData.valid) {
           throw new Error('Session creation failed');
+        }
+        
+        // For debug pages, include special handling
+        if (from.includes('/debug/ping/cron')) {
+          logDebug('Redirecting to cron debug page');
+          // Use window.location for a full page reload to ensure cookies are applied
+          window.location.href = `${from}?t=${Date.now()}`;
+          return;
         }
         
         // Add timestamp to bust cache and prevent old redirects

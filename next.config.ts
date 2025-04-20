@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["redis"],
+  serverExternalPackages: ["redis", "node-cron"],
   logging: {
     fetches: {
       fullUrl: true,

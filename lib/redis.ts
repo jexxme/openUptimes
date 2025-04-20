@@ -324,22 +324,41 @@ export async function getAdminPassword(): Promise<string | null> {
  */
 export async function storeSession(token: string, expirySeconds: number = 86400): Promise<boolean> {
   const requestId = Date.now().toString().substring(8);
-
+  console.log(`[${requestId}] storeSession: Storing session token with ${expirySeconds}s expiry`);
+  
   try {
+    if (!token || token.trim() === '') {
+      console.error(`[${requestId}] storeSession: Attempted to store empty token`);
+      return false;
+    }
+    
     const client = await getRedisClient();
     
-    // Set the session in Redis with expiry
-    await client.set(`session:${token}`, 'active', {
-      EX: expirySeconds // Expires in 24 hours by default
+    // Store the session with given expiry
+    const sessionKey = `session:${token}`;
+    console.log(`[${requestId}] storeSession: Setting key ${sessionKey} to 'active' with TTL ${expirySeconds}s`);
+    
+    // Set the session to 'active' with an expiry
+    const result = await client.set(sessionKey, 'active', {
+      EX: expirySeconds
     });
     
-    // Verify the session was stored
-    const verifySession = await client.get(`session:${token}`);
-    const success = verifySession === 'active';
-
+    const success = result === 'OK';
+    console.log(`[${requestId}] storeSession: Session stored successfully: ${success}`);
+    
+    // Verify the session was stored correctly
+    if (success) {
+      const ttl = await client.ttl(sessionKey);
+      console.log(`[${requestId}] storeSession: Verified session with TTL ${ttl}s`);
+      
+      // For debugging, check if we can retrieve the session
+      const session = await client.get(sessionKey);
+      console.log(`[${requestId}] storeSession: Retrieved session: ${session === 'active' ? 'active' : 'not active'}`);
+    }
+    
     return success;
   } catch (err) {
-
+    console.error(`[${requestId}] storeSession: Error storing session:`, err);
     return false;
   }
 }
@@ -351,21 +370,31 @@ export async function isSessionValid(token: string): Promise<boolean> {
   const requestId = Date.now().toString().substring(8);
 
   try {
+    if (!token || token.trim() === '') {
+      console.log(`[${requestId}] isSessionValid: Empty token provided`);
+      return false;
+    }
+    
     const client = await getRedisClient();
     
     // Get session from Redis
-    const session = await client.get(`session:${token}`);
+    const sessionKey = `session:${token}`;
+    console.log(`[${requestId}] isSessionValid: Checking token in Redis at key ${sessionKey}`);
+    
+    const session = await client.get(sessionKey);
     const isValid = session === 'active';
 
     // Debug: Check TTL if session exists
     if (session) {
-      const ttl = await client.ttl(`session:${token}`);
-
+      const ttl = await client.ttl(sessionKey);
+      console.log(`[${requestId}] isSessionValid: Session found with TTL ${ttl}s, valid=${isValid}`);
+    } else {
+      console.log(`[${requestId}] isSessionValid: No session found for token`);
     }
     
     return isValid;
   } catch (err) {
-
+    console.error(`[${requestId}] isSessionValid: Error validating session:`, err);
     return false;
   }
 }
