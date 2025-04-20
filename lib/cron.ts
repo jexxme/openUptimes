@@ -1,7 +1,7 @@
 'use server';
 
 import { getRedisClient } from './redis';
-import { parse, schedule, validate, ScheduledTask } from 'node-cron';
+import { schedule, validate, ScheduledTask } from 'node-cron';
 
 // Type definitions for Cron jobs
 export type CronJobStatus = 'running' | 'stopped' | 'error';
@@ -20,6 +20,57 @@ export interface CronJob {
   lastRunStatus?: 'success' | 'failure';
   lastRunError?: string;
   enabled: boolean;
+}
+
+// Simple helper to check if a cron time matches a date
+function cronMatches(cronExpression: string, date: Date): boolean {
+  // Split cron into parts
+  const parts = cronExpression.split(' ');
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+  
+  // Get date components
+  const dateMinute = date.getMinutes();
+  const dateHour = date.getHours();
+  const dateDayOfMonth = date.getDate();
+  const dateMonth = date.getMonth() + 1; // JS months are 0-based
+  const dateDayOfWeek = date.getDay(); // 0 is Sunday in JS
+  
+  // Check each part
+  const minuteMatch = matchCronPart(dateMinute, minute, 0, 59);
+  const hourMatch = matchCronPart(dateHour, hour, 0, 23);
+  const dayOfMonthMatch = matchCronPart(dateDayOfMonth, dayOfMonth, 1, 31);
+  const monthMatch = matchCronPart(dateMonth, month, 1, 12);
+  const dayOfWeekMatch = matchCronPart(dateDayOfWeek, dayOfWeek, 0, 6);
+  
+  return minuteMatch && hourMatch && dayOfMonthMatch && monthMatch && dayOfWeekMatch;
+}
+
+// Helper to match a specific part of a cron expression
+function matchCronPart(value: number, cronPart: string, min: number, max: number): boolean {
+  // Handle asterisk
+  if (cronPart === '*') return true;
+  
+  // Handle exact number
+  if (!isNaN(parseInt(cronPart)) && parseInt(cronPart) === value) return true;
+  
+  // Handle ranges (e.g., 1-5)
+  if (cronPart.includes('-')) {
+    const [start, end] = cronPart.split('-').map(Number);
+    return value >= start && value <= end;
+  }
+  
+  // Handle lists (e.g., 1,3,5)
+  if (cronPart.includes(',')) {
+    return cronPart.split(',').map(Number).includes(value);
+  }
+  
+  // Handle step values (e.g., */5)
+  if (cronPart.startsWith('*/')) {
+    const step = parseInt(cronPart.substring(2));
+    return value % step === 0;
+  }
+  
+  return false;
 }
 
 // In-memory store for active cron jobs
@@ -41,24 +92,22 @@ export async function getNextRunTime(cronExpression: string): Promise<number | n
       return null;
     }
     
-    // Use node-cron's parse to get schedule details
-    const interval = parse(cronExpression);
-    
-    // Calculate next execution time
     const now = new Date();
-    const nextDate = new Date(now);
+    let nextDate = new Date(now);
     
-    // Increment by seconds to find next match
-    for (let i = 0; i < 86400; i++) { // Look ahead max 24 hours
-      nextDate.setSeconds(now.getSeconds() + i);
-      if (interval.match(nextDate)) {
+    // Look ahead up to a week to find the next match
+    for (let i = 1; i <= 10080; i++) { // 10080 minutes = 1 week
+      nextDate = new Date(now.getTime() + i * 60000); // Add i minutes
+      if (cronMatches(cronExpression, nextDate)) {
+        console.log(`[NextRunCalc] Next run for "${cronExpression}" will be at: ${nextDate.toISOString()}`);
         return nextDate.getTime();
       }
     }
     
+    console.log(`[NextRunCalc] No match found for "${cronExpression}" in the next week`);
     return null;
   } catch (error) {
-    console.error('Error calculating next run time:', error);
+    console.error(`[NextRunCalc] Error calculating next run time for "${cronExpression}":`, error);
     return null;
   }
 }
@@ -79,8 +128,16 @@ export async function createCronJob(job: Omit<CronJob, 'id' | 'createdAt' | 'upd
     const id = `job_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const now = Date.now();
     
-    // Calculate next run time
-    const nextRun = await getNextRunTime(job.cronExpression);
+    // Calculate next run time directly
+    let nextRun;
+    try {
+      const calculatedNextRun = await getNextRunTime(job.cronExpression);
+      // Convert null to undefined if needed
+      nextRun = calculatedNextRun !== null ? calculatedNextRun : undefined;
+      console.log(`[CreateJob] Calculated next run time for new job: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
+    } catch (e) {
+      console.error(`[CreateJob] Error calculating next run time for new job:`, e);
+    }
     
     // Create the job object
     const newJob: CronJob = {
@@ -91,9 +148,11 @@ export async function createCronJob(job: Omit<CronJob, 'id' | 'createdAt' | 'upd
       status: 'stopped',
       createdAt: now,
       updatedAt: now,
-      nextRun: nextRun || undefined,
+      nextRun: nextRun,
       enabled: job.enabled
     };
+    
+    console.log(`[CreateJob] Creating job with next run: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
     
     // Store the job in Redis
     await client.set(`cron:job:${id}`, JSON.stringify(newJob));
@@ -152,17 +211,28 @@ export async function updateCronJob(id: string, updates: Partial<Omit<CronJob, '
       throw new Error('Invalid cron expression');
     }
     
+    // Calculate next run time if cron expression changed
+    let nextRun = existingJob.nextRun;
+    if (updates.cronExpression) {
+      try {
+        const calculatedNextRun = await getNextRunTime(updates.cronExpression);
+        // Convert null to undefined if needed
+        nextRun = calculatedNextRun !== null ? calculatedNextRun : undefined;
+        console.log(`[UpdateJob] Calculated next run time for job update ${id}: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
+      } catch (e) {
+        console.error(`[UpdateJob] Error calculating next run time for job update ${id}:`, e);
+      }
+    }
+    
     // Update the job
     const updatedJob: CronJob = {
       ...existingJob,
       ...updates,
+      nextRun: nextRun,
       updatedAt: Date.now()
     };
     
-    // Recalculate next run time if cron expression changed
-    if (updates.cronExpression) {
-      updatedJob.nextRun = await getNextRunTime(updates.cronExpression) || undefined;
-    }
+    console.log(`[UpdateJob] Updating job ${id} with next run: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
     
     // Store the updated job
     await client.set(`cron:job:${id}`, JSON.stringify(updatedJob));
@@ -220,21 +290,30 @@ export async function listCronJobs(): Promise<CronJob[]> {
   try {
     const client = await getRedisClient();
     
-    // Get all job IDs
-    const jobIds = await client.sMembers('cron:jobs');
+    // Use keys pattern matching to find all job IDs
+    const jobKeysPattern = 'cron:job:*';
+    const jobKeys = await client.keys(jobKeysPattern);
     
-    if (!jobIds.length) {
+    if (!jobKeys.length) {
       return [];
     }
+    
+    // Extract job IDs from keys
+    const jobIds = jobKeys.map((key: string) => key.replace('cron:job:', ''));
     
     // Get all jobs
     const jobPromises = jobIds.map((id: string) => client.get(`cron:job:${id}`));
     const jobsData = await Promise.all(jobPromises);
     
     // Parse and filter out any null values
-    return jobsData
+    const jobs = jobsData
       .filter(Boolean)
       .map(data => JSON.parse(data as string));
+    
+    console.log(`[ListJobs] Found ${jobs.length} jobs. First few nextruns:`, 
+      jobs.slice(0, 3).map(j => j.nextRun ? new Date(j.nextRun).toISOString() : 'None'));
+    
+    return jobs;
   } catch (error) {
     console.error('Error listing cron jobs:', error);
     return [];
@@ -270,13 +349,26 @@ export async function startJob(id: string): Promise<boolean> {
     // Store the task
     activeTasks[id] = task;
     
+    // Calculate next run time directly
+    let nextRun;
+    try {
+      const calculatedNextRun = await getNextRunTime(job.cronExpression);
+      // Convert null to undefined if needed
+      nextRun = calculatedNextRun !== null ? calculatedNextRun : undefined;
+      console.log(`[StartJob] Calculated next run time for job ${id}: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
+    } catch (e) {
+      console.error(`[StartJob] Error calculating next run time for job start ${id}:`, e);
+    }
+    
     // Update job status
     const updatedJob: CronJob = {
       ...job,
       status: 'running',
       updatedAt: Date.now(),
-      nextRun: await getNextRunTime(job.cronExpression) || undefined
+      nextRun: nextRun
     };
+    
+    console.log(`[StartJob] Starting job ${id} with next run: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
     
     await client.set(`cron:job:${id}`, JSON.stringify(updatedJob));
     
@@ -358,6 +450,17 @@ async function executeJob(id: string): Promise<void> {
     // Calculate execution duration
     const duration = Date.now() - startTime;
     
+    // Force calculate next run time
+    let nextRunTime;
+    try {
+      const calculatedNextRun = await getNextRunTime(job.cronExpression);
+      // Convert null to undefined if needed
+      nextRunTime = calculatedNextRun !== null ? calculatedNextRun : undefined;
+      console.log(`[ExecuteJob] Calculated next run time for job ${id}: ${nextRunTime ? new Date(nextRunTime).toISOString() : 'None'}`);
+    } catch (e) {
+      console.error(`[ExecuteJob] Error calculating next run time for job ${id}:`, e);
+    }
+    
     // Update job with execution results
     const updatedJob: CronJob = {
       ...job,
@@ -365,9 +468,11 @@ async function executeJob(id: string): Promise<void> {
       lastRunDuration: duration,
       lastRunStatus: success ? 'success' : 'failure',
       lastRunError: success ? undefined : JSON.stringify(result),
-      nextRun: await getNextRunTime(job.cronExpression) || undefined,
+      nextRun: nextRunTime,
       updatedAt: Date.now()
     };
+    
+    console.log(`[ExecuteJob] Finished executing job ${id}, setting next run: ${nextRunTime ? new Date(nextRunTime).toISOString() : 'None'}`);
     
     await client.set(`cron:job:${id}`, JSON.stringify(updatedJob));
     
@@ -392,15 +497,28 @@ async function executeJob(id: string): Promise<void> {
       
       const job: CronJob = JSON.parse(jobData);
       
+      // Force calculate next run time on failure too
+      let nextRunTime;
+      try {
+        const calculatedNextRun = await getNextRunTime(job.cronExpression);
+        // Convert null to undefined if needed
+        nextRunTime = calculatedNextRun !== null ? calculatedNextRun : undefined;
+        console.log(`[ExecuteJob-Error] Calculated next run time for job ${id} after error: ${nextRunTime ? new Date(nextRunTime).toISOString() : 'None'}`);
+      } catch (e) {
+        console.error(`[ExecuteJob-Error] Error calculating next run time for job ${id}:`, e);
+      }
+      
       // Update job with failure details
       const updatedJob: CronJob = {
         ...job,
         lastRun: Date.now(),
         lastRunStatus: 'failure',
         lastRunError: (error as Error).message,
-        nextRun: await getNextRunTime(job.cronExpression) || undefined,
+        nextRun: nextRunTime,
         updatedAt: Date.now()
       };
+      
+      console.log(`[ExecuteJob-Error] Failed executing job ${id}, setting next run: ${nextRunTime ? new Date(nextRunTime).toISOString() : 'None'}`);
       
       await client.set(`cron:job:${id}`, JSON.stringify(updatedJob));
       

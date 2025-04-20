@@ -59,7 +59,18 @@ export async function listCronJobs(): Promise<CronJob[]> {
       throw new Error(`Failed to fetch cron jobs: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    const jobs = await response.json();
+    
+    // Debug logging for next run times
+    console.log('[Client] Received jobs with next run times:', 
+      jobs.slice(0, 3).map((j: CronJob) => ({
+        id: j.id, 
+        name: j.name,
+        nextRun: j.nextRun ? new Date(j.nextRun).toISOString() : 'None'
+      }))
+    );
+    
+    return jobs;
   } catch (error) {
     console.error('Error listing cron jobs:', error);
     throw error; // Re-throw so the UI can handle it
@@ -77,7 +88,15 @@ export async function getCronJob(id: string): Promise<CronJob | null> {
     if (!response.ok) {
       throw new Error(`Failed to fetch job: ${response.status} ${response.statusText}`);
     }
-    return await response.json();
+    
+    const job = await response.json();
+    
+    // Debug logging for next run time
+    console.log(`[Client] Received job ${id} with next run:`, 
+      job.nextRun ? new Date(job.nextRun).toISOString() : 'None'
+    );
+    
+    return job;
   } catch (error) {
     console.error(`Error getting cron job ${id}:`, error);
     return null;
@@ -394,13 +413,16 @@ export function describeCronExpression(expression: string): string {
 
 /**
  * Calculate the next run time for a cron expression using the server
- * This uses the more accurate node-cron implementation
+ * This uses the more accurate implementation
  */
 export async function getNextRunTimeFromServer(cronExpression: string): Promise<number | null> {
   try {
     if (!validateCronExpression(cronExpression)) {
+      console.log('[Client] Invalid cron expression:', cronExpression);
       return null;
     }
+    
+    console.log('[Client] Requesting next run time for:', cronExpression);
     
     const response = await fetch('/api/ping/cron/next-run', {
       method: 'POST',
@@ -416,9 +438,14 @@ export async function getNextRunTimeFromServer(cronExpression: string): Promise<
     }
     
     const data = await response.json();
+    
+    console.log('[Client] Received next run time:', 
+      data.nextRun ? new Date(data.nextRun).toISOString() : 'None'
+    );
+    
     return data.nextRun;
   } catch (error) {
-    console.error('Error calculating next run time:', error);
+    console.error('Error calculating next run time from server:', error);
     // Fall back to client-side calculation
     return getNextRunTime(cronExpression);
   }

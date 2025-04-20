@@ -153,8 +153,8 @@ export async function GET(request: Request) {
       servicesChecked: results.length,
       refreshInterval,
       nextScheduled: nextPing,
-      // Add source information if from GitHub Actions
-      source: runId ? 'github-action' : 'internal',
+      // Add source information based on query params or runId
+      source: url.searchParams.get('source') || (runId ? 'github-action' : 'internal'),
       runId: runId || undefined
     };
     

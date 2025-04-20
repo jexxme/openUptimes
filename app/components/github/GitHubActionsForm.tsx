@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { formatCronSchedule } from '../../lib/utils/timeUtils';
 import ApiKeySection from '../../../app/components/github/ApiKeySection'; 
+import CronSelector from '../../components/CronSelector';
 
 interface GitHubActionsFormProps {
   initialSettings: any;
@@ -172,6 +173,19 @@ jobs:
       - name: Log completion time
         run: echo "Workflow completed at $(date)"`;
   }
+
+  // Add a handler for the CronSelector component
+  const handleCronChange = (schedule: string) => {
+    // Check if it meets GitHub's 5-minute minimum requirement
+    if (!validateCronSchedule(schedule)) {
+      setScheduleError('GitHub Actions requires a minimum interval of 5 minutes');
+    } else {
+      setScheduleError(null);
+    }
+    
+    // Update the settings
+    setGithubSettings({...githubSettings, schedule});
+  };
 
   return (
     <div className="space-y-4">
@@ -363,7 +377,7 @@ jobs:
           <div className="flex flex-col space-y-2">
             <div className="flex justify-between items-center">
               <label className="text-xs font-medium text-gray-700 flex items-center">
-                Schedule (Cron Expression)
+                Schedule
                 <div className="relative ml-1 group">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-amber-500 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -375,111 +389,39 @@ jobs:
                   </div>
                 </div>
               </label>
-              
-              <button 
-                type="button"
-                onClick={() => setShowCronExamples(prev => !prev)}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Examples
-              </button>
             </div>
             
-            <div className="flex space-x-2">
-              <input
-                type="text"
+            <div className="border border-gray-200 rounded-md overflow-hidden">
+              <CronSelector 
                 value={githubSettings.schedule}
-                onChange={e => updateSchedule(e.target.value)}
-                className={`flex-grow border rounded px-2 py-1.5 text-sm ${
-                  scheduleError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
-                placeholder="*/5 * * * *"
+                onChange={handleCronChange}
+                showDescription={true}
+                showNextRun={true}
+                compact={true}
+                className="shadow-none border-none"
+                minInterval={5}
               />
-              <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1.5 text-xs flex items-center whitespace-nowrap">
-                {formatCronSchedule(githubSettings.schedule)}
-              </div>
             </div>
             
-            {scheduleError ? (
-              <p className="text-xs text-red-600">{scheduleError}</p>
-            ) : (
-              <p className="text-xs text-gray-500 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            {scheduleError && (
+              <div className="text-xs text-red-600 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                After changing, scroll down to copy the updated YAML
-              </p>
+                {scheduleError}
+              </div>
             )}
           </div>
           
-          {/* Collapsible Examples Section - More compact */}
-          <div 
-            className={`overflow-hidden transition-all duration-300 ease-in-out mt-2 ${
-              showCronExamples ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
-            }`}
-          >
-            <div className="bg-gray-50 p-2 rounded border border-gray-200">
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <button 
-                  onClick={() => updateSchedule('*/5 * * * *')}
-                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
-                >
-                  <code className="font-mono">*/5 * * * *</code>
-                  <span className="block text-gray-600">Every 5 minutes</span>
-                </button>
-                <button 
-                  onClick={() => updateSchedule('*/15 * * * *')}
-                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
-                >
-                  <code className="font-mono">*/15 * * * *</code>
-                  <span className="block text-gray-600">Every 15 minutes</span>
-                </button>
-                <button 
-                  onClick={() => updateSchedule('*/30 * * * *')}
-                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
-                >
-                  <code className="font-mono">*/30 * * * *</code>
-                  <span className="block text-gray-600">Every 30 minutes</span>
-                </button>
-                <button 
-                  onClick={() => updateSchedule('0 */1 * * *')}
-                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
-                >
-                  <code className="font-mono">0 */1 * * *</code>
-                  <span className="block text-gray-600">Every hour</span>
-                </button>
-                <button 
-                  onClick={() => updateSchedule('0 */6 * * *')}
-                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
-                >
-                  <code className="font-mono">0 */6 * * *</code>
-                  <span className="block text-gray-600">Every 6 hours</span>
-                </button>
-                <button 
-                  onClick={() => updateSchedule('0 0 * * *')}
-                  className="text-left text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
-                >
-                  <code className="font-mono">0 0 * * *</code>
-                  <span className="block text-gray-600">Once daily</span>
-                </button>
-              </div>
-              
-              <div className="flex justify-end mt-2">
-                <a 
-                  href="https://crontab.guru" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-xs text-blue-500 hover:underline flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Cron expression help
-                </a>
-              </div>
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-xs text-gray-500 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              After changing, scroll down to copy the updated YAML
+            </p>
+            <div className="text-xs text-gray-500">
+              Human-readable: <span className="font-medium text-gray-700">{formatCronSchedule(githubSettings.schedule)}</span>
             </div>
           </div>
         </div>

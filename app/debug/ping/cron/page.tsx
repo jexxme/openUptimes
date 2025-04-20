@@ -21,6 +21,7 @@ import {
   getNextRunTime,
   updateCronJob
 } from '../../../lib/client/cronClient';
+import CronSelector from '@/app/components/CronSelector';
 
 export default function CronDebugPage() {
   const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
@@ -301,8 +302,7 @@ export default function CronDebugPage() {
     addLog(`Editing job "${job.name}"`);
   };
 
-  const handleCronExpressionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleCronExpressionUpdate = (value: string) => {
     setNewJob({ ...newJob, cronExpression: value });
     const isValid = validateCronExpression(value);
     setIsCronExpressionValid(isValid);
@@ -314,6 +314,17 @@ export default function CronDebugPage() {
     } else {
       setEstimatedNextRun(null);
     }
+  };
+
+  const handleEditJobCronExpressionUpdate = (value: string) => {
+    if (!jobToEdit) return;
+    
+    const isValid = validateCronExpression(value);
+    
+    setJobToEdit({
+      ...jobToEdit,
+      cronExpression: value
+    });
   };
 
   const formatStatus = (status: string) => {
@@ -529,7 +540,60 @@ export default function CronDebugPage() {
               Create and manage scheduled jobs
             </p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 items-center">
+            <div className="flex items-center mr-3">
+              <input
+                type="checkbox"
+                id="auto-refresh"
+                className="mr-2"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              <label htmlFor="auto-refresh" className="text-sm text-gray-600">
+                Auto-refresh
+              </label>
+              {autoRefresh && (
+                <select
+                  value={refreshInterval}
+                  onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                  className="ml-2 text-sm border rounded px-1 py-0.5 text-gray-600"
+                >
+                  <option value={10}>10s</option>
+                  <option value={30}>30s</option>
+                  <option value={60}>1m</option>
+                  <option value={300}>5m</option>
+                </select>
+              )}
+            </div>
+            <button 
+              onClick={fetchCronJobs}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm font-medium flex items-center"
+              title="Refresh data"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <button 
+              onClick={() => setIsImportModalOpen(true)}
+              className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-md text-sm font-medium flex items-center"
+              title="Import jobs"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12" />
+              </svg>
+              Import
+            </button>
+            <button 
+              onClick={handleExportJobs}
+              className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-md text-sm font-medium flex items-center"
+              title="Export jobs"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export
+            </button>
             <button 
               onClick={() => setIsCreatingJob(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
@@ -578,14 +642,34 @@ export default function CronDebugPage() {
                   <div className="text-sm text-purple-800 mb-1">Next Run</div>
                   <div className="text-xl font-bold text-purple-900">
                     {(() => {
+                      // Debug logging for debugging next run issue
+                      console.log('[NextRunDebug] All jobs:', cronJobs.map(job => ({
+                        id: job.id.substring(0, 8),
+                        name: job.name,
+                        nextRun: job.nextRun ? new Date(job.nextRun).toISOString() : 'None',
+                        status: job.status,
+                        running: job.status === 'running'
+                      })));
+                      
                       const nextRunJobs = cronJobs
                         .filter(job => job.nextRun && job.status === 'running')
                         .sort((a, b) => (a.nextRun || 0) - (b.nextRun || 0));
                       
-                      if (nextRunJobs.length === 0) return 'None';
+                      console.log('[NextRunDebug] Filtered running jobs with nextRun:', nextRunJobs.map(job => ({
+                        id: job.id.substring(0, 8),
+                        name: job.name,
+                        nextRun: job.nextRun ? new Date(job.nextRun).toISOString() : 'None' 
+                      })));
+                      
+                      if (nextRunJobs.length === 0) {
+                        console.log('[NextRunDebug] No running jobs with next run time found');
+                        return 'None';
+                      }
                       
                       const nextJob = nextRunJobs[0];
                       const timeLeft = Math.round(((nextJob.nextRun || 0) - Date.now()) / 1000);
+                      
+                      console.log(`[NextRunDebug] Next run: ${nextJob.name}, time: ${new Date(nextJob.nextRun || 0).toISOString()}, timeLeft: ${timeLeft}s`);
                       
                       if (timeLeft < 0) return 'Imminent';
                       if (timeLeft < 60) return `${timeLeft}s`;
@@ -845,29 +929,12 @@ export default function CronDebugPage() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cron Expression <span className="text-red-500">*</span>
+                      Schedule <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${!isCronExpressionValid ? 'border-red-500' : ''}`}
+                    <CronSelector 
                       value={newJob.cronExpression}
-                      onChange={handleCronExpressionChange}
-                      placeholder="*/5 * * * *"
+                      onChange={handleCronExpressionUpdate}
                     />
-                    {!isCronExpressionValid && (
-                      <p className="text-red-500 text-xs mt-1">Invalid cron expression format</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Format: minute hour day-of-month month day-of-week
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Example: */5 * * * * (Every 5 minutes)
-                    </p>
-                    {estimatedNextRun && isCronExpressionValid && (
-                      <div className="mt-2 text-xs text-green-600">
-                        Estimated next run: {formatTime(estimatedNextRun)}
-                      </div>
-                    )}
                   </div>
                   
                   <div className="flex items-center">
@@ -938,23 +1005,12 @@ export default function CronDebugPage() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cron Expression <span className="text-red-500">*</span>
+                      Schedule <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        !validateCronExpression(jobToEdit.cronExpression) ? 'border-red-500' : ''
-                      }`}
+                    <CronSelector 
                       value={jobToEdit.cronExpression}
-                      onChange={(e) => setJobToEdit({ ...jobToEdit, cronExpression: e.target.value })}
-                      placeholder="*/5 * * * *"
+                      onChange={handleEditJobCronExpressionUpdate}
                     />
-                    {!validateCronExpression(jobToEdit.cronExpression) && (
-                      <p className="text-red-500 text-xs mt-1">Invalid cron expression format</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Format: minute hour day-of-month month day-of-week
-                    </p>
                   </div>
                   
                   <div className="flex items-center">
@@ -1074,6 +1130,11 @@ export default function CronDebugPage() {
                         {new Date(selectedJob.nextRun).toISOString()}
                       </div>
                     )}
+                    <div className="text-xs text-pink-500 mt-1">
+                      {selectedJob.nextRun ? 
+                        `Time left: ${Math.round((selectedJob.nextRun - Date.now()) / 1000)}s` : 
+                        'No next run time set'}
+                    </div>
                   </div>
                   
                   <div>
@@ -1219,33 +1280,116 @@ export default function CronDebugPage() {
                 >
                   Create New Job
                 </button>
+                
+                <div className="mt-8 text-left">
+                  <h3 className="text-md font-semibold mb-2 text-gray-700">Schedule Helper</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Use this tool to create and understand cron schedules for your jobs
+                  </p>
+                  <CronSelector 
+                    value={'*/5 * * * *'}
+                    onChange={(value) => {
+                      // Pre-populate the new job form if user clicks "Create New Job"
+                      setNewJob({...newJob, cronExpression: value});
+                    }}
+                    showNextRun={true}
+                  />
+                </div>
               </div>
             )}
-
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-2">About Cron Jobs</h2>
-              <div className="space-y-2 text-sm">
-                <p>
-                  Cron jobs allow you to schedule regular ping checks for your website.
-                </p>
-                <p>
-                  <strong>Cron Expression Format:</strong> minute hour day-of-month month day-of-week
-                </p>
-                <p>
-                  Common examples:
-                </p>
-                <ul className="list-disc list-inside pl-2">
-                  <li><code className="font-mono bg-gray-100 px-1">* * * * *</code> - Every minute</li>
-                  <li><code className="font-mono bg-gray-100 px-1">*/5 * * * *</code> - Every 5 minutes</li>
-                  <li><code className="font-mono bg-gray-100 px-1">0 */1 * * *</code> - Every hour</li>
-                  <li><code className="font-mono bg-gray-100 px-1">0 0 * * *</code> - Once a day at midnight</li>
-                  <li><code className="font-mono bg-gray-100 px-1">0 0 * * 0</code> - Once a week on Sunday</li>
-                </ul>
-              </div>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Import Modal */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Import Cron Jobs</h3>
+              <button 
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportData('');
+                  setImportError(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {importError && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {importError}
+              </div>
+            )}
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload JSON File
+              </label>
+              <div className="flex items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                <div className="space-y-1 text-center">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div className="flex text-sm text-gray-600">
+                    <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
+                      <span>Upload a file</span>
+                      <input 
+                        id="file-upload" 
+                        name="file-upload" 
+                        type="file" 
+                        className="sr-only"
+                        accept=".json"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-xs text-gray-500">JSON only</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Or Paste JSON Data
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-48 font-mono text-sm"
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                placeholder="Paste your JSON data here..."
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded"
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportData('');
+                  setImportError(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:bg-blue-300"
+                onClick={handleImportJobs}
+                disabled={!importData.trim()}
+              >
+                Import Jobs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

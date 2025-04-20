@@ -88,7 +88,7 @@ export default function GitHubActionsPage() {
     try {
       addLog(`Triggering manual ping...`);
       
-      const response = await fetch(`/api/ping`);
+      const response = await fetch(`/api/ping?source=manual`);
       if (!response.ok) {
         throw new Error(`Failed to trigger ping: ${response.status} ${response.statusText}`);
       }

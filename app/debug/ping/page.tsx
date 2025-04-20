@@ -6,6 +6,15 @@ import { formatTime, formatTimeConsistent } from '../../lib/utils/timeUtils';
 import { useTheme } from '../../context/ThemeContext';
 import Link from 'next/link';
 import DebugNav from '@/app/components/debug/DebugNav';
+import { 
+  CronJob, 
+  listCronJobs,
+  validateCronExpression,
+  describeCronExpression,
+  getNextRunTime,
+  startJob,
+  stopJob
+} from '../../lib/client/cronClient';
 
 export default function PingDebugPage() {
   const [pingStats, setPingStats] = useState<any>(null);
@@ -16,6 +25,9 @@ export default function PingDebugPage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [siteSettings, setSiteSettings] = useState<any>(null);
   const [visibleHistoryCount, setVisibleHistoryCount] = useState<number>(10);
+  const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
+  const [activeCronJobs, setActiveCronJobs] = useState<number>(0);
+  const [isCronLoading, setIsCronLoading] = useState(true);
   const router = useRouter();
   const { setTheme } = useTheme();
 
@@ -183,7 +195,7 @@ export default function PingDebugPage() {
     try {
       addLog(`Triggering manual ping...`);
       
-      const response = await fetch(`/api/ping`);
+      const response = await fetch(`/api/ping?source=manual`);
       if (!response.ok) {
         throw new Error(`Failed to trigger ping: ${response.status} ${response.statusText}`);
       }
@@ -217,13 +229,35 @@ export default function PingDebugPage() {
     }
   };
 
+  // Function to fetch cron jobs
+  const fetchCronJobs = async () => {
+    try {
+      setIsCronLoading(true);
+      addLog('Fetching cron jobs...');
+      
+      const jobs = await listCronJobs();
+      setCronJobs(jobs);
+      setActiveCronJobs(jobs.filter(job => job.status === 'running').length);
+      
+      addLog(`Fetched ${jobs.length} cron jobs`);
+    } catch (err) {
+      addLog(`Error loading cron jobs: ${(err as Error).message}`);
+    } finally {
+      setIsCronLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPingStats();
     fetchSiteSettings();
     getPingStatus();
+    fetchCronJobs();
     
     // Refresh stats every 5 seconds
-    const interval = setInterval(() => fetchPingStats(), 5000);
+    const interval = setInterval(() => {
+      fetchPingStats();
+      fetchCronJobs();
+    }, 5000);
     
     return () => clearInterval(interval);
   }, []);
@@ -391,27 +425,93 @@ export default function PingDebugPage() {
                 {/* Key Information */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                   <div className="flex justify-between">
-                    <Tooltip text="Estimated time for the next GitHub Action run">
-                      <span className="text-gray-600 border-b border-dotted border-gray-300">Next run:</span>
+                    <Tooltip text="Next ping based on active systems">
+                      <span className="text-gray-600 border-b border-dotted border-gray-300">Next ping:</span>
                     </Tooltip>
-                    <span>{pingStats?.nextEstimatedRun ? formatTimeConsistent(pingStats.nextEstimatedRun) : 'Unknown'}</span>
+                    <span>{(() => {
+                      // Combine GitHub Actions and Cron Jobs to determine next ping
+                      let nextTimes = [];
+                      
+                      // Add GitHub Actions estimated run if enabled
+                      if (pingStats?.githubAction?.enabled && pingStats?.nextEstimatedRun) {
+                        nextTimes.push({
+                          time: pingStats.nextEstimatedRun,
+                          source: 'GitHub'
+                        });
+                      }
+                      
+                      // Add next cron job run if any are active
+                      if (activeCronJobs > 0) {
+                        const activeJobs = cronJobs
+                          .filter(job => job.status === 'running' && job.nextRun)
+                          .sort((a, b) => (a.nextRun || 0) - (b.nextRun || 0));
+                          
+                        if (activeJobs.length > 0) {
+                          nextTimes.push({
+                            time: activeJobs[0].nextRun || 0,
+                            source: 'Cron'
+                          });
+                        }
+                      }
+                      
+                      // If no active pinging systems, return unknown
+                      if (nextTimes.length === 0) return 'Unknown';
+                      
+                      // Return the next scheduled ping
+                      nextTimes.sort((a, b) => a.time - b.time);
+                      const next = nextTimes[0];
+                      
+                      return `${formatTimeConsistent(next.time)} (${next.source})`;
+                    })()}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <Tooltip text="Time remaining until next ping">
                       <span className="text-gray-600 border-b border-dotted border-gray-300">Wait time:</span>
                     </Tooltip>
-                    <span>{timeUntilNextRun()}</span>
+                    <span>{(() => {
+                      // Combine GitHub Actions and Cron Jobs to determine wait time
+                      let nextTimes = [];
+                      
+                      // Add GitHub Actions wait time if enabled
+                      if (pingStats?.githubAction?.enabled && pingStats?.timeUntilNextRun) {
+                        nextTimes.push(pingStats.timeUntilNextRun);
+                      }
+                      
+                      // Add next cron job wait time if any are active
+                      if (activeCronJobs > 0) {
+                        const activeJobs = cronJobs
+                          .filter(job => job.status === 'running' && job.nextRun)
+                          .sort((a, b) => (a.nextRun || 0) - (b.nextRun || 0));
+                          
+                        if (activeJobs.length > 0) {
+                          const waitTime = activeJobs[0].nextRun ? activeJobs[0].nextRun - Date.now() : 0;
+                          if (waitTime > 0) nextTimes.push(waitTime);
+                        }
+                      }
+                      
+                      // If no active pinging systems, return N/A
+                      if (nextTimes.length === 0) return 'N/A';
+                      
+                      // Return the shortest wait time
+                      nextTimes.sort((a, b) => a - b);
+                      const waitTime = nextTimes[0];
+                      
+                      return waitTime > 0 ? `${Math.floor(waitTime / 1000)} seconds` : 'Imminent';
+                    })()}</span>
                   </div>
                   
                   <div className="flex justify-between">
-                    <Tooltip text="GitHub Action schedule">
-                      <span className="text-gray-600 border-b border-dotted border-gray-300">Schedule:</span>
+                    <Tooltip text="Active ping systems">
+                      <span className="text-gray-600 border-b border-dotted border-gray-300">Active systems:</span>
                     </Tooltip>
                     <span>
-                      {pingStats?.githubAction?.schedule ? 
-                        formatCronSchedule(pingStats.githubAction.schedule) : 
-                        'Not configured'}
+                      {(() => {
+                        let systems = [];
+                        if (pingStats?.githubAction?.enabled) systems.push('GitHub');
+                        if (activeCronJobs > 0) systems.push(`Cron (${activeCronJobs})`);
+                        return systems.length > 0 ? systems.join(', ') : 'None';
+                      })()}
                     </span>
                   </div>
                   
@@ -570,15 +670,26 @@ export default function PingDebugPage() {
                 </svg>
                 Configuration Status
               </h2>
-              <button 
-                onClick={() => router.push('/debug/ping/github')} 
-                className="ml-3 text-xs text-blue-600 hover:text-blue-800 flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z" />
-                </svg>
-                Configure Settings
-              </button>
+              <div className="flex items-center space-x-3 ml-3">
+                <button 
+                  onClick={() => router.push('/debug/ping/github')} 
+                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37.996.608 2.296.07 2.572-1.065z" />
+                  </svg>
+                  GitHub Settings
+                </button>
+                <button 
+                  onClick={() => router.push('/debug/ping/cron')} 
+                  className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Cron Settings
+                </button>
+              </div>
             </div>
             <div className="flex items-center space-x-3">
               <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center ${
@@ -598,14 +709,14 @@ export default function PingDebugPage() {
                   : "Unknown"}
               </div>
               <div className={`text-xs font-medium px-2 py-0.5 rounded-full flex items-center ${
-                (!pingStats?.githubAction?.enabled || !pingStats?.githubAction?.repository || !siteSettings?.apiKey)
-                  ? "bg-amber-100 text-amber-800"
+                (!pingStats?.githubAction?.enabled && activeCronJobs === 0)
+                  ? "bg-red-100 text-red-800"
                   : "bg-green-100 text-green-800"
               }`}>
-                <span className="mr-1">Setup:</span>
-                {(!pingStats?.githubAction?.enabled || !pingStats?.githubAction?.repository || !siteSettings?.apiKey)
-                  ? "Incomplete"
-                  : "Complete"}
+                <span className="mr-1">System:</span>
+                {(!pingStats?.githubAction?.enabled && activeCronJobs === 0)
+                  ? "No Active Services"
+                  : "Operational"}
               </div>
             </div>
           </div>
@@ -655,6 +766,57 @@ export default function PingDebugPage() {
             </div>
             
             <div className="space-y-3">
+              {/* Cron Jobs Status */}
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                <div className="flex items-center mb-2">
+                  <div className={`h-3 w-3 rounded-full mr-2 ${activeCronJobs > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  <h3 className="text-sm font-medium text-gray-700">Cron Jobs</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-y-2 text-xs">
+                  <div className="text-gray-600">Status:</div>
+                  <div className="font-medium">
+                    {activeCronJobs > 0 ? 
+                      <span className="text-green-600">Active</span> : 
+                      <span className="text-gray-600">Inactive</span>}
+                  </div>
+                  
+                  <div className="text-gray-600">Total Jobs:</div>
+                  <div className="font-medium text-gray-800">
+                    {isCronLoading ? 'Loading...' : cronJobs.length}
+                  </div>
+                  
+                  <div className="text-gray-600">Active Jobs:</div>
+                  <div className="font-medium text-gray-800">
+                    {isCronLoading ? 'Loading...' : activeCronJobs}
+                  </div>
+                  
+                  <div className="text-gray-600">Next Run:</div>
+                  <div className="font-medium text-gray-800">
+                    {(() => {
+                      if (isCronLoading) return 'Loading...';
+                      
+                      const activeJobs = cronJobs.filter(job => job.status === 'running' && job.nextRun);
+                      if (activeJobs.length === 0) return 'N/A';
+                      
+                      const sortedJobs = [...activeJobs].sort((a, b) => (a.nextRun || 0) - (b.nextRun || 0));
+                      const nextJob = sortedJobs[0];
+                      
+                      return formatTimeConsistent(nextJob.nextRun || 0);
+                    })()}
+                  </div>
+                </div>
+                {cronJobs.length > 0 && activeCronJobs === 0 && (
+                  <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-1.5 rounded">
+                    <div className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>No active cron jobs running</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               {/* API Authentication Status */}
               <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
                 <div className="flex items-center mb-2">
@@ -674,7 +836,7 @@ export default function PingDebugPage() {
                     {siteSettings?.githubAction?.secretName || 'PING_API_KEY'}
                   </div>
                 </div>
-                {!siteSettings?.apiKey && pingStats?.githubAction?.enabled && (
+                {!siteSettings?.apiKey && (pingStats?.githubAction?.enabled || activeCronJobs > 0) && (
                   <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-1.5 rounded">
                     <div className="flex items-start">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -746,23 +908,87 @@ export default function PingDebugPage() {
                 </div>
               </button>
 
-              <button
-                onClick={() => router.push('/debug/ping/github')}
-                className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-blue-300 flex items-center transition-all duration-200"
-              >
-                <div className="h-9 w-9 bg-blue-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => router.push('/debug/ping/github')}
+                  className="flex-1 bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-blue-300 flex items-center transition-all duration-200"
+                >
+                  <div className="h-9 w-9 bg-blue-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                <div className="ml-3 text-left">
-                  <h3 className="font-medium text-gray-900 text-sm">Configure GitHub Actions</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Manage schedule, API key, and workflow settings
-                  </p>
+                  <div className="ml-3 text-left">
+                    <h3 className="font-medium text-gray-900 text-sm">GitHub Actions</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Manage schedule and workflow settings
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => router.push('/debug/ping/cron')}
+                  className="flex-1 bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-indigo-300 flex items-center transition-all duration-200"
+                >
+                  <div className="h-9 w-9 bg-indigo-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3 text-left">
+                    <h3 className="font-medium text-gray-900 text-sm">Cron Jobs</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Create and manage scheduled ping jobs
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {cronJobs.length > 0 && (
+                <div className="mt-3">
+                  <h3 className="text-xs font-medium text-gray-700 mb-2">Quick Cron Job Actions</h3>
+                  <div className="space-y-2 max-h-[150px] overflow-y-auto p-1">
+                    {cronJobs.slice(0, 3).map((job) => (
+                      <div 
+                        key={job.id}
+                        className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200"
+                      >
+                        <div className="flex items-center">
+                          <div className={`h-2 w-2 rounded-full ${job.status === 'running' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                          <span className="ml-2 text-xs font-medium truncate max-w-[120px]" title={job.name}>
+                            {job.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {job.status === 'running' ? (
+                            <button
+                              onClick={() => stopJob(job.id)}
+                              className="text-xs px-2 py-0.5 bg-red-50 text-red-600 rounded hover:bg-red-100"
+                            >
+                              Stop
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => startJob(job.id)}
+                              className="text-xs px-2 py-0.5 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                            >
+                              Start
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {cronJobs.length > 3 && (
+                      <div className="text-center text-xs text-indigo-600 hover:text-indigo-800">
+                        <Link href="/debug/ping/cron">
+                          View all {cronJobs.length} jobs →
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </button>
+              )}
             </div>
           </div>
         </div>
@@ -827,6 +1053,46 @@ export default function PingDebugPage() {
                 {pingStats?.recentHistory && pingStats.recentHistory.length > 0 
                   ? pingStats.recentHistory[0].servicesChecked 
                   : 'N/A'}
+              </div>
+            </div>
+          </div>
+          
+          {/* Execution Time Legend */}
+          <div className="mt-3 text-xs text-gray-600">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+              <div>
+                <span className="font-medium text-gray-700">Execution Time:</span>
+                <div className="flex flex-wrap mt-1">
+                  <span className="inline-flex items-center mr-4 mb-1">
+                    <span className="inline-block w-2 h-2 bg-green-600 rounded-full mr-1"></span> Fast (&lt;500ms)
+                  </span>
+                  <span className="inline-flex items-center mr-4 mb-1">
+                    <span className="inline-block w-2 h-2 bg-amber-500 rounded-full mr-1"></span> Moderate (500-1000ms)
+                  </span>
+                  <span className="inline-flex items-center mr-4 mb-1">
+                    <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span> Slow (&gt;1000ms)
+                  </span>
+                  <span className="inline-flex items-center mb-1">
+                    <span className="text-gray-500 mr-1">↑↓</span> Change from previous ping
+                  </span>
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Source Types:</span>
+                <div className="flex flex-wrap mt-1">
+                  <span className="inline-flex items-center mr-3 mb-1">
+                    <span className="inline-block px-1 py-0 text-xs bg-blue-100 text-blue-800 rounded mr-1">GitHub</span> 
+                    GitHub Actions workflow
+                  </span>
+                  <span className="inline-flex items-center mr-3 mb-1">
+                    <span className="inline-block px-1 py-0 text-xs bg-indigo-100 text-indigo-800 rounded mr-1">Cron</span> 
+                    Scheduled cron job
+                  </span>
+                  <span className="inline-flex items-center mb-1">
+                    <span className="inline-block px-1 py-0 text-xs bg-green-100 text-green-800 rounded mr-1">Manual</span> 
+                    User-triggered ping
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -901,11 +1167,20 @@ export default function PingDebugPage() {
                       <td className="py-2.5 px-3 text-center border-b border-gray-100">
                         <span className={`px-2 py-0.5 rounded-full text-xs ${
                           entry.source === 'github-action' ? 'bg-blue-100 text-blue-800' :
+                          entry.source === 'cron-job' ? 'bg-indigo-100 text-indigo-800' :
                           entry.source === 'manual' ? 'bg-green-100 text-green-800' :
                           entry.source === 'internal' ? 'bg-gray-100 text-gray-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                        {entry.source || 'legacy'}
+                        {(() => {
+                          switch(entry.source) {
+                            case 'github-action': return 'GitHub';
+                            case 'cron-job': return 'Cron';
+                            case 'manual': return 'Manual';
+                            case 'internal': return 'Internal';
+                            default: return entry.source || 'Legacy';
+                          }
+                        })()}
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-right border-b border-gray-100 font-mono">
@@ -940,27 +1215,11 @@ export default function PingDebugPage() {
               </button>
             </div>
           )}
-          
-          {/* Execution Time Legend */}
-          <div className="mt-3 text-xs text-gray-600 flex flex-wrap">
-            <span className="inline-flex items-center mr-4 mb-1">
-              <span className="inline-block w-2 h-2 bg-green-600 rounded-full mr-1"></span> Fast (&lt;500ms)
-            </span>
-            <span className="inline-flex items-center mr-4 mb-1">
-              <span className="inline-block w-2 h-2 bg-amber-500 rounded-full mr-1"></span> Moderate (500-1000ms)
-            </span>
-            <span className="inline-flex items-center mr-4 mb-1">
-              <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span> Slow (&gt;1000ms)
-            </span>
-            <span className="inline-flex items-center mb-1">
-              <span className="text-gray-500 mr-1">↑↓</span> Change from previous ping
-            </span>
-          </div>
         </div>
         
         {/* Footer */}
         <div className="text-xs text-gray-500 text-center pb-4">
-          OpenUptimes Ping System Debug v3.0 (GitHub Actions)
+          OpenUptimes Ping System Debug v3.1 (GitHub Actions + Cron Jobs)
         </div>
       </div>
     </div>
