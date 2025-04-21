@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRedisClient, closeRedisConnection, setLastIntervalReset } from '@/lib/redis';
 import { initializeServerSystems } from '@/lib/utils';
 
-// Global state to track ping loop
-let pingLoopActive = false;
-let lastScheduledTime = 0;
-let scheduledTimeout: NodeJS.Timeout | null = null;
+// Global state to track initialization
 let systemsInitialized = false;
 
 // Initialize server systems on module load (runs once on first import)
@@ -22,11 +19,11 @@ let systemsInitialized = false;
 })();
 
 /**
- * Single endpoint that handles both service checking and scheduling
+ * Service checking endpoint that performs monitoring
  * 
  * - Checks all services and updates their status in Redis
- * - Self-schedules the next ping based on configured interval
- * - Can be manually triggered or restarted via query parameters
+ * - Can be manually triggered via query parameters
+ * - Called by external systems (GitHub Actions, cron jobs)
  */
 export async function GET(request: Request) {
   const startTime = Date.now();
@@ -45,7 +42,6 @@ export async function GET(request: Request) {
   // If run from GitHub Actions, verify API key
   if (runId) {
     if (!apiKey) {
-
       return NextResponse.json(
         { error: 'Unauthorized. Missing API key for GitHub Actions request.' },
         { status: 401 }
@@ -54,13 +50,11 @@ export async function GET(request: Request) {
     
     const isValidApiKey = await validateApiKey(apiKey);
     if (!isValidApiKey) {
-
       return NextResponse.json(
         { error: 'Unauthorized. Invalid API key.' },
         { status: 401 }
       );
     }
-
   }
   
   // Reset interval analysis
@@ -75,7 +69,6 @@ export async function GET(request: Request) {
         timestamp: timestamp
       });
     } catch (error) {
-
       return NextResponse.json(
         { error: 'Failed to reset interval statistics', message: (error as Error).message },
         { status: 500 }
@@ -83,48 +76,6 @@ export async function GET(request: Request) {
     }
   }
   
-  // Status check - return current ping loop state
-  if (action === 'status') {
-    try {
-      const client = await getRedisClient();
-      const [lastPing, nextPing] = await Promise.all([
-        client.get('ping:last'),
-        client.get('ping:next')
-      ]);
-      
-      await closeRedisConnection();
-      
-      return NextResponse.json({
-        pingLoopActive,
-        lastPing: lastPing ? parseInt(lastPing, 10) : null,
-        nextPing: nextPing ? parseInt(nextPing, 10) : null,
-        lastScheduledTime,
-        currentTime: Date.now()
-      });
-    } catch (error) {
-
-      return NextResponse.json(
-        { error: 'Failed to get ping status', message: (error as Error).message },
-        { status: 500 }
-      );
-    }
-  }
-  
-  // Stop the ping loop
-  if (action === 'stop') {
-    if (scheduledTimeout) {
-      clearTimeout(scheduledTimeout);
-      scheduledTimeout = null;
-    }
-    pingLoopActive = false;
-
-    return NextResponse.json({
-      status: 'success',
-      message: 'Ping loop stopped',
-      timestamp: Date.now()
-    });
-  }
-
   try {
     // Get site config for refresh interval
     const client = await getRedisClient();
@@ -143,7 +94,6 @@ export async function GET(request: Request) {
     await client.set('ping:next', nextPing.toString());
     
     // Check all services
-
     const results = await checkAllServices();
 
     // Record this ping in history ONLY if not triggered by a cron job
@@ -167,34 +117,6 @@ export async function GET(request: Request) {
       await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
     }
     
-    // Schedule next ping if not stopped
-    const restart = action === 'start' || action === 'restart';
-    if (restart || pingLoopActive) {
-      // Clear any existing timeout
-      if (scheduledTimeout) {
-        clearTimeout(scheduledTimeout);
-      }
-      
-      // Schedule next ping
-      scheduledTimeout = setTimeout(() => {
-        // Use fetch to call this endpoint again without awaiting
-
-        fetch(new URL(request.url).origin + '/api/ping', {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache, no-store',
-            'User-Agent': 'OpenUptimes Self-Scheduler'
-          }
-        }).catch(error => {
-
-        });
-      }, refreshInterval);
-      
-      lastScheduledTime = Date.now();
-      pingLoopActive = true;
-
-    }
-    
     // Calculate total execution time
     const endTime = Date.now();
     const executionTime = endTime - startTime;
@@ -208,7 +130,6 @@ export async function GET(request: Request) {
       nextPing: nextPing,
       refreshInterval: refreshInterval,
       executionTime: executionTime,
-      pingLoopActive: pingLoopActive,
       results: results
     });
   } catch (err) {

@@ -238,25 +238,6 @@ export default function PingDebugPage() {
     }
   };
 
-  const getPingStatus = async () => {
-    try {
-      addLog('Checking ping loop status...');
-      
-      const response = await fetch('/api/ping?action=status');
-      if (!response.ok) {
-        throw new Error(`Failed to get ping status: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      addLog(`Ping loop active: ${data.pingLoopActive}`);
-      
-      return data;
-    } catch (err) {
-      addLog(`Error checking ping status: ${(err as Error).message}`);
-      return null;
-    }
-  };
-
   // Function to fetch cron jobs
   const fetchCronJobs = async () => {
     try {
@@ -278,7 +259,6 @@ export default function PingDebugPage() {
   useEffect(() => {
     fetchPingStats();
     fetchSiteSettings();
-    getPingStatus();
     fetchCronJobs();
     
     // If auto-refresh is enabled, don't create this interval since it's handled by the auto-refresh effect
