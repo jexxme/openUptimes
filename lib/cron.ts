@@ -486,9 +486,26 @@ async function executeJob(id: string): Promise<void> {
     
     await client.lPush(`cron:history:${id}`, JSON.stringify(historyEntry));
     await client.lTrim(`cron:history:${id}`, 0, 99); // Keep last 100 executions
+    
+    // Also add to the main ping history with source set to 'cron-job'
+    const pingRecord = {
+      timestamp: startTime,
+      executionTime: duration,
+      servicesChecked: result.results?.length || 0,
+      refreshInterval: result.refreshInterval || 60000,
+      nextScheduled: result.nextPing,
+      source: 'cron-job',
+      runId: id
+    };
+    
+    await client.lPush('ping:history', JSON.stringify(pingRecord));
+    await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
   } catch (error) {
     // Record execution failure
     try {
+      // Track execution time for the failed request
+      const startTime = Date.now();
+      
       // Get the job again (in case it changed during execution)
       const jobData = await client.get(`cron:job:${id}`);
       if (!jobData) {
@@ -511,7 +528,7 @@ async function executeJob(id: string): Promise<void> {
       // Update job with failure details
       const updatedJob: CronJob = {
         ...job,
-        lastRun: Date.now(),
+        lastRun: startTime,
         lastRunStatus: 'failure',
         lastRunError: (error as Error).message,
         nextRun: nextRunTime,
@@ -524,13 +541,28 @@ async function executeJob(id: string): Promise<void> {
       
       // Record failure in history
       const historyEntry = {
-        timestamp: Date.now(),
+        timestamp: startTime,
         status: 'failure',
         error: (error as Error).message
       };
       
       await client.lPush(`cron:history:${id}`, JSON.stringify(historyEntry));
       await client.lTrim(`cron:history:${id}`, 0, 99); // Keep last 100 executions
+      
+      // Also record the failure in main ping history
+      const errorPingRecord = {
+        timestamp: startTime,
+        executionTime: 500, // Use a default value for failed executions
+        servicesChecked: 0,
+        refreshInterval: job.cronExpression.startsWith('*/') ? parseInt(job.cronExpression.split('/')[1]) * 60 * 1000 : 60000,
+        nextScheduled: nextRunTime,
+        source: 'cron-job',
+        runId: id,
+        error: (error as Error).message
+      };
+      
+      await client.lPush('ping:history', JSON.stringify(errorPingRecord));
+      await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
     } catch (e) {
       console.error(`Error recording job failure for ${id}:`, e);
     }

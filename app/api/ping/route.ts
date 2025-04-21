@@ -146,21 +146,26 @@ export async function GET(request: Request) {
 
     const results = await checkAllServices();
 
-    // Record this ping in history
-    const pingRecord = {
-      timestamp: now,
-      executionTime: Date.now() - startTime,
-      servicesChecked: results.length,
-      refreshInterval,
-      nextScheduled: nextPing,
-      // Add source information based on query params or runId
-      source: url.searchParams.get('source') || (runId ? 'github-action' : 'internal'),
-      runId: runId || undefined
-    };
-    
-    // Store in Redis list with a limit
-    await client.lPush('ping:history', JSON.stringify(pingRecord));
-    await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
+    // Record this ping in history ONLY if not triggered by a cron job
+    // This prevents duplicate entries since the cron job itself already records history
+    const cronJobId = request.headers.get('X-Cron-Job-ID');
+    if (!cronJobId) {
+      const pingRecord = {
+        timestamp: now,
+        executionTime: Date.now() - startTime,
+        servicesChecked: results.length,
+        refreshInterval,
+        nextScheduled: nextPing,
+        // Add source information based on query params, headers, or runId
+        source: url.searchParams.get('source') || 
+                (runId ? 'github-action' : 'internal'),
+        runId: runId || undefined
+      };
+      
+      // Store in Redis list with a limit
+      await client.lPush('ping:history', JSON.stringify(pingRecord));
+      await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
+    }
     
     // Schedule next ping if not stopped
     const restart = action === 'start' || action === 'restart';

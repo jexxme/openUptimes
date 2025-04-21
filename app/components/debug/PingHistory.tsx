@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatTime, formatTimeConsistent } from '../../lib/utils/timeUtils';
 import Tooltip from './Tooltip';
 
@@ -10,6 +10,11 @@ type PingHistoryProps = {
 
 export default function PingHistory({ pingStats, onRefresh, onReset }: PingHistoryProps) {
   const [visibleHistoryCount, setVisibleHistoryCount] = useState<number>(10);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+  const [currentTTL, setCurrentTTL] = useState<number>(24 * 60 * 60); // Default 24 hours
+  const [isLoadingTTL, setIsLoadingTTL] = useState<boolean>(true);
+  const [isUpdatingTTL, setIsUpdatingTTL] = useState<boolean>(false);
 
   // Function to show more history entries
   const showMoreHistory = () => {
@@ -18,6 +23,88 @@ export default function PingHistory({ pingStats, onRefresh, onReset }: PingHisto
     const increment = Math.min(remaining, 10);
     setVisibleHistoryCount(visibleHistoryCount + increment);
   };
+
+  // Function to clear all ping history
+  const clearPingHistory = async () => {
+    try {
+      setIsDeleting(true);
+      const response = await fetch('/api/ping-history', {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to clear ping history');
+      }
+      
+      // Refresh data after deletion
+      onRefresh();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Error clearing ping history:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Function to update TTL
+  const updateTTL = async (ttlValue: number) => {
+    try {
+      setIsUpdatingTTL(true);
+      const response = await fetch('/api/ping-history/ttl', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ttl: ttlValue }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update TTL');
+      }
+      
+      setCurrentTTL(ttlValue);
+    } catch (error) {
+      console.error('Error updating TTL:', error);
+    } finally {
+      setIsUpdatingTTL(false);
+    }
+  };
+
+  // Fetch current TTL on component mount
+  useEffect(() => {
+    const fetchTTL = async () => {
+      try {
+        setIsLoadingTTL(true);
+        const response = await fetch('/api/ping-history/ttl');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch TTL');
+        }
+        
+        const data = await response.json();
+        setCurrentTTL(data.ttl);
+      } catch (error) {
+        console.error('Error fetching TTL:', error);
+      } finally {
+        setIsLoadingTTL(false);
+      }
+    };
+    
+    fetchTTL();
+  }, []);
+
+  // TTL options in seconds
+  const ttlOptions = [
+    { value: 60 * 60, label: '1 hour' },
+    { value: 6 * 60 * 60, label: '6 hours' },
+    { value: 12 * 60 * 60, label: '12 hours' },
+    { value: 24 * 60 * 60, label: '24 hours' },
+    { value: 3 * 24 * 60 * 60, label: '3 days' },
+    { value: 7 * 24 * 60 * 60, label: '7 days' },
+    { value: 30 * 24 * 60 * 60, label: '30 days' },
+    { value: 90 * 24 * 60 * 60, label: '90 days' },
+    { value: 0, label: 'Unlimited' },
+  ];
 
   return (
     <div className="bg-card p-4 rounded-lg shadow-sm border border-border mb-6">
@@ -43,6 +130,70 @@ export default function PingHistory({ pingStats, onRefresh, onReset }: PingHisto
           </button>
         </div>
       </div>
+
+      {/* Management Controls */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-accent/50 p-2 rounded-md mb-4 gap-3 border border-border/60">
+        <div className="flex items-center">
+          <span className="text-xs text-muted-foreground mr-2 whitespace-nowrap">History TTL:</span>
+          <select 
+            value={currentTTL}
+            onChange={(e) => updateTTL(Number(e.target.value))}
+            disabled={isUpdatingTTL || isLoadingTTL}
+            className="text-xs bg-background border border-border rounded px-2 py-1"
+          >
+            {ttlOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {isUpdatingTTL && <span className="ml-2 text-xs text-muted-foreground">Updating...</span>}
+        </div>
+
+        <div className="flex items-center">
+          {!showDeleteConfirm ? (
+            <button 
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-xs bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 px-2 py-1 rounded flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Clear History
+            </button>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-red-600 dark:text-red-400">Confirm clear?</span>
+              <button 
+                onClick={clearPingHistory} 
+                disabled={isDeleting}
+                className="text-xs bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 px-2 py-1 rounded"
+              >
+                {isDeleting ? 'Clearing...' : 'Yes, Clear All'}
+              </button>
+              <button 
+                onClick={() => setShowDeleteConfirm(false)}
+                className="text-xs bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 px-2 py-1 rounded"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Warning for unlimited TTL */}
+      {currentTTL === 0 && (
+        <div className="bg-amber-100 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-400 p-2 rounded-md mb-4 text-xs flex items-start">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>
+            <strong>Warning:</strong> Unlimited TTL means history entries will never expire. This can lead to increased Redis memory usage over time.
+            Consider setting a reasonable TTL if you're storing large amounts of ping history data.
+          </span>
+        </div>
+      )}
       
       {/* Performance Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
@@ -243,4 +394,4 @@ export default function PingHistory({ pingStats, onRefresh, onReset }: PingHisto
       )}
     </div>
   );
-} 
+}

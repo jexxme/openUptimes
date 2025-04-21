@@ -217,13 +217,13 @@ export async function getHistoryTTL(): Promise<number | null> {
   try {
     const client = await getRedisClient();
     const configStr = await client.get('config:site');
-    if (!configStr) return 30 * 24 * 60 * 60; // Default to 30 days if no config exists
+    if (!configStr) return 24 * 60 * 60; // Default to 24 hours if no config exists
     
     const config = JSON.parse(configStr);
-    return config.historyTTL === 0 ? null : (config.historyTTL || 30 * 24 * 60 * 60);
+    return config.historyTTL === 0 ? null : (config.historyTTL || 24 * 60 * 60);
   } catch (err) {
 
-    return 30 * 24 * 60 * 60; // Default to 30 days on error
+    return 24 * 60 * 60; // Default to 24 hours on error
   }
 }
 

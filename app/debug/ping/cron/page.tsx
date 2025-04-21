@@ -46,6 +46,7 @@ export default function CronDebugPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importData, setImportData] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { theme } = useTheme();
@@ -129,6 +130,7 @@ export default function CronDebugPage() {
       
       const jobs = await listCronJobs();
       setCronJobs(jobs);
+      setLastUpdate(new Date());
       
       // Auto-select the first job if there's at least one job and no job is currently selected
       if (jobs.length > 0 && !selectedJob) {

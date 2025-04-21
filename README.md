@@ -17,6 +17,7 @@
   <a href="#security">Security</a> •
   <a href="#authentication">Authentication</a> •
   <a href="#api-endpoints">API Endpoints</a> •
+  <a href="#history-data-management">History Data Management</a> •
   <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
   <a href="#internal-cron-system">Internal Cron System</a> •
   <a href="#alternative-monitoring">Alternative Monitoring</a> •
@@ -740,6 +741,154 @@ OpenUptimes provides several API endpoints for monitoring and configuring servic
 - **GET `/api/setup/status`**: Checks if the initial setup has been completed
 - **POST `/api/setup/complete`**: Marks the setup as completed
 - **POST `/api/setup/reset`**: Resets the application to its initial state
+
+## History Data Management
+
+OpenUptimes provides robust tools for managing historical ping data through both the user interface and API endpoints. This enables you to control Redis memory usage and maintain optimal performance while retaining the data that matters most to you.
+
+### TTL Management
+
+Time-to-Live (TTL) settings control how long ping history entries are stored in Redis before being automatically purged. This is critical for long-running instances where accumulated data might impact Redis performance.
+
+#### TTL Configuration Options
+
+The system offers several predefined TTL duration options:
+
+| Duration | Description | Best For |
+|----------|-------------|----------|
+| 1 hour | Shortest retention | Development environments, testing |
+| 6 hours | Brief retention | High-frequency checks with minimal storage |
+| 12 hours | Half-day retention | Intraday monitoring |
+| 24 hours | Default retention | Standard monitoring needs |
+| 3 days | Extended retention | Weekend coverage |
+| 7 days | Week retention | Weekly pattern analysis |
+| 30 days | Month retention | Monthly trend analysis |
+| 90 days | Quarter retention | Quarterly reporting |
+| Unlimited | No expiration | Critical data that must be preserved indefinitely |
+
+#### Warning for Unlimited TTL
+
+When setting TTL to unlimited, the system displays a prominent warning about potential Redis memory consumption. While convenient for retaining complete history, unlimited TTL should be used cautiously, especially in environments with:
+
+- Limited Redis memory allocation
+- High-frequency ping checks
+- Many monitored services
+- Long-term deployments
+
+#### Changing TTL Settings
+
+You can easily modify the TTL setting through:
+
+1. **User Interface**: In the Debug Ping History component, a selector allows you to choose from predefined TTL options
+2. **API Endpoint**: For programmatic control, use the `/api/ping-history/ttl` endpoint
+
+#### API for TTL Management
+
+The system provides dedicated API endpoints for TTL management:
+
+- **GET `/api/ping-history/ttl`**: Retrieves current TTL setting
+  ```json
+  {
+    "ttl": 86400,
+    "unlimited": false
+  }
+  ```
+
+- **PATCH `/api/ping-history/ttl`**: Updates TTL setting
+  ```json
+  {
+    "ttl": 604800  // Set to 7 days (in seconds)
+  }
+  ```
+  
+  Response:
+  ```json
+  {
+    "success": true,
+    "ttl": 604800,
+    "unlimited": false,
+    "message": "History TTL set to 604800 seconds"
+  }
+  ```
+
+Setting `ttl` to `0` enables unlimited retention:
+  ```json
+  {
+    "ttl": 0  // Unlimited retention, no expiration
+  }
+  ```
+
+### History Clearing
+
+In addition to automatic expiration through TTL, OpenUptimes provides tools to manually clear ping history data when needed.
+
+#### When to Clear History
+
+Manual history clearing is useful for:
+
+- Removing test data after setup
+- Clearing problematic entries
+- Freeing Redis memory immediately
+- Resetting monitoring after configuration changes
+- Starting fresh after resolving service issues
+
+#### Clearing Through the UI
+
+The Debug interface includes a "Clear History" button with a confirmation prompt to prevent accidental data loss. This provides a simple way to purge all ping history entries with a single action.
+
+#### API for History Clearing
+
+For programmatic control or automation, use the dedicated API endpoint:
+
+- **DELETE `/api/ping-history`**: Clears all ping history entries
+  ```json
+  {
+    "success": true,
+    "message": "Ping history cleared"
+  }
+  ```
+
+#### Security Considerations
+
+Both the UI and API endpoints for history management require full authentication. Only authenticated administrators can modify TTL settings or clear history data.
+
+### Implementation Details
+
+#### Redis Data Storage
+
+Ping history is stored in Redis using a list structure with the key `ping:history`. Each entry in the list contains:
+
+- Timestamp of the ping
+- Execution time
+- Number of services checked
+- Source information (GitHub Action, cron job, etc.)
+- Run ID for tracking
+
+#### Default Settings
+
+By default, OpenUptimes:
+- Sets a 24-hour TTL for ping history
+- Limits ping history to 1000 entries (independent of TTL)
+- Applies TTL to each service's history individually
+
+#### Technical Architecture
+
+The history management system uses:
+1. Redis TTL commands to expire keys automatically
+2. Redis EXPIRE command to update TTL values
+3. Redis DEL command to manually clear data
+4. Atomic operations to ensure data consistency
+
+### Best Practices
+
+For optimal history data management:
+
+1. **Match TTL to monitoring frequency**: Higher frequency checks benefit from shorter TTL
+2. **Consider Redis memory allocation**: Limited Redis instances may need shorter TTL
+3. **Align TTL with reporting needs**: Ensure TTL covers your reporting time frames
+4. **Use unlimited TTL sparingly**: Reserve for critical historical data only
+5. **Schedule regular maintenance**: For long-running instances, periodically review and adjust TTL
+6. **Monitor Redis memory usage**: Watch for unexpected growth and adjust TTL accordingly
 
 ## Troubleshooting
 

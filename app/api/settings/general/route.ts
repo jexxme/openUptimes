@@ -19,7 +19,7 @@ export async function GET() {
       historyLength: siteConfig.historyLength || 1440,
       contactEmail: siteConfig.contactEmail || '',
       timezone: siteConfig.timezone || 'UTC',
-      historyTTL: siteConfig.historyTTL !== undefined ? siteConfig.historyTTL : 30 * 24 * 60 * 60 // Default 30 days
+      historyTTL: siteConfig.historyTTL !== undefined ? siteConfig.historyTTL : 24 * 60 * 60 // Default 24 hours
     };
     
     return NextResponse.json(generalConfig);
@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest) {
     const siteConfig = configStr ? JSON.parse(configStr) : {
       refreshInterval: 60000,
       historyLength: 1440,
-      historyTTL: 30 * 24 * 60 * 60, // Default 30 days
+      historyTTL: 24 * 60 * 60, // Default 24 hours
       theme: {
         up: '#10b981',
         down: '#ef4444',
