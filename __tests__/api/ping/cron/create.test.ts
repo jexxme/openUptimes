@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { POST } from '../../../../app/api/ping/cron/create/route';
+import { POST } from '../../../../app/api/ping/cron/route';
 import * as redisMock from '../../../lib/redis-mock';
 import * as cronMock from '../../../lib/cron-mock';
 

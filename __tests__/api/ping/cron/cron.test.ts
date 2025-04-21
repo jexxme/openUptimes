@@ -32,7 +32,7 @@ describe('Cron API Endpoints', () => {
     cronMock.resetCronMocks();
     
     // Mock session validation to return true
-    redisMock.isSessionValid = jest.fn().mockResolvedValue(true);
+    (redisMock.isSessionValid as jest.Mock).mockResolvedValue(true);
   });
 
   describe('GET /api/ping/cron', () => {
@@ -121,7 +121,7 @@ describe('Cron API Endpoints', () => {
     
     it('should return 401 when invalid session token is provided', async () => {
       // Mock session validation to return false
-      redisMock.isSessionValid = jest.fn().mockResolvedValue(false);
+      (redisMock.isSessionValid as jest.Mock).mockResolvedValue(false);
       
       // Create request with invalid session cookie
       const request = new NextRequest('http://localhost:3000/api/ping/cron');
@@ -163,7 +163,10 @@ describe('Cron API Endpoints', () => {
       expect(response.data.description).toBe(jobData.description);
       expect(response.data.cronExpression).toBe(jobData.cronExpression);
       expect(response.data.enabled).toBe(jobData.enabled);
-      expect(cronMock.createCronJob).toHaveBeenCalledWith(jobData);
+      expect(cronMock.createCronJob).toHaveBeenCalledWith({
+        ...jobData,
+        status: "stopped"
+      });
     });
     
     it('should return 400 when job creation fails', async () => {
