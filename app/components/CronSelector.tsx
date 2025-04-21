@@ -220,14 +220,14 @@ export default function CronSelector({
   };
 
   return (
-    <div className={`border rounded-lg ${compact ? 'p-3' : 'p-4'} bg-white ${className}`}>
-      <div className={`flex mb-4 border-b ${compact ? 'gap-2' : ''}`}>
+    <div className={`border rounded-lg ${compact ? 'p-3' : 'p-4'} bg-card border-border ${className}`}>
+      <div className={`flex mb-4 border-b border-border ${compact ? 'gap-2' : ''}`}>
         <button
           onClick={() => setSelectedTab('simple')}
           className={`px-4 py-2 font-medium ${compact ? 'text-xs' : 'text-sm'} ${
             selectedTab === 'simple'
-              ? 'text-blue-600 border-b-2 border-blue-500'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500 dark:border-blue-400'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Simple Schedule
@@ -236,8 +236,8 @@ export default function CronSelector({
           onClick={() => setSelectedTab('advanced')}
           className={`px-4 py-2 font-medium ${compact ? 'text-xs' : 'text-sm'} ${
             selectedTab === 'advanced'
-              ? 'text-blue-600 border-b-2 border-blue-500'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500 dark:border-blue-400'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Advanced (Cron Expression)
@@ -247,11 +247,11 @@ export default function CronSelector({
       {selectedTab === 'simple' ? (
         <div className={`space-y-${compact ? '3' : '4'}`}>
           <div>
-            <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+            <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
               Frequency
             </label>
             <select
-              className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground`}
               value={frequency}
               onChange={(e) => handleFrequencyChange(e.target.value as typeof frequency)}
             >
@@ -265,12 +265,12 @@ export default function CronSelector({
 
           {frequency === 'minutes' && (
             <div>
-              <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+              <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
                 Every
               </label>
               <div className="flex items-center">
                 <select
-                  className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground`}
                   value={minuteInterval}
                   onChange={(e) => {
                     const newValue = parseInt(e.target.value, 10);
@@ -284,19 +284,19 @@ export default function CronSelector({
                     </option>
                   ))}
                 </select>
-                <span className="ml-2">minutes</span>
+                <span className="ml-2 text-foreground">minutes</span>
               </div>
             </div>
           )}
 
           {(frequency === 'hourly' || frequency === 'daily') && (
             <div>
-              <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+              <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
                 {frequency === 'hourly' ? 'At minute' : 'At time'}
               </label>
               <input
                 type={frequency === 'hourly' ? 'number' : 'time'}
-                className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground`}
                 value={frequency === 'hourly' ? hourTime.split(':')[1] : hourTime}
                 min={frequency === 'hourly' ? 0 : undefined}
                 max={frequency === 'hourly' ? 59 : undefined}
@@ -319,11 +319,11 @@ export default function CronSelector({
           {frequency === 'weekly' && (
             <>
               <div>
-                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
                   On day
                 </label>
                 <select
-                  className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground`}
                   value={weekday}
                   onChange={(e) => {
                     const newDay = parseInt(e.target.value, 10);
@@ -342,12 +342,12 @@ export default function CronSelector({
                 </select>
               </div>
               <div>
-                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
                   At time
                 </label>
                 <input
                   type="time"
-                  className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground`}
                   value={hourTime}
                   onChange={(e) => {
                     setHourTime(e.target.value);
@@ -362,11 +362,11 @@ export default function CronSelector({
           {frequency === 'monthly' && (
             <>
               <div>
-                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
                   On day of month
                 </label>
                 <select
-                  className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground`}
                   value={monthDay}
                   onChange={(e) => {
                     const newDay = parseInt(e.target.value, 10);
@@ -379,12 +379,12 @@ export default function CronSelector({
                 </select>
               </div>
               <div>
-                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+                <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
                   At time
                 </label>
                 <input
                   type="time"
-                  className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground`}
                   value={hourTime}
                   onChange={(e) => {
                     setHourTime(e.target.value);
@@ -398,39 +398,44 @@ export default function CronSelector({
         </div>
       ) : (
         <div>
-          <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-700 mb-1`}>
+          <label className={`block ${compact ? 'text-xs' : 'text-sm'} font-medium text-foreground mb-1`}>
             Cron Expression
           </label>
           <input
             type="text"
-            className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              !isValid ? 'border-red-500' : ''
+            className={`w-full px-3 ${compact ? 'py-1.5 text-xs' : 'py-2 text-sm'} border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background border-border text-foreground ${
+              !isValid ? 'border-red-500 dark:border-red-700' : ''
             }`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder="*/5 * * * *"
           />
           {!isValid && (
-            <p className="text-red-500 text-xs mt-1">Invalid cron expression format</p>
+            <p className="text-red-500 dark:text-red-400 text-xs mt-1">Invalid cron expression format</p>
           )}
         </div>
       )}
 
       {showDescription && (
-        <div className={`mt-3 text-gray-600 ${compact ? 'text-xs' : 'text-sm'} p-2 bg-gray-50 rounded`}>
-          <div className={`font-medium text-gray-700 mb-1 ${compact ? 'text-xs' : ''}`}>Schedule Description:</div>
-          <div>{cronDescription}</div>
+        <div className={`mt-3 p-2 bg-accent rounded-md border border-border/40 ${compact ? 'text-xs' : 'text-sm'}`}>
+          <div className={`font-medium text-foreground mb-1 ${compact ? 'text-xs' : ''}`}>
+            {minInterval > 1 && selectedTab === 'simple' && frequency === 'minutes' ? 
+              `Schedule (min ${minInterval} min interval):` : 
+              `Schedule:`
+            }
+          </div>
+          <div className="text-muted-foreground">{cronDescription}</div>
         </div>
       )}
 
       {showNextRun && nextRunTime && (
-        <div className={`mt-2 text-green-600 ${compact ? 'text-xs' : 'text-sm'}`}>
+        <div className={`mt-2 text-green-600 dark:text-green-400 ${compact ? 'text-xs' : 'text-sm'}`}>
           Next run: {formatTime(nextRunTime)}
         </div>
       )}
 
       {selectedTab === 'advanced' && (
-        <div className="mt-3 text-xs text-blue-600">
+        <div className="mt-3 text-xs text-blue-600 dark:text-blue-400">
           <a 
             href="https://crontab.guru/" 
             target="_blank" 
@@ -442,6 +447,15 @@ export default function CronSelector({
             </svg>
             Cron expression reference
           </a>
+        </div>
+      )}
+
+      {selectedTab === 'advanced' && minInterval > 1 && (
+        <div className={`mt-1 text-amber-600 dark:text-amber-400 ${compact ? 'text-xs' : 'text-sm'} flex items-center`}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Minimum interval: {minInterval} minutes
         </div>
       )}
     </div>

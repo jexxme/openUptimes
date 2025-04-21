@@ -35,51 +35,51 @@ export default function ApiKeySection({
   };
 
   return (
-    <div className="border-t border-gray-200 pt-3 mt-1 relative">
-      <div className="bg-blue-50 p-2 rounded mb-3">
-        <h3 className="text-sm font-medium text-blue-800 mb-1 flex items-center">
+    <div className="border-t border-border pt-3 mt-1 relative">
+      <div className="bg-blue-50 dark:bg-blue-950/30 p-2 rounded mb-3">
+        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1 flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           API Key Authentication
         </h3>
-        <p className="text-xs text-blue-700 mb-2">
+        <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
           The API key secures communication between GitHub Actions and your server:
         </p>
         
-        <div className="bg-white rounded p-3 border border-blue-200 mb-2">
+        <div className="bg-card dark:bg-background rounded p-3 border border-blue-200 dark:border-blue-900 mb-2">
           <div className="flex mb-1.5 items-center">
-            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-              <span className="text-blue-800 text-xs font-medium">1</span>
+            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 dark:bg-blue-900/60 rounded-full flex items-center justify-center mr-2">
+              <span className="text-blue-800 dark:text-blue-300 text-xs font-medium">1</span>
             </div>
-            <span className="text-xs text-gray-700">Generate an API key here in this app</span>
+            <span className="text-xs text-foreground">Generate an API key here in this app</span>
           </div>
           <div className="flex mb-1.5 items-center">
-            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-              <span className="text-blue-800 text-xs font-medium">2</span>
+            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 dark:bg-blue-900/60 rounded-full flex items-center justify-center mr-2">
+              <span className="text-blue-800 dark:text-blue-300 text-xs font-medium">2</span>
             </div>
-            <span className="text-xs text-gray-700">Add this key as a GitHub secret named <code className="bg-gray-100 px-1 py-0.5 rounded">{githubSettings.secretName}</code></span>
+            <span className="text-xs text-foreground">Add this key as a GitHub secret named <code className="bg-accent px-1 py-0.5 rounded">{githubSettings.secretName}</code></span>
           </div>
           <div className="flex mb-1.5 items-center">
-            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-              <span className="text-blue-800 text-xs font-medium">3</span>
+            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 dark:bg-blue-900/60 rounded-full flex items-center justify-center mr-2">
+              <span className="text-blue-800 dark:text-blue-300 text-xs font-medium">3</span>
             </div>
-            <span className="text-xs text-gray-700">GitHub Actions workflow uses this secret to authenticate API calls</span>
+            <span className="text-xs text-foreground">GitHub Actions workflow uses this secret to authenticate API calls</span>
           </div>
           <div className="flex items-center">
-            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-              <span className="text-blue-800 text-xs font-medium">4</span>
+            <div className="flex-shrink-0 h-5 w-5 bg-blue-100 dark:bg-blue-900/60 rounded-full flex items-center justify-center mr-2">
+              <span className="text-blue-800 dark:text-blue-300 text-xs font-medium">4</span>
             </div>
-            <span className="text-xs text-gray-700">Your server validates this key before accepting ping requests</span>
+            <span className="text-xs text-foreground">Your server validates this key before accepting ping requests</span>
           </div>
         </div>
         
-        <div className="flex justify-between items-center bg-blue-100 p-2 rounded">
+        <div className="flex justify-between items-center bg-blue-100 dark:bg-blue-900/40 p-2 rounded">
           <div className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-700 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="ml-1 text-xs font-medium text-blue-800">
+            <span className="ml-1 text-xs font-medium text-blue-800 dark:text-blue-300">
               {siteSettings?.apiKey ? 'Current API Key' : 'Generate an API key for GitHub'}
             </span>
           </div>
@@ -95,9 +95,9 @@ export default function ApiKeySection({
         </div>
         
         {generatedApiKey && (
-          <div className="mt-2 bg-green-50 border border-green-200 rounded p-2">
+          <div className="mt-2 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded p-2">
             <div className="flex justify-between items-center mb-1">
-              <p className="text-xs font-medium text-green-800 flex items-center">
+              <p className="text-xs font-medium text-green-800 dark:text-green-300 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
@@ -120,12 +120,12 @@ export default function ApiKeySection({
                 Copy to Clipboard
               </button>
             </div>
-            <div className="bg-white p-1.5 rounded border border-green-100 overflow-auto">
-              <code className="text-xs text-green-800 break-all whitespace-pre-wrap">{generatedApiKey}</code>
+            <div className="bg-card dark:bg-background p-1.5 rounded border border-green-100 dark:border-green-900 overflow-auto">
+              <code className="text-xs text-green-800 dark:text-green-300 break-all whitespace-pre-wrap">{generatedApiKey}</code>
             </div>
             
             {generatedApiKey !== siteSettings?.apiKey && (
-              <div className="mt-2 text-xs text-blue-700 bg-blue-50 p-1.5 rounded border border-blue-100">
+              <div className="mt-2 text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 p-1.5 rounded border border-blue-100 dark:border-blue-900">
                 <p className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -152,7 +152,7 @@ export default function ApiKeySection({
         )}
       </div>
       
-      <label className="block text-xs font-medium text-gray-700 mb-1">
+      <label className="block text-xs font-medium text-foreground mb-1">
         GitHub Secret Name
       </label>
       <div className="flex">
@@ -160,11 +160,11 @@ export default function ApiKeySection({
           type="text"
           value={githubSettings.secretName}
           onChange={e => setGithubSettings((prev: typeof githubSettings) => ({...prev, secretName: e.target.value}))}
-          className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+          className="w-full border border-border bg-background rounded px-2 py-1.5 text-sm"
           placeholder="PING_API_KEY"
         />
       </div>
-      <p className="text-xs text-gray-500 mt-1">This is the name of the secret in your GitHub repository. The value of this secret should be the API key generated above.</p>
+      <p className="text-xs text-muted-foreground mt-1">This is the name of the secret in your GitHub repository. The value of this secret should be the API key generated above.</p>
     </div>
   );
 } 
