@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { 
   Calendar, Clock, AlertCircle, Info, Plus, RefreshCw, 
   Download, Upload, CheckCircle, XCircle, Play, Square,
-  Edit, Copy, Trash, ExternalLink, ChevronDown, ChevronUp
+  Edit, Copy, Trash, ExternalLink, ChevronDown, ChevronUp,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -27,6 +28,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { formatDistanceToNow } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
 
 // Types for the component
 interface CronJob {
@@ -96,6 +98,9 @@ export function CronJobPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Environment detection
+  const [isEdgeRuntime, setIsEdgeRuntime] = useState(false);
+  
   // Cron jobs data
   const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
   const [selectedJob, setSelectedJob] = useState<CronJob | null>(null);
@@ -121,6 +126,24 @@ export function CronJobPage({
   const upServices = cronJobs.filter(job => job.status === 'running').length;
   const downServices = cronJobs.filter(job => job.status === 'stopped').length;
   const errorServices = cronJobs.filter(job => job.status === 'error' || job.lastRunStatus === 'failure').length;
+
+  // Detect if running on Vercel Edge runtime
+  useEffect(() => {
+    const checkEnvironment = async () => {
+      try {
+        const response = await fetch('/api/environment');
+        if (response.ok) {
+          const data = await response.json();
+          setIsEdgeRuntime(data.isEdgeRuntime || (process.env.NEXT_RUNTIME === 'edge'));
+        }
+      } catch (err) {
+        // Fallback detection method
+        setIsEdgeRuntime(typeof process !== 'undefined' && process.env && process.env.NEXT_RUNTIME === 'edge');
+      }
+    };
+    
+    checkEnvironment();
+  }, []);
 
   // Initialize data when component mounts
   useEffect(() => {
@@ -479,6 +502,37 @@ export function CronJobPage({
         </div>
       )}
       
+      {/* Vercel Edge Runtime Warning */}
+      {isEdgeRuntime && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/30 rounded-md">
+          <div className="flex items-start">
+            <Shield className="h-5 w-5 text-amber-500 dark:text-amber-400 mr-3 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-amber-800 dark:text-amber-300 flex items-center">
+                <span>Edge Runtime Detected</span>
+                <Badge variant="warning" className="ml-2 text-[10px] h-5 bg-amber-100 hover:bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300">
+                  Vercel Edge
+                </Badge>
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                Cron jobs may not function properly in Edge Runtime. For reliable scheduling, consider:
+              </p>
+              <ul className="list-disc list-inside text-xs text-amber-700 dark:text-amber-400 mt-2 space-y-1">
+                <li>Setting up manual HTTP pings to your endpoints</li>
+                <li>Using GitHub Actions for scheduled tasks (only recommended in low activity environments)</li>
+                <li>Deploying to Node.js runtime instead of Edge</li>
+              </ul>
+              <div className="mt-3">
+                <Link href="https://vercel.com/docs/cron-jobs" target="_blank" className="text-xs text-amber-700 dark:text-amber-400 underline hover:text-amber-900 flex items-center">
+                  Learn more about Vercel cron limitations
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Import Dialog */}
       <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
         <DialogContent className="sm:max-w-md">
@@ -621,6 +675,11 @@ export function CronJobPage({
           <h3 className="font-medium flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span>Cron Jobs</span>
+            {isEdgeRuntime && (
+              <Badge variant="outline" className="ml-2 text-[10px] h-5 border-amber-500 text-amber-600 dark:text-amber-400">
+                Edge Runtime
+              </Badge>
+            )}
           </h3>
           
           <div className="flex items-center gap-2">
@@ -686,6 +745,11 @@ export function CronJobPage({
                 <h3 className="text-lg font-medium mb-2">No Cron Jobs Configured</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   You don't have any scheduled tasks set up yet. Create your first cron job to automate recurring tasks.
+                  {isEdgeRuntime && (
+                    <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                      Note: Cron jobs have limited functionality in Edge Runtime environments.
+                    </span>
+                  )}
                 </p>
                 <Button 
                   onClick={() => setIsCreatingJob(true)}
@@ -954,6 +1018,17 @@ export function CronJobPage({
                           </label>
                         </div>
                         
+                        {isEdgeRuntime && (
+                          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/30 rounded-md p-3 text-xs text-amber-700 dark:text-amber-400">
+                            <div className="flex">
+                              <Shield className="h-4 w-4 text-amber-500 dark:text-amber-400 mr-2 mt-0.5 flex-shrink-0" />
+                              <span>
+                                <strong>Edge Runtime Notice:</strong> Cron jobs created on Vercel Edge runtime may not execute reliably. Consider using GitHub Actions or another external scheduler.
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="pt-2">
                           <Button 
                             onClick={handleCreateJob}
@@ -1028,6 +1103,17 @@ export function CronJobPage({
                           </label>
                         </div>
                         
+                        {isEdgeRuntime && (
+                          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/30 rounded-md p-3 text-xs text-amber-700 dark:text-amber-400">
+                            <div className="flex">
+                              <Shield className="h-4 w-4 text-amber-500 dark:text-amber-400 mr-2 mt-0.5 flex-shrink-0" />
+                              <span>
+                                <strong>Edge Runtime Notice:</strong> Cron jobs in Vercel Edge runtime may not execute reliably. Consider using GitHub Actions or another external scheduler.
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="pt-2">
                           <Button 
                             onClick={handleUpdateJob}
@@ -1091,6 +1177,14 @@ export function CronJobPage({
                             {selectedJob.status === 'running' ? 'Running' : 
                              selectedJob.status === 'stopped' ? 'Stopped' : 'Error'}
                           </div>
+                          {isEdgeRuntime && selectedJob.status === 'running' && (
+                            <div className="mt-1">
+                              <Badge variant="warning" className="text-[10px]">
+                                <Shield className="h-3 w-3 mr-1" />
+                                Edge Runtime
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                         
                         <div>
@@ -1281,6 +1375,11 @@ export function CronJobPage({
             <h3 className="text-sm font-medium mb-1">Need more advanced cron job configuration?</h3>
             <p className="text-xs text-muted-foreground">
               Access the detailed debug page for more control over cron jobs, including advanced job functionality and logs.
+              {isEdgeRuntime && (
+                <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                  For Vercel Edge Runtime environments, consider <a href="https://vercel.com/docs/cron-jobs" target="_blank" className="underline hover:text-amber-800">Vercel Cron Jobs</a> or <a href="https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule" target="_blank" className="underline hover:text-amber-800">GitHub Actions</a> for reliable scheduling.
+                </span>
+              )}
             </p>
           </div>
           <Link href="/debug/ping/cron" className="ml-4">
