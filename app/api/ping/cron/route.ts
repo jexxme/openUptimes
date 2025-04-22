@@ -175,7 +175,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Check if this is the next-run route by looking at the URL
   if (req.url.includes('/next-run')) {
-    return calculateNextRunTimeRoute(req);
+    return await calculateNextRunTimeRoute(req);
   }
   
   // Otherwise, handle it as a DELETE request (for backward compatibility)
@@ -411,7 +411,7 @@ async function calculateNextRunTime(cronExpression: string): Promise<number | nu
  * POST handler for /api/ping/cron/next-run route
  * Calculate the next run time for a cron expression
  */
-export async function calculateNextRunTimeRoute(req: NextRequest): Promise<NextResponse> {
+async function calculateNextRunTimeRoute(req: NextRequest): Promise<NextResponse> {
   // Check auth
   const auth = await handleAuth(req);
   if (!auth.isAuthorized) {
