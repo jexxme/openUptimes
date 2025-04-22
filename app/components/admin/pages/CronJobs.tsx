@@ -521,13 +521,8 @@ export function CronJobPage({
                 <li>Setting up manual HTTP pings to your endpoints</li>
                 <li>Using GitHub Actions for scheduled tasks (only recommended in low activity environments)</li>
                 <li>Deploying to Node.js runtime instead of Edge</li>
+                <li>Using a different service like Vercel Cron Jobs or <a href="https://cron-job.org/" target="_blank" rel="noopener noreferrer" className="text-amber-700 dark:text-amber-400 underline hover:text-amber-900">cron-job.org</a></li>
               </ul>
-              <div className="mt-3">
-                <Link href="https://vercel.com/docs/cron-jobs" target="_blank" className="text-xs text-amber-700 dark:text-amber-400 underline hover:text-amber-900 flex items-center">
-                  Learn more about Vercel cron limitations
-                  <ExternalLink className="h-3 w-3 ml-1" />
-                </Link>
-              </div>
             </div>
           </div>
         </div>
