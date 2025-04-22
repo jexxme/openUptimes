@@ -28,7 +28,7 @@ import { AdminStatusPage } from "../components/admin/pages/StatusPage";
 import { AdminHistory } from "../components/admin/pages/History";
 import { AdminSettings } from "../components/admin/pages/Settings";
 import { AdminAbout } from "../components/admin/pages/About";
-import { GitHubActionsPage } from "../components/admin/pages/GitHubActions";
+import { SchedulerPage } from "../components/admin/pages/Scheduler";
 
 // Create a client-only wrapper to prevent hydration issues
 const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: string; service?: string }> }) => {
@@ -299,9 +299,9 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
           preloadedHistoryServices={preloadedData.historyServices}
           setActiveTab={handleTabChange}
         />;
-      case "github-actions":
+      case "scheduler":
         return <div className="max-w-4xl">
-          <GitHubActionsPage 
+          <SchedulerPage 
             setActiveTab={handleTabChange}
             registerUnsavedChangesCallback={registerUnsavedChangesCallback}
             preloadedData={{ 
@@ -346,8 +346,8 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
         return "Status Page";
       case "history":
         return "Uptime History";
-      case "github-actions":
-        return "GitHub Actions";
+      case "scheduler":
+        return "Scheduler";
       case "settings":
         return "Settings";
       case "about":
@@ -368,8 +368,8 @@ const AdminPageClient = ({ searchParams }: { searchParams?: Promise<{ tab?: stri
         return "Configure your public status page";
       case "history":
         return "View uptime logs and incident history";
-      case "github-actions":
-        return "Configure automated monitoring with GitHub Actions";
+      case "scheduler":
+        return "Configure automated monitoring tasks";
       case "settings":
         return "Configure system settings and preferences";
       case "about":

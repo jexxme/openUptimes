@@ -32,8 +32,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 const StatusDot = ({ status }: { status: string }) => {
   const statusColor = 
     status === "up" ? "bg-emerald-500" : 
-    status === "down" ? "bg-red-500" : 
-    "bg-gray-300 dark:bg-gray-600";
+    status === "down" ? "bg-destructive" : 
+    "bg-muted-foreground/50";
   
   return (
     <div className="relative flex items-center justify-center w-3 h-3">
@@ -334,17 +334,52 @@ export function ServicesList({
     }));
   };
 
+  // Update error message styling
+  const renderErrorMessage = () => {
+    if (servicesConfigError) {
+      return (
+        <div className="p-4 bg-destructive/10 dark:bg-destructive/20 border border-destructive/20 dark:border-destructive/30 rounded-md mt-6">
+          <h3 className="text-destructive dark:text-destructive font-medium mb-1">Error Loading Services Configuration</h3>
+          <p className="text-sm text-destructive/80 dark:text-destructive/90 mb-2">{servicesConfigError}</p>
+          <button 
+            onClick={() => refreshServicesConfig()} 
+            className="px-3 py-1 bg-card dark:bg-card border border-destructive/30 dark:border-destructive/40 text-destructive dark:text-destructive rounded-md text-sm hover:bg-destructive/10 dark:hover:bg-destructive/20 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    
+    if (statusError) {
+      return (
+        <div className="p-4 bg-destructive/10 dark:bg-destructive/20 border border-destructive/20 dark:border-destructive/30 rounded-md mt-6">
+          <h3 className="text-destructive dark:text-destructive font-medium mb-1">Error Loading Services Status</h3>
+          <p className="text-sm text-destructive/80 dark:text-destructive/90 mb-2">{statusError}</p>
+          <button 
+            onClick={refresh} 
+            className="px-3 py-1 bg-card dark:bg-card border border-destructive/30 dark:border-destructive/40 text-destructive dark:text-destructive rounded-md text-sm hover:bg-destructive/10 dark:hover:bg-destructive/20 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   return (
     <div className="w-full">
       {/* Search and action buttons */}
       <div className="flex items-center justify-between mb-6">
         <div className="relative w-full max-w-md">
           <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+            <Search className="h-4 w-4 text-muted-foreground" />
           </div>
           <input
             type="text"
-            className="w-full py-2.5 pl-12 pr-4 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary/70 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+            className="w-full py-2.5 pl-12 pr-4 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-primary/70 bg-background text-foreground placeholder:text-muted-foreground"
             placeholder="Search services..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -384,10 +419,10 @@ export function ServicesList({
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
       ) : statusError || servicesConfigError ? (
-        <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/20">
-          <AlertTriangle className="h-8 w-8 text-red-500 dark:text-red-400 mb-2" />
-          <h3 className="text-red-700 dark:text-red-400 font-medium mb-1">Error Loading Services</h3>
-          <p className="text-sm text-red-600 dark:text-red-400 mb-4 text-center">
+        <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-destructive/10 dark:bg-destructive/20 border border-destructive/20 dark:border-destructive/30">
+          <AlertTriangle className="h-8 w-8 text-destructive dark:text-destructive mb-2" />
+          <h3 className="text-destructive dark:text-destructive font-medium mb-1">Error Loading Services</h3>
+          <p className="text-sm text-destructive/80 dark:text-destructive/90 mb-4 text-center">
             {statusError || servicesConfigError}
           </p>
           <Button 
@@ -406,9 +441,9 @@ export function ServicesList({
         </div>
       ) : filteredServices.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-center">
-          <Server className="h-8 w-8 text-slate-300 dark:text-slate-700 mb-2" />
-          <h3 className="text-slate-700 dark:text-slate-300 font-medium">No services found</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-4">
+          <Server className="h-8 w-8 text-muted-foreground/60 mb-2" />
+          <h3 className="text-foreground font-medium">No services found</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
             {searchQuery
               ? "No services match your search query"
               : "Add your first service to start monitoring"
@@ -436,10 +471,10 @@ export function ServicesList({
             return (
               <div 
                 key={service.name} 
-                className={`bg-white dark:bg-slate-950 rounded-lg border ${
+                className={`bg-card dark:bg-card rounded-lg border ${
                   activeServiceName === service.name 
                     ? 'border-primary/70 dark:border-primary/50 ring-1 ring-primary/30 shadow-sm animate-highlight' 
-                    : 'border-slate-200 dark:border-slate-800/80'
+                    : 'border-border'
                 } hover:shadow-sm transition-all duration-200 w-full`}
                 id={`service-${service.name}`}
                 data-service-name={service.name}
@@ -466,13 +501,13 @@ export function ServicesList({
                         )}
                         <div className={`text-xs px-2 py-0.5 rounded-full font-medium
                           ${status === "up" ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400" : 
-                            status === "down" ? "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400" : 
-                            "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400"}
+                            status === "down" ? "bg-destructive/10 dark:bg-destructive/20 text-destructive dark:text-destructive" : 
+                            "bg-muted dark:bg-muted text-muted-foreground dark:text-muted-foreground"}
                         `}>
                           {status === "up" ? "Online" : status === "down" ? "Offline" : "Unknown"}
                         </div>
                         {service.visible === false && (
-                          <div className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 flex items-center gap-1">
+                          <div className="text-xs px-2 py-0.5 rounded-full font-medium bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary flex items-center gap-1">
                             <EyeOff className="h-3 w-3" />
                             <span>Hidden</span>
                           </div>
@@ -483,7 +518,7 @@ export function ServicesList({
                           href={service.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="inline-flex items-center hover:text-blue-600 dark:hover:text-blue-400"
+                          className="inline-flex items-center hover:text-primary dark:hover:text-primary"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <span className="truncate">{service.url}</span>
@@ -491,7 +526,7 @@ export function ServicesList({
                         </a>
                       </div>
                       {service.description && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{service.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{service.description}</p>
                       )}
                     </div>
                   </div>
@@ -499,7 +534,7 @@ export function ServicesList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-9 w-9 p-0 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                      className="h-9 w-9 p-0 hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/20"
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewHistory?.(service.name);
@@ -547,12 +582,12 @@ export function ServicesList({
                 
                 {/* Expanded details section */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800 w-full bg-slate-50/30 dark:bg-slate-900/20">
+                  <div className="px-4 pb-4 pt-2 border-t border-border w-full bg-muted/30 dark:bg-muted/20">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-[800px] mx-auto">
                       {/* Metadata section */}
-                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <h4 className="text-xs font-medium mb-3 text-slate-700 dark:text-slate-300 flex items-center">
-                          <span className="w-1 h-4 bg-blue-500 dark:bg-blue-500/70 rounded-full mr-2"></span>
+                      <div className="bg-card dark:bg-card p-4 rounded-md w-full border border-border shadow-sm">
+                        <h4 className="text-xs font-medium mb-3 text-foreground flex items-center">
+                          <span className="w-1 h-4 bg-primary dark:bg-primary rounded-full mr-2"></span>
                           Service Metadata
                         </h4>
                         <div className="space-y-2 text-xs w-full">
@@ -611,9 +646,9 @@ export function ServicesList({
                           )}
                           
                           {statusData?.currentStatus?.error && (
-                            <div className="mt-3 p-2 rounded-md bg-slate-50 dark:bg-slate-900/60">
-                              <span className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Last Error:</span>
-                              <span className="font-medium text-red-600 dark:text-red-400 text-xs block p-2 bg-red-50 dark:bg-red-950/30 rounded-md border border-red-100 dark:border-red-900/20 overflow-auto max-h-[40px]">
+                            <div className="mt-3 p-2 rounded-md bg-muted dark:bg-muted/20">
+                              <span className="text-muted-foreground block mb-1 font-medium">Last Error:</span>
+                              <span className="font-medium text-destructive dark:text-destructive text-xs block p-2 bg-destructive/10 dark:bg-destructive/20 rounded-md border border-destructive/20 dark:border-destructive/30 overflow-auto max-h-[40px]">
                                 {statusData.currentStatus.error}
                               </span>
                             </div>
@@ -622,9 +657,9 @@ export function ServicesList({
                       </div>
                       
                       {/* Uptime & Statistics section */}
-                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <h4 className="text-xs font-medium mb-3 text-slate-700 dark:text-slate-300 flex items-center">
-                          <span className="w-1 h-4 bg-emerald-500 dark:bg-emerald-500/70 rounded-full mr-2"></span>
+                      <div className="bg-card dark:bg-card p-4 rounded-md w-full border border-border shadow-sm">
+                        <h4 className="text-xs font-medium mb-3 text-foreground flex items-center">
+                          <span className="w-1 h-4 bg-primary dark:bg-primary rounded-full mr-2"></span>
                           Uptime Statistics
                         </h4>
                         <div className="space-y-3 w-full">
@@ -634,18 +669,18 @@ export function ServicesList({
                                 <span className="text-slate-600 dark:text-slate-400">Uptime</span>
                                 <span className={`font-medium ${
                                   uptimePercentage > 99 ? 'text-emerald-600 dark:text-emerald-400' : 
-                                  uptimePercentage > 95 ? 'text-green-600 dark:text-green-400' : 
-                                  uptimePercentage > 90 ? 'text-yellow-600 dark:text-yellow-400' : 
-                                  'text-red-600 dark:text-red-400'
+                                  uptimePercentage > 95 ? 'text-emerald-600 dark:text-emerald-400' : 
+                                  uptimePercentage > 90 ? 'text-amber-600 dark:text-amber-400' : 
+                                  'text-destructive dark:text-destructive'
                                 }`}>{uptimePercentage.toFixed(2)}%</span>
                               </div>
                               <div className="relative w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                                 <div 
                                   className={`absolute top-0 left-0 h-2 rounded-full ${
                                     uptimePercentage > 99 ? 'bg-emerald-500' : 
-                                    uptimePercentage > 95 ? 'bg-green-500' : 
-                                    uptimePercentage > 90 ? 'bg-yellow-500' : 
-                                    'bg-red-500'
+                                    uptimePercentage > 95 ? 'bg-emerald-500' : 
+                                    uptimePercentage > 90 ? 'bg-amber-500' : 
+                                    'bg-destructive'
                                   }`}
                                   style={{ width: `${Math.min(100, uptimePercentage)}%` }}
                                 />
@@ -658,11 +693,11 @@ export function ServicesList({
                             <div className="flex justify-between py-0.5 text-xs">
                               <span className="text-slate-600 dark:text-slate-400 mr-2">Availability (24h):</span>
                               <span className={`font-medium ${
-                                uptimePercentage === null ? 'text-slate-600 dark:text-slate-400' :
+                                uptimePercentage === null ? 'text-muted-foreground' :
                                 uptimePercentage > 99 ? 'text-emerald-600 dark:text-emerald-400' : 
-                                uptimePercentage > 95 ? 'text-green-600 dark:text-green-400' : 
-                                uptimePercentage > 90 ? 'text-yellow-600 dark:text-yellow-400' : 
-                                'text-red-600 dark:text-red-400'
+                                uptimePercentage > 95 ? 'text-emerald-600 dark:text-emerald-400' : 
+                                uptimePercentage > 90 ? 'text-amber-600 dark:text-amber-400' : 
+                                'text-destructive dark:text-destructive'
                               }`}>
                                 {(() => {
                                   // Get checks within the last 24 hours
@@ -724,20 +759,20 @@ export function ServicesList({
                           
                           {/* Online Status Section */}
                           {status === "up" && onlineSince && (
-                            <div className="mt-3 p-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/20">
-                              <h5 className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-2">Online Status</h5>
+                            <div className="mt-3 p-2 rounded-md bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30">
+                              <h5 className="text-xs font-medium text-primary dark:text-primary mb-2">Online Status</h5>
                               <div className="flex items-center gap-2 mb-1.5">
-                                <Clock className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                <Clock className="h-3 w-3 text-primary dark:text-primary" />
                                 <div className="text-xs">
-                                  <span className="text-emerald-600 dark:text-emerald-500 mr-1">Online for:</span>
-                                  <span className="font-medium text-emerald-700 dark:text-emerald-400">{formatOnlineSince(onlineSince)}</span>
+                                  <span className="text-primary/80 dark:text-primary/80 mr-1">Online for:</span>
+                                  <span className="font-medium text-primary dark:text-primary">{formatOnlineSince(onlineSince)}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Calendar className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                <Calendar className="h-3 w-3 text-primary dark:text-primary" />
                                 <div className="text-xs">
-                                  <span className="text-emerald-600 dark:text-emerald-500 mr-1">Since:</span>
-                                  <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                  <span className="text-primary/80 dark:text-primary/80 mr-1">Since:</span>
+                                  <span className="font-medium text-primary dark:text-primary">
                                     {onlineSince.toLocaleString()}
                                   </span>
                                 </div>
@@ -748,10 +783,10 @@ export function ServicesList({
                       </div>
 
                       {/* New dedicated Response Time Chart card - spans full width in both grid layouts */}
-                      <div className="bg-white dark:bg-slate-900 p-4 rounded-md w-full border border-slate-200 dark:border-slate-800 shadow-sm md:col-span-2">
+                      <div className="bg-card dark:bg-card p-4 rounded-md w-full border border-border shadow-sm md:col-span-2">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
-                            <span className="w-1 h-4 bg-indigo-500 dark:bg-indigo-500/70 rounded-full mr-2"></span>
+                          <h4 className="text-xs font-medium text-foreground flex items-center">
+                            <span className="w-1 h-4 bg-primary dark:bg-primary rounded-full mr-2"></span>
                             Response Time Chart
                           </h4>
                           
@@ -766,24 +801,24 @@ export function ServicesList({
                               </button>
                               
                               {showChartInfo[service.name] && (
-                                <div className="absolute right-0 top-6 z-10 w-64 p-3 text-xs bg-white dark:bg-slate-950 shadow-lg rounded-md border border-slate-200 dark:border-slate-800">
-                                  <h5 className="font-medium mb-1.5 text-slate-800 dark:text-slate-200">About Response Time Chart</h5>
-                                  <p className="text-slate-600 dark:text-slate-400 mb-2">
+                                <div className="absolute right-0 top-6 z-10 w-64 p-3 text-xs bg-card dark:bg-card shadow-lg rounded-md border border-border">
+                                  <h5 className="font-medium mb-1.5 text-card-foreground">About Response Time Chart</h5>
+                                  <p className="text-muted-foreground mb-2">
                                     This chart shows the response time trend for recent checks. 
                                     Higher bars indicate longer response times.
                                   </p>
                                   <ul className="space-y-1.5 mt-2">
                                     <li className="flex items-center">
                                       <span className="block w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-                                      <span>Green: Service online</span>
+                                      <span className="text-card-foreground">Green: Service online</span>
                                     </li>
                                     <li className="flex items-center">
                                       <span className="block w-2 h-2 rounded-full bg-red-500 mr-2"></span>
-                                      <span>Red: Service offline</span>
+                                      <span className="text-card-foreground">Red: Service offline</span>
                                     </li>
                                     <li className="flex items-center">
                                       <span className="block w-2 h-2 rounded-full bg-slate-400 mr-2"></span>
-                                      <span>Gray: Status unknown</span>
+                                      <span className="text-card-foreground">Gray: Status unknown</span>
                                     </li>
                                   </ul>
                                 </div>
@@ -791,7 +826,7 @@ export function ServicesList({
                             </div>
                             
                             <button
-                              className="text-blue-600 dark:text-blue-400 hover:underline text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/20"
+                              className="text-primary dark:text-primary hover:underline text-[10px] px-2 py-0.5 rounded-full bg-primary/10 dark:bg-primary/20"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onViewHistory?.(service.name);
@@ -804,8 +839,8 @@ export function ServicesList({
                         
                         {/* Time span selector */}
                         <div className="flex items-center justify-between mb-3">
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            Last <span className="font-medium text-slate-700 dark:text-slate-300">{responseTimeSpans[service.name] || 10}</span> checks
+                          <div className="text-xs text-muted-foreground">
+                            Last <span className="font-medium text-foreground">{responseTimeSpans[service.name] || 10}</span> checks
                           </div>
                           
                           <div className="flex items-center space-x-1">
@@ -814,34 +849,34 @@ export function ServicesList({
                                 e.stopPropagation();
                                 changeTimeSpan(service.name, 'next');
                               }}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              className="p-1 rounded hover:bg-muted dark:hover:bg-muted transition-colors"
                               aria-label="Show fewer checks"
                             >
-                              <ChevronLeft className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                             </button>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 changeTimeSpan(service.name, 'prev');
                               }}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              className="p-1 rounded hover:bg-muted dark:hover:bg-muted transition-colors"
                               aria-label="Show more checks"
                             >
-                              <ChevronRight className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
                             </button>
                           </div>
                         </div>
                         
                         {/* Enhanced Response Time Chart */}
                         {statusData?.history && statusData.history.length > 0 ? (
-                          <div className="rounded-md bg-white dark:bg-slate-950 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+                          <div className="rounded-md bg-card dark:bg-card overflow-hidden border border-border shadow-sm">
                             {/* Bar Chart Section - enhanced height */}
                             <div className="h-16 flex items-end justify-between px-1 py-2 relative">
                               {/* Grid lines */}
                               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
-                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
-                                <div className="w-full h-px bg-slate-100 dark:bg-slate-800/50"></div>
+                                <div className="w-full h-px bg-border dark:bg-border/50"></div>
+                                <div className="w-full h-px bg-border dark:bg-border/50"></div>
+                                <div className="w-full h-px bg-border dark:bg-border/50"></div>
                               </div>
                               
                               {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
@@ -866,11 +901,11 @@ export function ServicesList({
                                   <div key={index} className="flex-1 flex flex-col items-center justify-end group relative h-full">
                                     {/* Enhanced tooltip with more info - centered */}
                                     <div className="fixed transform -translate-y-full -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-50 w-max pointer-events-none" style={{top: 'calc(var(--y, 0) - 10px)', left: 'var(--x, 0)'}}>
-                                      <div className="bg-slate-800 dark:bg-slate-900 text-white text-xs rounded px-3 py-2 shadow-lg">
+                                      <div className="bg-card dark:bg-card text-card-foreground text-xs rounded px-3 py-2 shadow-lg">
                                         <div className="font-medium text-center">{hasResponseTime ? `${check.responseTime}ms` : 'No data'}</div>
-                                        <div className="text-slate-300 text-center">{new Date(check.timestamp).toLocaleString()}</div>
+                                        <div className="text-muted-foreground text-center">{new Date(check.timestamp).toLocaleString()}</div>
                                       </div>
-                                      <div className="w-3 h-3 transform rotate-45 bg-slate-800 dark:bg-slate-900 absolute -bottom-1.5 left-1/2 -translate-x-1/2"></div>
+                                      <div className="w-3 h-3 transform rotate-45 bg-card dark:bg-card absolute -bottom-1.5 left-1/2 -translate-x-1/2"></div>
                                     </div>
                                     
                                     {/* Bar with adjusted width */}
@@ -898,7 +933,7 @@ export function ServicesList({
                             </div>
                             
                             {/* Timestamp Labels Section - Simplified */}
-                            <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                            <div className="flex items-center justify-between px-1 pt-1 pb-2 border-t border-border bg-muted/50 dark:bg-muted/20">
                               {statusData.history.slice(0, responseTimeSpans[service.name] || 10).reverse().map((check: any, index: number) => {
                                 const date = new Date(check.timestamp);
                                 const now = new Date();
@@ -906,7 +941,7 @@ export function ServicesList({
                                 
                                 return (
                                   <div key={`time-${index}`} className="flex-1 text-center">
-                                    <div className="text-xs text-slate-500 dark:text-slate-500 truncate px-0.5 font-medium">
+                                    <div className="text-xs text-muted-foreground truncate px-0.5 font-medium">
                                       {isToday 
                                         ? date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
                                         : date.toLocaleDateString([], {month: 'numeric', day: 'numeric'})
@@ -918,9 +953,9 @@ export function ServicesList({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center h-28 bg-white dark:bg-slate-950 rounded-md p-4 border border-slate-200 dark:border-slate-800">
-                            <div className="text-[12px] text-slate-500 dark:text-slate-400 mb-2">No response time data available</div>
-                            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                          <div className="flex flex-col items-center justify-center h-28 bg-card dark:bg-card rounded-md p-4 border border-border">
+                            <div className="text-[12px] text-muted-foreground mb-2">No response time data available</div>
+                            <div className="text-[10px] text-muted-foreground/70">
                               Response time history will appear here after checks are performed
                             </div>
                           </div>
@@ -944,21 +979,21 @@ export function ServicesList({
                               
                               return (
                                 <>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Average</div>
-                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{Math.round(avgTime)}ms</div>
+                                  <div className="p-2 rounded-md bg-muted dark:bg-muted/20 border border-border">
+                                    <div className="text-[10px] text-muted-foreground">Average</div>
+                                    <div className="text-sm font-medium text-foreground">{Math.round(avgTime)}ms</div>
                                   </div>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Minimum</div>
-                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{minTime}ms</div>
+                                  <div className="p-2 rounded-md bg-muted dark:bg-muted/20 border border-border">
+                                    <div className="text-[10px] text-muted-foreground">Minimum</div>
+                                    <div className="text-sm font-medium text-foreground">{minTime}ms</div>
                                   </div>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">Maximum</div>
-                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{maxTime}ms</div>
+                                  <div className="p-2 rounded-md bg-muted dark:bg-muted/20 border border-border">
+                                    <div className="text-[10px] text-muted-foreground">Maximum</div>
+                                    <div className="text-sm font-medium text-foreground">{maxTime}ms</div>
                                   </div>
-                                  <div className="p-2 rounded-md bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-500">90th Percentile</div>
-                                    <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{p90Time}ms</div>
+                                  <div className="p-2 rounded-md bg-muted dark:bg-muted/20 border border-border">
+                                    <div className="text-[10px] text-muted-foreground">90th Percentile</div>
+                                    <div className="text-sm font-medium text-foreground">{p90Time}ms</div>
                                   </div>
                                 </>
                               );
@@ -1006,12 +1041,12 @@ export function ServicesList({
               This action cannot be undone.
             </p>
           </div>
-          <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900/50 mb-4">
+          <div className="bg-destructive/10 dark:bg-destructive/20 p-3 rounded-md border border-destructive/20 dark:border-destructive/30 mb-4">
             <div className="flex items-start">
-              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5 mr-2" />
+              <AlertTriangle className="h-5 w-5 text-destructive dark:text-destructive mt-0.5 mr-2" />
               <div>
-                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Warning</p>
-                <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                <p className="text-sm font-medium text-destructive dark:text-destructive">Warning</p>
+                <p className="text-xs text-destructive/80 dark:text-destructive/90 mt-1">
                   Deleting this service will remove all its monitoring data and history. 
                   Historical uptime calculations will also be affected.
                 </p>

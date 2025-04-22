@@ -6,17 +6,20 @@ import { initializeServerSystems } from '@/lib/utils';
 let systemsInitialized = false;
 
 // Initialize server systems on module load (runs once on first import)
-(async () => {
-  if (!systemsInitialized) {
-    try {
-      await initializeServerSystems();
-      systemsInitialized = true;
-      console.log('Server systems initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize server systems:', error);
+if (typeof process !== 'undefined') {
+  // Only run in a Node.js environment, not during build time
+  (async () => {
+    if (!systemsInitialized) {
+      try {
+        await initializeServerSystems();
+        systemsInitialized = true;
+        console.log('Server systems initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize server systems:', error);
+      }
     }
-  }
-})();
+  })();
+}
 
 /**
  * Service checking endpoint that performs monitoring

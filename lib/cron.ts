@@ -75,6 +75,8 @@ function matchCronPart(value: number, cronPart: string, min: number, max: number
 
 // In-memory store for active cron jobs
 const activeTasks: Record<string, ScheduledTask> = {};
+// In-memory execution lock to prevent concurrent executions of the same job
+const executionLocks: Record<string, boolean> = {};
 
 /**
  * Validate a cron expression
@@ -337,40 +339,46 @@ export async function startJob(id: string): Promise<boolean> {
     
     // Stop any existing task
     if (activeTasks[id]) {
+      console.log(`[StartJob] Job ${id} already has an active task. Stopping it first.`);
       activeTasks[id].stop();
       delete activeTasks[id];
     }
     
-    // Schedule the new task
-    const task = schedule(job.cronExpression, async () => {
-      await executeJob(id);
-    });
-    
-    // Store the task
-    activeTasks[id] = task;
-    
-    // Calculate next run time directly
-    let nextRun;
-    try {
-      const calculatedNextRun = await getNextRunTime(job.cronExpression);
-      // Convert null to undefined if needed
-      nextRun = calculatedNextRun !== null ? calculatedNextRun : undefined;
-      console.log(`[StartJob] Calculated next run time for job ${id}: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
-    } catch (e) {
-      console.error(`[StartJob] Error calculating next run time for job start ${id}:`, e);
+    // Only schedule if the job isn't already running
+    if (job.status !== 'running') {
+      // Schedule the new task
+      const task = schedule(job.cronExpression, async () => {
+        await executeJob(id);
+      });
+      
+      // Store the task
+      activeTasks[id] = task;
+      
+      // Calculate next run time directly
+      let nextRun;
+      try {
+        const calculatedNextRun = await getNextRunTime(job.cronExpression);
+        // Convert null to undefined if needed
+        nextRun = calculatedNextRun !== null ? calculatedNextRun : undefined;
+        console.log(`[StartJob] Calculated next run time for job ${id}: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
+      } catch (e) {
+        console.error(`[StartJob] Error calculating next run time for job start ${id}:`, e);
+      }
+      
+      // Update job status
+      const updatedJob: CronJob = {
+        ...job,
+        status: 'running',
+        updatedAt: Date.now(),
+        nextRun: nextRun
+      };
+      
+      console.log(`[StartJob] Starting job ${id} with next run: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
+      
+      await client.set(`cron:job:${id}`, JSON.stringify(updatedJob));
+    } else {
+      console.log(`[StartJob] Job ${id} is already running. Skipping start.`);
     }
-    
-    // Update job status
-    const updatedJob: CronJob = {
-      ...job,
-      status: 'running',
-      updatedAt: Date.now(),
-      nextRun: nextRun
-    };
-    
-    console.log(`[StartJob] Starting job ${id} with next run: ${nextRun ? new Date(nextRun).toISOString() : 'None'}`);
-    
-    await client.set(`cron:job:${id}`, JSON.stringify(updatedJob));
     
     return true;
   } catch (error) {
@@ -420,12 +428,22 @@ export async function stopJob(id: string): Promise<boolean> {
  * Execute a cron job
  */
 async function executeJob(id: string): Promise<void> {
+  // Skip if already executing this job (prevents concurrent execution)
+  if (executionLocks[id]) {
+    console.log(`[ExecuteJob] Job ${id} already executing, skipping this run`);
+    return;
+  }
+  
+  // Set execution lock
+  executionLocks[id] = true;
+  
   const client = await getRedisClient();
   
   try {
     // Get the job
     const jobData = await client.get(`cron:job:${id}`);
     if (!jobData) {
+      delete executionLocks[id];
       return;
     }
     
@@ -433,6 +451,13 @@ async function executeJob(id: string): Promise<void> {
     
     // Record execution start time
     const startTime = Date.now();
+    
+    // Ensure we don't execute jobs too close together (deduplicate within 2 seconds)
+    if (job.lastRun && (startTime - job.lastRun < 2000)) {
+      console.log(`[ExecuteJob] Job ${id} executed too recently (${startTime - job.lastRun}ms ago), skipping`);
+      delete executionLocks[id];
+      return;
+    }
     
     // Execute the ping API endpoint
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/ping`, {
@@ -500,6 +525,9 @@ async function executeJob(id: string): Promise<void> {
     
     await client.lPush('ping:history', JSON.stringify(pingRecord));
     await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
+    
+    // Release the execution lock
+    delete executionLocks[id];
   } catch (error) {
     // Record execution failure
     try {
@@ -509,6 +537,7 @@ async function executeJob(id: string): Promise<void> {
       // Get the job again (in case it changed during execution)
       const jobData = await client.get(`cron:job:${id}`);
       if (!jobData) {
+        delete executionLocks[id];
         return;
       }
       
@@ -565,6 +594,9 @@ async function executeJob(id: string): Promise<void> {
       await client.lTrim('ping:history', 0, 999); // Keep last 1000 pings
     } catch (e) {
       console.error(`Error recording job failure for ${id}:`, e);
+    } finally {
+      // Make sure to release the execution lock even on nested errors
+      delete executionLocks[id];
     }
   }
 }
@@ -599,10 +631,25 @@ export async function initCronSystem(): Promise<void> {
     
     console.log(`Found ${enabledJobs.length} enabled jobs`);
     
-    // Start each job
+    // Check current running tasks and stop any that shouldn't be running
+    const currentTaskIds = Object.keys(activeTasks);
+    for (const taskId of currentTaskIds) {
+      // If job no longer exists or is disabled, stop it
+      const job = jobs.find(j => j.id === taskId);
+      if (!job || !job.enabled) {
+        console.log(`Stopping job ${taskId} that should no longer be running`);
+        await stopJob(taskId);
+      }
+    }
+    
+    // Start each enabled job that isn't already running
     for (const job of enabledJobs) {
-      await startJob(job.id);
-      console.log(`Started job: ${job.name} (${job.id})`);
+      if (!activeTasks[job.id]) {
+        await startJob(job.id);
+        console.log(`Started job: ${job.name} (${job.id})`);
+      } else {
+        console.log(`Job already running: ${job.name} (${job.id})`);
+      }
     }
   } catch (error) {
     console.error('Error initializing cron system:', error);
