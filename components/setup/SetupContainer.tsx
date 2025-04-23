@@ -11,6 +11,8 @@ interface SetupContainerProps {
   onBack: () => void;
   isSubmitting: boolean;
   error?: string | null;
+  isNextDisabled?: boolean;
+  hideStepInfo?: boolean;
 }
 
 export function SetupContainer({
@@ -20,28 +22,34 @@ export function SetupContainer({
   onNext,
   onBack,
   isSubmitting,
-  error
+  error,
+  isNextDisabled,
+  hideStepInfo = false
 }: SetupContainerProps) {
+  // Precompute button text to avoid re-renders
+  const nextButtonText = currentStep === totalSteps ? "Complete Setup" : "Continue";
+  
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-2xl">
-        <div className="mb-8 flex flex-col items-center justify-center space-y-3">
-          <div className="mb-2 flex items-center justify-center">
+        <div className="mb-8 flex flex-col items-center justify-center">
+          <div className="flex items-center justify-center mb-4">
             <Image 
               src="/default-favicon.svg" 
               alt="OpenUptimes Logo" 
-              width={48} 
-              height={48}
+              width={56} 
+              height={56}
               className="dark:logo-dark-mode" 
             />
           </div>
-          <CardTitle className="text-2xl font-semibold text-foreground">OpenUptimes Setup</CardTitle>
-          <CardDescription className="text-sm text-muted-foreground">
-            Step {currentStep} of {totalSteps}
-          </CardDescription>
+          {!hideStepInfo && (
+            <CardDescription className="text-sm text-muted-foreground">
+              Step {currentStep} of {totalSteps}
+            </CardDescription>
+          )}
         </div>
         
-        <Card className="shadow-subtle border-border overflow-hidden">
+        <Card className="shadow-lg border-border overflow-hidden">
           {error && (
             <div className="bg-destructive/10 text-destructive p-4 border-b border-destructive/20 text-sm">
               {error}
@@ -52,37 +60,37 @@ export function SetupContainer({
             {children}
           </CardContent>
           
-          <CardFooter className="flex justify-between p-6 pt-0 border-t border-border/50 mt-4">
-            {currentStep > 1 && (
-              <Button
-                onClick={onBack}
-                disabled={isSubmitting}
-                variant="outline"
-                size="default"
-              >
-                Back
-              </Button>
-            )}
-            
-            <div className={currentStep === 1 ? 'w-full flex justify-end' : 'ml-auto'}>
-              <Button
-                onClick={onNext}
-                disabled={isSubmitting}
-                variant="default"
-                size="default"
-                className="hover-lift"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                    Processing...
-                  </>
-                ) : currentStep === totalSteps ? (
-                  "Complete Setup"
-                ) : (
-                  "Next"
+          <CardFooter className="flex p-6 pt-4 border-t border-border/50 mt-4">
+            <div className="grid grid-cols-2 w-full">
+              <div>
+                {currentStep > 1 && (
+                  <Button
+                    onClick={onBack}
+                    disabled={isSubmitting}
+                    variant="outline"
+                    size="default"
+                  >
+                    Back
+                  </Button>
                 )}
-              </Button>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button
+                  onClick={onNext}
+                  disabled={isSubmitting || isNextDisabled}
+                  variant="default"
+                  size="default"
+                  className="min-w-[140px]"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center">
+                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                      Processing
+                    </span>
+                  ) : nextButtonText}
+                </Button>
+              </div>
             </div>
           </CardFooter>
         </Card>

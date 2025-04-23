@@ -28,10 +28,10 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
     : ((completedSteps + 0.5) / totalSteps) * 100;
   
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       {/* Progress indicator */}
-      <div className="mb-6">
-        <Progress value={progressValue} className="h-1" />
+      <div className="mb-4">
+        <Progress value={progressValue} className="h-1.5" />
       </div>
       
       {/* Step indicators */}
@@ -44,9 +44,9 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
             <div key={step.key} className="flex flex-col items-center relative">
               <div 
                 className={`
-                  flex h-8 w-8 items-center justify-center rounded-full transition-all
+                  flex h-7 w-7 items-center justify-center rounded-full transition-all
                   ${isActive 
-                    ? 'ring-2 ring-primary/20 border-2 border-primary bg-background text-foreground' 
+                    ? 'ring-2 ring-primary/20 border border-primary bg-background text-foreground shadow-sm' 
                     : isCompleted 
                     ? 'bg-primary text-primary-foreground shadow-sm' 
                     : 'border border-border bg-muted/30 text-muted-foreground'
@@ -54,7 +54,7 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
                 `}
               >
                 {isCompleted ? (
-                  <CheckIcon className="h-4 w-4" />
+                  <CheckIcon className="h-3.5 w-3.5" />
                 ) : (
                   <span className="text-xs font-medium">{index + 1}</span>
                 )}
@@ -62,7 +62,7 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
               
               <span 
                 className={`
-                  mt-2 text-center text-xs leading-tight font-medium truncate w-full
+                  mt-1.5 text-center text-xs leading-tight font-medium truncate w-full
                   ${isActive 
                     ? 'text-foreground' 
                     : isCompleted 
@@ -76,11 +76,11 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
               </span>
               
               {index < steps.length - 1 && (
-                <div className="hidden sm:block absolute left-1/2 top-4 h-[1px] w-full z-[-1]">
+                <div className="hidden sm:block absolute left-1/2 top-3.5 h-[1px] w-full z-[-1]">
                   <Separator 
                     className={`
                       w-full 
-                      ${isCompleted ? 'bg-primary/50' : 'bg-border'}
+                      ${index < currentStep - 1 ? 'bg-primary/50' : 'bg-border'}
                     `} 
                   />
                 </div>

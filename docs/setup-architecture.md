@@ -18,19 +18,22 @@
   - Setup completion API endpoint (`/api/setup/complete`)
   - Status checking API endpoint (`/api/setup/status`)
   - Developer tools for testing (reset functionality)
+- ✅ Password UI with strength validation and requirements display
+- ✅ Site Settings UI with name, description, and refresh interval configuration
+- ✅ Path-specific setup screens:
+  - ✅ GitHub Actions integration UI with multi-step flow
+  - ⬜ Cron Jobs configuration UI (placeholder added)
+  - ⬜ Custom integration UI (placeholder added)
+- ✅ Navigation integration between main flow and path-specific substeps
+- ✅ Dynamic component loading with proper React hooks pattern
 
 ### TODO (Next Phase)
-- Fix progress bar not tracking correctly
-- ⬜ Implement Site Settings step UI and functionality
-- ⬜ Polishing look, fell and UX
-- ⬜ Implement path-specific setup screens:
-  - GitHub Actions integration UI
-  - Cron Jobs configuration UI
-  - Custom integration UI
+- ⬜ Fix progress bar not tracking correctly
+- ⬜ Complete implementation of Cron Jobs configuration UI
+- ⬜ Complete implementation of Custom integration UI
+- ⬜ Polish look, feel and UX
 - ⬜ Implement:
-  - `ApiKeyManager`: For generating and displaying API keys
-  - `WorkflowFileGenerator`: For GitHub workflow file creation
-  - `IntegrationTester`: For validating setup with test pings
+  - `IntegrationTester`: For validating setup with test pings in custom path
 - ⬜ Add proper authentication upon setup completion
 - ⬜ Improve accessibility features across all components
 - ⬜ Add comprehensive setup step persistence (resume capability)
