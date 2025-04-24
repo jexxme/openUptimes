@@ -139,4 +139,4 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
       </div>
     </div>
   );
-} 
+}

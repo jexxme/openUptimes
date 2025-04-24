@@ -12,20 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { validatePassword, validatePasswordsMatch } from '@/app/utils/setupUtils';
 import { SetupIntroAnimation } from '@/components/setup/SetupIntroAnimation';
-// Dynamic import for GitHub setup component
-import dynamic from 'next/dynamic';
-
-// Dynamically import GitHub setup component
-const GitHubSetup = dynamic(() => import('@/components/setup/github/GitHubSetup'), {
-  loading: () => <div className="p-4 text-center">Loading GitHub setup...</div>,
-  ssr: false
-});
-
-// Dynamically import Cron setup component
-const CronSetup = dynamic(() => import('@/components/setup/cron/CronSetup'), {
-  loading: () => <div className="p-4 text-center">Loading Cron setup...</div>,
-  ssr: false
-});
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckIcon } from 'lucide-react';
+// Import setup components directly instead of using dynamic imports
+import GitHubSetup from '@/components/setup/github/GitHubSetup';
+import CronSetup from '@/components/setup/cron/CronSetup';
 
 function SetupPageContent() {
   const router = useRouter();
@@ -100,7 +91,7 @@ function SetupPageContent() {
         'Built-in scheduler for monitoring',
         'Runs directly on your deployed instance',
         'Can monitor multiple services at once',
-        'Requires Edge Runtime compatible hosting'
+        'Not compatible with Edge Runtime deployments'
       ]
     },
     {
@@ -379,235 +370,283 @@ function SetupPageContent() {
 
   // Render different content based on current step
   const renderStepContent = () => {
-    switch(step) {
+    switch (step) {
       case 1:
-        // Welcome & path selection step
         return (
-          <SetupPathSelector
-            paths={setupPaths}
-            selectedPath={path}
-            onSelect={handlePathSelect}
-            isEdgeRuntime={isEdgeRuntime}
-          />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <SetupPathSelector
+              paths={setupPaths}
+              selectedPath={path}
+              onSelect={handlePathSelect}
+              isEdgeRuntime={isEdgeRuntime}
+            />
+          </motion.div>
         );
+        
       case 2:
-        // Password step
         return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-xl font-medium text-foreground">Create an Admin Password</h2>
-              <p className="text-sm text-muted-foreground">
-                This password will be used to access the admin panel and manage your status page.
-              </p>
-            </div>
-            
-            <Separator className="my-4" />
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Admin Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => updatePassword(e.target.value)}
-                  placeholder="Enter a secure password"
-                  className={`w-full ${password && !passwordValidation.length ? 'border-destructive' : ''}`}
-                />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="space-y-6">
+              <div className="text-center space-y-2 max-w-lg mx-auto">
+                <h1 className="text-xl font-medium text-foreground">Create admin password</h1>
+                <p className="text-sm text-muted-foreground">
+                  This password will be used to access the admin panel
+                </p>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-medium">
-                  Confirm Password
-                </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => updateConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  className={`w-full ${confirmPassword && !passwordValidation.match ? 'border-destructive' : ''}`}
-                />
+              <div className="space-y-4">
+                {/* Password field */}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => updatePassword(e.target.value)}
+                    placeholder="Enter password"
+                    autoComplete="new-password"
+                  />
+                </div>
+                
+                {/* Confirm Password field */}
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => updateConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    autoComplete="new-password"
+                  />
+                </div>
+                
+                {/* Password requirements checklist */}
+                <div className="mt-4 space-y-1">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-2">Password must:</h3>
+                  <ul className="space-y-1">
+                    <li className="text-xs flex items-center">
+                      <span className={`mr-2 inline-flex h-4 w-4 items-center justify-center rounded-full 
+                        ${passwordValidation.length ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
+                        {passwordValidation.length ? '✓' : '·'}
+                      </span>
+                      Be at least 8 characters long
+                    </li>
+                    <li className="text-xs flex items-center">
+                      <span className={`mr-2 inline-flex h-4 w-4 items-center justify-center rounded-full 
+                        ${passwordValidation.number ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
+                        {passwordValidation.number ? '✓' : '·'}
+                      </span>
+                      Include at least one number
+                    </li>
+                    <li className="text-xs flex items-center">
+                      <span className={`mr-2 inline-flex h-4 w-4 items-center justify-center rounded-full 
+                        ${passwordValidation.uppercase ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
+                        {passwordValidation.uppercase ? '✓' : '·'}
+                      </span>
+                      Include at least one uppercase letter
+                    </li>
+                    <li className="text-xs flex items-center">
+                      <span className={`mr-2 inline-flex h-4 w-4 items-center justify-center rounded-full 
+                        ${passwordValidation.special ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
+                        {passwordValidation.special ? '✓' : '·'}
+                      </span>
+                      Include at least one special character
+                    </li>
+                    <li className="text-xs flex items-center">
+                      <span className={`mr-2 inline-flex h-4 w-4 items-center justify-center rounded-full 
+                        ${passwordValidation.match ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
+                        {passwordValidation.match ? '✓' : '·'}
+                      </span>
+                      Passwords match
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
-            
-            <div className="bg-muted/30 border border-border/50 rounded-md p-3 mt-2">
-              <p className="text-xs font-medium text-foreground">Password requirements:</p>
-              <ul className="mt-2 space-y-1.5 text-xs">
-                <li className={`flex items-center ${passwordValidation.length ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  <span className={`mr-2 h-4 w-4 rounded-full flex items-center justify-center ${passwordValidation.length ? 'bg-green-100 text-green-600' : 'bg-muted'}`}>
-                    {passwordValidation.length ? '✓' : '·'}
-                  </span>
-                  At least 8 characters long
-                </li>
-                <li className={`flex items-center ${passwordValidation.number ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  <span className={`mr-2 h-4 w-4 rounded-full flex items-center justify-center ${passwordValidation.number ? 'bg-green-100 text-green-600' : 'bg-muted'}`}>
-                    {passwordValidation.number ? '✓' : '·'}
-                  </span>
-                  Contains at least one number
-                </li>
-                <li className={`flex items-center ${passwordValidation.uppercase ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  <span className={`mr-2 h-4 w-4 rounded-full flex items-center justify-center ${passwordValidation.uppercase ? 'bg-green-100 text-green-600' : 'bg-muted'}`}>
-                    {passwordValidation.uppercase ? '✓' : '·'}
-                  </span>
-                  Contains at least one uppercase letter
-                </li>
-                <li className={`flex items-center ${passwordValidation.special ? 'text-green-600' : 'text-muted-foreground'}`}>
-                  <span className={`mr-2 h-4 w-4 rounded-full flex items-center justify-center ${passwordValidation.special ? 'bg-green-100 text-green-600' : 'bg-muted'}`}>
-                    {passwordValidation.special ? '✓' : '·'}
-                  </span>
-                  Contains at least one special character
-                </li>
-                <li className={`flex items-center ${passwordValidation.match ? 'text-green-600' : confirmPassword ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  <span className={`mr-2 h-4 w-4 rounded-full flex items-center justify-center ${
-                    passwordValidation.match ? 'bg-green-100 text-green-600' : 
-                    confirmPassword ? 'bg-red-100 text-destructive' : 'bg-muted'
-                  }`}>
-                    {passwordValidation.match ? '✓' : confirmPassword ? '×' : '·'}
-                  </span>
-                  Passwords match
-                </li>
-              </ul>
-            </div>
-          </div>
+          </motion.div>
         );
+        
       case 3:
-        // Site settings step
         return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-xl font-medium text-foreground">Configure Your Site</h2>
-              <p className="text-sm text-muted-foreground">
-                Customize how your status page appears to visitors.
-              </p>
-            </div>
-            
-            <Separator className="my-4" />
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="siteName" className="text-sm font-medium">
-                  Site Name
-                </Label>
-                <Input
-                  id="siteName"
-                  type="text"
-                  value={siteName}
-                  onChange={(e) => updateSiteSettings({ siteName: e.target.value })}
-                  placeholder="OpenUptimes"
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  This name will be displayed in the header and browser title.
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="space-y-6">
+              <div className="text-center space-y-2 max-w-lg mx-auto">
+                <h1 className="text-xl font-medium text-foreground">Site settings</h1>
+                <p className="text-sm text-muted-foreground">
+                  Customize your status page
                 </p>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="siteDescription" className="text-sm font-medium">
-                  Site Description
-                </Label>
-                <Input
-                  id="siteDescription"
-                  type="text"
-                  value={siteDescription}
-                  onChange={(e) => updateSiteSettings({ siteDescription: e.target.value })}
-                  placeholder="Service Status Monitor"
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  A brief description of your status page's purpose.
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="refreshInterval" className="text-sm font-medium">
-                  Refresh Interval (seconds)
-                </Label>
-                <Input
-                  id="refreshInterval"
-                  type="number"
-                  min="10"
-                  max="300"
-                  value={refreshInterval}
-                  onChange={(e) => updateSiteSettings({ refreshInterval: Number(e.target.value) })}
-                  placeholder="60"
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  How often the status page automatically refreshes. We recommend 60 seconds.
-                </p>
+              <div className="space-y-4">
+                {/* Site name field */}
+                <div className="space-y-2">
+                  <Label htmlFor="siteName">Site name</Label>
+                  <Input
+                    id="siteName"
+                    value={siteName}
+                    onChange={(e) => updateSiteSettings({ siteName: e.target.value })}
+                    placeholder="My Status Page"
+                  />
+                </div>
+                
+                {/* Site description field */}
+                <div className="space-y-2">
+                  <Label htmlFor="siteDescription">Site description</Label>
+                  <Input
+                    id="siteDescription"
+                    value={siteDescription}
+                    onChange={(e) => updateSiteSettings({ siteDescription: e.target.value })}
+                    placeholder="Current status of our services"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A brief description of your status page
+                  </p>
+                </div>
+                
+                {/* Refresh interval field */}
+                <div className="space-y-2">
+                  <Label htmlFor="refreshInterval">Auto-refresh interval (seconds)</Label>
+                  <Input
+                    id="refreshInterval"
+                    type="number"
+                    min={10}
+                    value={refreshInterval}
+                    onChange={(e) => updateSiteSettings({ refreshInterval: parseInt(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    How often the status page should automatically refresh (minimum 10 seconds)
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         );
+        
       case 4:
-        // Path specific setup
-        return renderPathSetup();
-      case 5:
-        // Setup complete
         return (
-          <div className="space-y-8 py-2 max-w-md mx-auto text-center">
-            <div className="relative mx-auto w-24 h-24 flex items-center justify-center rounded-full bg-primary/10">
-              <div className="absolute w-16 h-16 rounded-full flex items-center justify-center bg-primary text-primary-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold tracking-tight">Setup Complete!</h2>
-              <p className="text-muted-foreground">Your status page is ready to monitor your services.</p>
-            </div>
-            
-            <div className="p-4 bg-muted/50 rounded-lg border border-border text-left">
-              <h3 className="font-medium mb-3 text-sm">Setup Summary</h3>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-center gap-2">
-                  <span className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs">✓</span>
-                  <span><span className="font-medium">Site:</span> {siteName}</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs">✓</span>
-                  <span><span className="font-medium">Monitoring Type:</span> {path === 'github' ? 'GitHub Integration' : path === 'cron' ? 'Cron Job Monitoring' : 'Custom Integration'}</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs">✓</span>
-                  <span><span className="font-medium">Admin Account:</span> Created successfully</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="flex flex-col gap-3 pt-2">
-              <a 
-                href="/" 
-                className="inline-flex items-center justify-center bg-primary text-primary-foreground shadow hover:bg-primary/90 py-2.5 px-4 rounded-md transition-colors"
-              >
-                View Status Page
-              </a>
-              <a 
-                href="/admin" 
-                className="inline-flex items-center justify-center bg-secondary text-secondary-foreground hover:bg-secondary/90 py-2.5 px-4 rounded-md transition-colors"
-              >
-                Go to Admin Dashboard
-              </a>
-            </div>
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {renderPathSetup()}
+          </motion.div>
         );
+        
+      case 5:
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, type: "spring", stiffness: 300, damping: 30 }}
+          >
+            <div className="space-y-6 text-center">
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+                className="mx-auto"
+              >
+                <div className="h-20 w-20 rounded-full bg-primary/10 mx-auto flex items-center justify-center">
+                  <CheckIcon className="h-10 w-10 text-primary" />
+                </div>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+              >
+                <h1 className="text-2xl font-semibold text-foreground">Setup Complete!</h1>
+                <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+                  Your status page is ready to use. Click the button below to finish and go to your dashboard.
+                </p>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.3 }}
+                className="flex flex-col gap-3 pt-4 max-w-xs mx-auto"
+              >
+                <a 
+                  href="/admin" 
+                  className="inline-flex items-center justify-center bg-primary text-primary-foreground shadow hover:bg-primary/90 py-2.5 px-4 rounded-md transition-colors"
+                >
+                  Go to Admin Dashboard
+                </a>
+                <a 
+                  href="/" 
+                  className="inline-flex items-center justify-center bg-secondary text-secondary-foreground hover:bg-secondary/90 py-2.5 px-4 rounded-md transition-colors"
+                >
+                  View Status Page
+                </a>
+              </motion.div>
+            </div>
+          </motion.div>
+        );
+      
       default:
         return null;
     }
   };
-
+  
+  // Compute step data for progress display
+  const stepItems = SETUP_STEPS.map(stepDef => ({
+    key: stepDef.key,
+    label: stepDef.label,
+    completed: stepCompletion[stepDef.key] || false
+  }));
+  
+  // Determine if the next button should be disabled for special steps
+  const isNextButtonDisabled = () => {
+    if (step === 4) {
+      // If it's the GitHub path setup step, use the reference value
+      if (path === 'github' && githubIsNextDisabledRef.current !== undefined) {
+        return githubIsNextDisabledRef.current;
+      }
+      // If it's the Cron path setup step, use the reference value
+      else if (path === 'cron' && cronIsNextDisabledRef.current !== undefined) {
+        return cronIsNextDisabledRef.current;
+      }
+    }
+    return false; // Default to enabled
+  };
+  
+  // Handle if the current step requires a custom path but none is set
+  const showPathWarning = step === 4 && !path;
+  
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+  
   return (
-    <>
-      {showIntroAnimation && (
+    <AnimatePresence mode="wait">
+      {showIntroAnimation ? (
         <SetupIntroAnimation onComplete={handleIntroComplete} />
-      )}
-      
-      {!showIntroAnimation && (
+      ) : (
         <SetupContainer
           currentStep={step}
           totalSteps={SETUP_STEPS.length}
@@ -615,13 +654,29 @@ function SetupPageContent() {
           onBack={step === 4 && path === 'github' ? handleBackWithGitHub : handleBack}
           isSubmitting={isSubmitting}
           error={error}
-          isNextDisabled={(step === 1 && !path) || (step === 4 && path === 'github' && githubIsNextDisabledRef.current)}
-          hideButtons={showIntroAnimation || step === 5}
+          isNextDisabled={showPathWarning || isNextButtonDisabled()}
+          hideButtons={step === 5}
         >
-          {renderStepContent()}
+          {showPathWarning ? (
+            <div className="p-6 text-center">
+              <p className="text-muted-foreground">Please go back and select a setup path.</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`step-${step}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderStepContent()}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </SetupContainer>
       )}
-    </>
+    </AnimatePresence>
   );
 }
 
