@@ -10,9 +10,7 @@ The easiest way to get started with OpenUptimes is to deploy directly to Vercel 
 
 === "Step 1: Deploy"
 
-    Visit the [OpenUptimes repository](https://github.com/openuptimes/openuptimes) and click the **Deploy with Vercel** button.
-    
-    ![Deploy with Vercel](../assets/vercel-deploy.png)
+    Visit the [OpenUptimes repository](https://github.com/jexxme/openuptimes) and click the **Deploy with Vercel** button.
 
 === "Step 2: Configure settings"
 
