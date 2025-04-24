@@ -120,13 +120,25 @@ export function SetupProvider({ children }: SetupProviderProps) {
   
   const checkEnvironment = async () => {
     try {
-      const response = await fetch('/api/environment');
+      // Add a timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch('/api/environment', { 
+        signal: controller.signal 
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) throw new Error('Environment check failed');
+      
       const data = await response.json();
       setIsEdgeRuntime(data.isEdgeRuntime);
+      return data.isEdgeRuntime;
     } catch (error) {
       console.error('Error checking environment:', error);
-      // Default to false if check fails
+      // Don't throw - set a default value instead
       setIsEdgeRuntime(false);
+      return false;
     }
   };
 

@@ -9,9 +9,8 @@ export async function GET() {
   
   // Gather some additional runtime info
   const runtimeInfo = {
-    nodeVersion: process.version,
-    platform: process.platform,
-    arch: process.arch,
+    nodeVersion: typeof process.version !== 'undefined' ? process.version : 'edge',
+    platform: typeof process.platform !== 'undefined' ? process.platform : 'edge',
     env: process.env.NODE_ENV,
   };
 

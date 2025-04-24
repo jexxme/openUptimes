@@ -6,18 +6,24 @@ import { useSetup, SetupProvider } from '@/app/context/SetupContext';
 import { SetupContainer } from '@/components/setup/SetupContainer';
 import { SetupPathSelector, SetupPath } from '@/components/setup/SetupPathSelector';
 import { GithubIcon, ClockIcon, CustomIcon } from '@/components/setup/SetupIcons';
-import { SetupProgress } from '@/components/setup/SetupProgress';
 import { SETUP_STEPS } from '@/app/utils/setupUtils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { validatePassword, validatePasswordsMatch } from '@/app/utils/setupUtils';
+import { SetupIntroAnimation } from '@/components/setup/SetupIntroAnimation';
 // Dynamic import for GitHub setup component
 import dynamic from 'next/dynamic';
 
 // Dynamically import GitHub setup component
 const GitHubSetup = dynamic(() => import('@/components/setup/github/GitHubSetup'), {
   loading: () => <div className="p-4 text-center">Loading GitHub setup...</div>,
+  ssr: false
+});
+
+// Dynamically import Cron setup component
+const CronSetup = dynamic(() => import('@/components/setup/cron/CronSetup'), {
+  loading: () => <div className="p-4 text-center">Loading Cron setup...</div>,
   ssr: false
 });
 
@@ -46,6 +52,7 @@ function SetupPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showIntroAnimation, setShowIntroAnimation] = useState(true);
   const [passwordValidation, setPasswordValidation] = useState({
     length: false,
     number: false,
@@ -53,12 +60,17 @@ function SetupPageContent() {
     special: false,
     match: false
   });
-  
+
   // Create refs for GitHub setup component
   // These must be at the top level to maintain hook order
   const githubNextRef = React.useRef<(() => void) | null>(null);
   const githubBackRef = React.useRef<(() => void) | null>(null);
   const githubIsNextDisabledRef = React.useRef<boolean>(false);
+  
+  // Create refs for Cron setup component
+  const cronNextRef = React.useRef<(() => void) | null>(null);
+  const cronBackRef = React.useRef<(() => void) | null>(null);
+  const cronIsNextDisabledRef = React.useRef<boolean>(false);
 
   // Define the available setup paths with additional information
   const setupPaths: SetupPath[] = [
@@ -118,21 +130,28 @@ function SetupPageContent() {
     });
   }, [password, confirmPassword]);
 
-  // Check environment on initial load
+  // In page.tsx - Modify the useEffect
+  const [hasCheckedEnv, setHasCheckedEnv] = useState(false);
+
   useEffect(() => {
-    const init = async () => {
-      try {
-        setIsLoading(true);
-        await checkEnvironment();
-        setIsLoading(false);
-      } catch (err) {
-        setError('Failed to check environment. Please refresh to try again.');
-        setIsLoading(false);
-      }
-    };
-    
-    init();
-  }, [checkEnvironment]);
+    // Only run this once
+    if (!hasCheckedEnv) {
+      const init = async () => {
+        try {
+          setIsLoading(true);
+          await checkEnvironment();
+          setHasCheckedEnv(true);
+        } catch (err) {
+          // Just log, don't set error state which might cause re-renders
+          console.error('Environment check error:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      init();
+    }
+  }, [checkEnvironment, hasCheckedEnv]);
 
   // Handle path selection
   const handlePathSelect = (selectedPath: string) => {
@@ -256,17 +275,12 @@ function SetupPageContent() {
   // Render cron setup component for step 4
   const renderCronSetup = () => {
     return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <h2 className="text-xl font-medium text-foreground">Cron Job Setup</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure scheduled monitoring using Edge Runtime.
-          </p>
-        </div>
-        <div className="bg-muted/30 p-4 rounded-md border border-border">
-          <p className="text-sm">Cron job configuration will be implemented in the next phase.</p>
-        </div>
-      </div>
+      <CronSetup
+        onNext={cronNextRef}
+        onBack={cronBackRef}
+        isNextDisabled={cronIsNextDisabledRef}
+        isSubmitting={isSubmitting}
+      />
     );
   };
   
@@ -317,21 +331,50 @@ function SetupPageContent() {
     }
   };
   
-  // Override normal navigation for GitHub setup
+  // Override normal navigation for GitHub and Cron setup
   const handleNextWithGitHub = () => {
-    if (step === 4 && path === 'github' && githubNextRef.current) {
-      githubNextRef.current();
+    if (step === 4) {
+      if (path === 'github' && githubNextRef.current) {
+        githubNextRef.current();
+      } else if (path === 'cron' && cronNextRef.current) {
+        cronNextRef.current();
+      } else {
+        handleNext();
+      }
     } else {
       handleNext();
     }
   };
 
   const handleBackWithGitHub = () => {
-    if (step === 4 && path === 'github' && githubBackRef.current) {
-      githubBackRef.current();
+    if (step === 4) {
+      if (path === 'github' && githubBackRef.current) {
+        githubBackRef.current();
+      } else if (path === 'cron' && cronBackRef.current) {
+        cronBackRef.current();
+      } else {
+        handleBack();
+      }
     } else {
       handleBack();
     }
+  };
+
+  // Check if we should show the intro animation
+  useEffect(() => {
+    // Always show the intro animation
+    setShowIntroAnimation(true);
+    
+    // No need to store that user has seen the intro since we want to show it every time
+    return () => {
+      // Remove any previous flag as we want the animation to show every time
+      localStorage.removeItem('openuptimes-seen-intro');
+    };
+  }, []);
+
+  // Handle completion of the intro animation
+  const handleIntroComplete = () => {
+    setShowIntroAnimation(false);
   };
 
   // Render different content based on current step
@@ -503,11 +546,54 @@ function SetupPageContent() {
         // Path specific setup
         return renderPathSetup();
       case 5:
-        // Final step
+        // Setup complete
         return (
-          <div className="text-center p-8">
-            <p>Step {step} content - {SETUP_STEPS[step-1]?.label}</p>
-            <p className="text-muted-foreground">This step will be implemented fully in the next phase.</p>
+          <div className="space-y-8 py-2 max-w-md mx-auto text-center">
+            <div className="relative mx-auto w-24 h-24 flex items-center justify-center rounded-full bg-primary/10">
+              <div className="absolute w-16 h-16 rounded-full flex items-center justify-center bg-primary text-primary-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-semibold tracking-tight">Setup Complete!</h2>
+              <p className="text-muted-foreground">Your status page is ready to monitor your services.</p>
+            </div>
+            
+            <div className="p-4 bg-muted/50 rounded-lg border border-border text-left">
+              <h3 className="font-medium mb-3 text-sm">Setup Summary</h3>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs">✓</span>
+                  <span><span className="font-medium">Site:</span> {siteName}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs">✓</span>
+                  <span><span className="font-medium">Monitoring Type:</span> {path === 'github' ? 'GitHub Integration' : path === 'cron' ? 'Cron Job Monitoring' : 'Custom Integration'}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 text-xs">✓</span>
+                  <span><span className="font-medium">Admin Account:</span> Created successfully</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div className="flex flex-col gap-3 pt-2">
+              <a 
+                href="/" 
+                className="inline-flex items-center justify-center bg-primary text-primary-foreground shadow hover:bg-primary/90 py-2.5 px-4 rounded-md transition-colors"
+              >
+                View Status Page
+              </a>
+              <a 
+                href="/admin" 
+                className="inline-flex items-center justify-center bg-secondary text-secondary-foreground hover:bg-secondary/90 py-2.5 px-4 rounded-md transition-colors"
+              >
+                Go to Admin Dashboard
+              </a>
+            </div>
           </div>
         );
       default:
@@ -516,26 +602,26 @@ function SetupPageContent() {
   };
 
   return (
-    <SetupContainer
-      currentStep={step}
-      totalSteps={SETUP_STEPS.length}
-      onNext={handleNextWithGitHub}
-      onBack={handleBackWithGitHub}
-      isSubmitting={isLoading || isSubmitting}
-      error={error}
-      isNextDisabled={(step === 1 && !path) || (step === 4 && path === 'github' && githubIsNextDisabledRef.current)}
-      hideStepInfo={step === 1}
-    >
-      {step > 1 && (
-        <SetupProgress 
-          currentStep={step}
-          totalSteps={SETUP_STEPS.length}
-          steps={progressSteps}
-        />
+    <>
+      {showIntroAnimation && (
+        <SetupIntroAnimation onComplete={handleIntroComplete} />
       )}
       
-      {renderStepContent()}
-    </SetupContainer>
+      {!showIntroAnimation && (
+        <SetupContainer
+          currentStep={step}
+          totalSteps={SETUP_STEPS.length}
+          onNext={step === 4 && path === 'github' ? handleNextWithGitHub : handleNext}
+          onBack={step === 4 && path === 'github' ? handleBackWithGitHub : handleBack}
+          isSubmitting={isSubmitting}
+          error={error}
+          isNextDisabled={(step === 1 && !path) || (step === 4 && path === 'github' && githubIsNextDisabledRef.current)}
+          hideButtons={showIntroAnimation || step === 5}
+        >
+          {renderStepContent()}
+        </SetupContainer>
+      )}
+    </>
   );
 }
 

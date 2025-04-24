@@ -2,6 +2,7 @@ import React from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { CheckIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface StepItem {
   key: string;
@@ -31,7 +32,16 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
     <div className="mb-6">
       {/* Progress indicator */}
       <div className="mb-4">
-        <Progress value={progressValue} className="h-1.5" />
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: '100%' }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <Progress 
+            value={progressValue} 
+            className="h-1.5" 
+          />
+        </motion.div>
       </div>
       
       {/* Step indicators */}
@@ -42,7 +52,13 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
           
           return (
             <div key={step.key} className="flex flex-col items-center relative">
-              <div 
+              <motion.div 
+                initial={false}
+                animate={{
+                  scale: isActive ? 1.05 : 1,
+                  boxShadow: isActive ? '0 0 0 4px rgba(var(--primary), 0.1)' : 'none'
+                }}
+                transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 20 }}
                 className={`
                   flex h-7 w-7 items-center justify-center rounded-full transition-all
                   ${isActive 
@@ -53,36 +69,68 @@ export function SetupProgress({ currentStep, totalSteps, steps }: SetupProgressP
                   }
                 `}
               >
-                {isCompleted ? (
-                  <CheckIcon className="h-3.5 w-3.5" />
-                ) : (
-                  <span className="text-xs font-medium">{index + 1}</span>
-                )}
-              </div>
+                <AnimatePresence mode="wait">
+                  {isCompleted ? (
+                    <motion.div
+                      key="completed"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </motion.div>
+                  ) : (
+                    <motion.span 
+                      key="number"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-xs font-medium"
+                    >
+                      {index + 1}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.div>
               
-              <span 
+              <motion.span 
+                initial={false}
+                animate={{ 
+                  color: isActive ? 'var(--foreground)' : isCompleted ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  fontWeight: isActive ? 600 : 500
+                }}
+                transition={{ duration: 0.2 }}
                 className={`
-                  mt-1.5 text-center text-xs leading-tight font-medium truncate w-full
-                  ${isActive 
-                    ? 'text-foreground' 
-                    : isCompleted 
-                    ? 'text-foreground' 
-                    : 'text-muted-foreground'
-                  }
+                  mt-1.5 text-center text-xs leading-tight truncate w-full
                 `}
               >
                 <span className="hidden sm:block">{step.label}</span>
-                <span className="block sm:hidden">{index + 1 === currentStep ? step.label : ''}</span>
-              </span>
+                <AnimatePresence mode="wait">
+                  {index + 1 === currentStep && (
+                    <motion.span 
+                      className="block sm:hidden"
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {step.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.span>
               
               {index < steps.length - 1 && (
                 <div className="hidden sm:block absolute left-1/2 top-3.5 h-[1px] w-full z-[-1]">
-                  <Separator 
-                    className={`
-                      w-full 
-                      ${index < currentStep - 1 ? 'bg-primary/50' : 'bg-border'}
-                    `} 
-                  />
+                  <motion.div
+                    initial={false}
+                    animate={{ backgroundColor: index < currentStep - 1 ? 'rgba(var(--primary), 0.5)' : 'var(--border)' }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <Separator className="w-full" />
+                  </motion.div>
                 </div>
               )}
             </div>
