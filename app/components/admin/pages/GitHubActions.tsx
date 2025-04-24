@@ -1311,20 +1311,23 @@ export function GitHubActionsPage({
               </div>
             </div>
           </div>
-          
+
           {/* Advanced Configuration Link */}
-          <div className="rounded-lg border bg-card p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Github className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Need more detailed GitHub configuration?</span>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium mb-1">Need more detailed GitHub configuration?</h3>
+                <p className="text-xs text-muted-foreground">
+                  Access the advanced GitHub debug page for more control over API keys, workflow settings, and detailed logs.
+                </p>
+              </div>
+              <Link href="/debug/ping/github" className="ml-4">
+                <Button variant="outline" size="sm" className="h-8 whitespace-nowrap">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Advanced Settings
+                </Button>
+              </Link>
             </div>
-            <Link 
-              href="/debug/ping/github" 
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              <span>Advanced GitHub Setup</span>
-              <ExternalLink className="h-4 w-4" />
-            </Link>
           </div>
 
           {/* Save Button */}

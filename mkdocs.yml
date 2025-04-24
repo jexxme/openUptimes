@@ -1,0 +1,78 @@
+site_name: OpenUptimes
+site_description: A simple, elegant, and self-hosted status page to monitor and display the uptime of your services
+site_url: https://openuptimes.github.io/openuptimes/
+repo_url: https://github.com/jexxme/openuptimes
+repo_name: jexxme/openuptimes
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/favicon.svg
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/white-balance-sunny
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: white
+      accent: black
+      toggle:
+        icon: material/moon-waning-crescent
+        name: Switch to light mode
+  font:
+    text: Geist Sans
+    code: Geist Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - def_list
+  
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: getting-started/overview.md
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+  - API Reference:
+    - Endpoints: api/endpoints.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Documentation: DEPLOYMENT.md
+    
+plugins:
+  - search
+  
+# GitHub Pages deployment settings
+use_directory_urls: true
+  
+copyright: Copyright &copy; 2024 OpenUptimes - PolyForm Noncommercial License 1.0.0

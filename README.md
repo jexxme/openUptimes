@@ -17,7 +17,9 @@
   <a href="#security">Security</a> •
   <a href="#authentication">Authentication</a> •
   <a href="#api-endpoints">API Endpoints</a> •
+  <a href="#history-data-management">History Data Management</a> •
   <a href="#github-actions-monitoring">GitHub Actions Monitoring</a> •
+  <a href="#internal-cron-system">Internal Cron System</a> •
   <a href="#alternative-monitoring">Alternative Monitoring</a> •
   <a href="#troubleshooting">Troubleshooting</a> •
   <a href="#contributing">Contributing</a> •
@@ -435,6 +437,251 @@ You can customize the GitHub Actions monitoring by:
 - Implementing custom notification logic in the workflow
 - Using a different API endpoint or monitoring service
 
+## Internal Cron System
+
+OpenUptimes provides a built-in cron system for more flexible and precise service monitoring without relying on external services. This system is designed to run within your OpenUptimes instance, offering finer control over monitoring schedules.
+
+### Cron System Architecture
+
+The internal cron system is built on a Redis-backed job scheduler with the following components:
+
+1. **Job Storage**: Each cron job is stored in Redis with a unique identifier
+2. **Job Scheduler**: Background process that checks for jobs due to run
+3. **Execution Engine**: Executes ping checks based on job definitions
+4. **History Tracker**: Records execution details for auditing and analysis
+5. **Management API**: Allows creating, updating, and deleting jobs via REST endpoints
+
+### Core Features
+
+- **Flexible Scheduling**: Standard cron syntax for precise scheduling control (e.g., `*/1 * * * *` for every minute)
+- **Job Management**: Create, update, pause, resume, and delete jobs through the admin interface
+- **Execution History**: Track every job execution with status, duration, and error details
+- **Redis Backend**: Lightweight storage that keeps everything in memory for fast access
+- **Error Handling**: Automatic error detection and reporting for job failures
+- **Execution Metrics**: Performance tracking for each job execution
+- **Restart Recovery**: Jobs persist across application restarts
+- **Zero External Dependencies**: Runs entirely within your OpenUptimes instance
+
+### Setting Up Cron Jobs
+
+You can manage cron jobs through the dedicated debug interface at `/debug/ping/cron`.
+
+#### Creating a New Job
+
+1. Navigate to `/debug/ping/cron`
+2. Click "New Job"
+3. Fill in the job details:
+   - **Name**: Descriptive name for the job (e.g., "Every Minute Check")
+   - **Description**: (Optional) Additional information about the job
+   - **Cron Expression**: Schedule in cron format (e.g., `*/1 * * * *` for every minute)
+   - **Enabled**: Toggle to activate/deactivate the job immediately
+4. Click "Create Job"
+
+#### Managing Existing Jobs
+
+From the cron debug interface, you can:
+
+- **Start/Stop Jobs**: Pause or resume any job
+- **Edit Jobs**: Modify the name, description, schedule, or enabled status
+- **Delete Jobs**: Remove jobs you no longer need
+- **Clone Jobs**: Create a new job based on an existing configuration
+- **View History**: See execution logs for each job
+- **View Metrics**: Monitor performance metrics like execution time
+
+### Understanding Cron Expressions
+
+Cron expressions follow the standard format with five fields:
+
+```
+┌───────────── minute (0-59)
+│ ┌───────────── hour (0-23)
+│ │ ┌───────────── day of the month (1-31)
+│ │ │ ┌───────────── month (1-12)
+│ │ │ │ ┌───────────── day of the week (0-6) (Sunday to Saturday)
+│ │ │ │ │
+│ │ │ │ │
+* * * * *
+```
+
+Common examples:
+- `* * * * *`: Every minute
+- `*/5 * * * *`: Every 5 minutes
+- `0 * * * *`: Every hour on the hour
+- `0 0 * * *`: Once a day at midnight
+- `0 0 * * 0`: Once a week on Sunday at midnight
+
+### Advanced Configuration
+
+The cron system supports several advanced options for fine-tuning your monitoring:
+
+#### Job-Specific Configuration
+
+Each job maintains its own configuration, separate from your service definitions:
+
+```json
+{
+  "id": "job_1696788378293",
+  "name": "Every Minute Check",
+  "description": "Checks all services every minute",
+  "cronExpression": "*/1 * * * *",
+  "enabled": true,
+  "status": "running",
+  "lastRun": 1696788498293,
+  "lastRunStatus": "success",
+  "lastRunDuration": 243,
+  "nextRun": 1696788558293,
+  "createdAt": 1696788378293,
+  "updatedAt": 1696788378293
+}
+```
+
+#### Import/Export System
+
+The debug interface provides a way to:
+- **Export**: Save all your cron jobs as a JSON file for backup or transfer
+- **Import**: Restore jobs from a previously exported file or create multiple jobs at once
+
+#### Error Handling and Reporting
+
+The cron system features comprehensive error handling:
+- Failed jobs are marked with an "error" status
+- Detailed error information is captured and displayed
+- History logs are maintained for diagnostic purposes
+- Error rates and patterns can be analyzed through the metrics view
+
+### Security Considerations
+
+The cron system includes several security features:
+
+1. **Authentication Required**: All cron management endpoints require authentication
+2. **API Key Protection**: Jobs execute with the same API key protection as GitHub Actions
+3. **Rate Limiting**: Prevents excessive job creation or API abuse
+4. **Execution Isolation**: Each job execution runs in its own context to prevent cross-job interference
+5. **Controlled Access**: Only authenticated administrators can access the cron management interface
+
+### Best Practices for Using Cron Jobs
+
+For optimal results with the internal cron system, follow these best practices:
+
+#### Performance Considerations
+
+- **Job Frequency**: Be mindful of how frequently you schedule jobs. For most websites, checks every 1-5 minutes provide a good balance between timeliness and resource usage.
+- **Execution Time**: Monitor how long your jobs take to execute. If they consistently take more than a few seconds, consider reducing the number of services or decreasing the frequency.
+- **Concurrent Jobs**: The system can handle multiple concurrent jobs, but high concurrency may impact performance. Stagger job schedules when possible.
+
+#### Monitoring Strategy
+
+- **Tiered Approach**: Consider a tiered monitoring strategy:
+  - Critical services: Check every minute
+  - Important services: Check every 5 minutes
+  - Non-critical services: Check every 15-30 minutes
+- **Business Hours**: For internal tools, you may want more frequent checks during business hours and reduced frequency after hours.
+- **Maintenance Windows**: Create separate jobs that respect maintenance windows for planned downtimes.
+
+#### Resource Optimization
+
+- **Redis Usage**: The cron system is designed to be lightweight, but extensive history data can grow over time. Consider periodic cleanup of old history data for long-running instances.
+- **Job History**: By default, the system stores the last 100 executions for each job. This balance provides enough data for analysis without excessive storage requirements.
+
+### Comparison with GitHub Actions
+
+| Feature | Internal Cron | GitHub Actions |
+|---------|--------------|----------------|
+| Minimum interval | 1 minute | 5 minutes |
+| Setup complexity | Simple (UI-based) | Moderate (requires workflow file) |
+| Infrastructure | Uses your OpenUptimes instance | Uses GitHub's infrastructure |
+| Execution history | Detailed history with UI | Basic logs in GitHub UI |
+| Scheduling precision | High (follows exact cron syntax) | Medium (5-minute minimum, variable execution) |
+| Resource usage | Uses your instance resources | Uses GitHub's resources |
+| Dependency | Redis only | GitHub platform |
+| Configuration | UI-based management | YAML file configuration |
+| Analytics | Built-in execution metrics | Basic GitHub metrics |
+
+### Troubleshooting Common Issues
+
+#### Jobs Not Running
+
+If your cron jobs aren't executing as expected:
+
+1. **Check the job status**: Ensure the job is marked as "running" in the job list
+2. **Verify Redis connection**: Jobs require a functioning Redis connection
+3. **Check cron expression**: Validate that your cron expression is formatted correctly
+4. **Review execution history**: Look for errors or patterns in previous executions
+5. **Verify server time**: Ensure your server's time is correctly synchronized (NTP)
+6. **Check for failed executions**: Previous failures might have caused automatic disabling
+
+#### Performance Issues
+
+If you notice slow performance:
+
+1. **Reduce job frequency**: Consider increasing the interval between job executions
+2. **Limit concurrent jobs**: Stagger job schedules to avoid resource contention
+3. **Check service response times**: Slow services may be impacting job execution time
+4. **Monitor Redis performance**: Ensure your Redis instance isn't under resource pressure
+5. **Review job history size**: Large history datasets may impact Redis performance
+
+#### Reset and Recovery
+
+In case of persistent issues:
+
+1. **Job-level reset**: You can delete and recreate problematic jobs
+2. **Export/import jobs**: Backup your job configurations before making major changes
+3. **System-level reset**: In extreme cases, you can reset the entire cron system by clearing Redis keys (prefixed with `cron:`)
+
+### API Endpoints for Cron Management
+
+For programmatic cron job management, the following API endpoints are available:
+
+- **GET `/api/ping/cron`**: List all cron jobs (or get a specific job with `?id=job_id`)
+- **POST `/api/ping/cron`**: Create a new cron job
+- **PUT `/api/ping/cron`**: Update an existing cron job
+- **DELETE `/api/ping/cron?id=job_id`**: Delete a cron job
+- **GET `/api/ping/cron?id=job_id&history=true`**: Get execution history for a job
+
+All endpoints require authentication and accept/return JSON data.
+
+### Implementation Details
+
+For developers interested in the technical implementation:
+
+The cron system uses a lightweight in-memory scheduler that:
+1. Loads job definitions from Redis on startup
+2. Calculates next run times based on cron expressions
+3. Executes jobs when they are due
+4. Updates job status and history in Redis
+5. Recovers gracefully from restarts or failures
+
+The system is implemented with TypeScript for type safety and uses the [cron-parser](https://github.com/harrisiirak/cron-parser) library for accurate cron expression parsing and next-run calculations.
+
+#### Data Model
+
+```typescript
+interface CronJob {
+  id: string;
+  name: string;
+  description?: string;
+  cronExpression: string;
+  enabled: boolean;
+  status: 'running' | 'stopped' | 'error';
+  lastRun?: number;
+  lastRunStatus?: 'success' | 'failure';
+  lastRunDuration?: number;
+  lastRunError?: string;
+  nextRun?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface HistoryEntry {
+  jobId: string;
+  timestamp: number;
+  duration?: number;
+  status: 'success' | 'failure';
+  error?: string;
+  meta?: Record<string, any>;
+}
+```
+
 ## Alternative Monitoring
 
 While GitHub Actions provides a simple, maintenance-free way to monitor your services, you can also use external tools for more precise monitoring if needed.
@@ -494,6 +741,154 @@ OpenUptimes provides several API endpoints for monitoring and configuring servic
 - **GET `/api/setup/status`**: Checks if the initial setup has been completed
 - **POST `/api/setup/complete`**: Marks the setup as completed
 - **POST `/api/setup/reset`**: Resets the application to its initial state
+
+## History Data Management
+
+OpenUptimes provides robust tools for managing historical ping data through both the user interface and API endpoints. This enables you to control Redis memory usage and maintain optimal performance while retaining the data that matters most to you.
+
+### TTL Management
+
+Time-to-Live (TTL) settings control how long ping history entries are stored in Redis before being automatically purged. This is critical for long-running instances where accumulated data might impact Redis performance.
+
+#### TTL Configuration Options
+
+The system offers several predefined TTL duration options:
+
+| Duration | Description | Best For |
+|----------|-------------|----------|
+| 1 hour | Shortest retention | Development environments, testing |
+| 6 hours | Brief retention | High-frequency checks with minimal storage |
+| 12 hours | Half-day retention | Intraday monitoring |
+| 24 hours | Default retention | Standard monitoring needs |
+| 3 days | Extended retention | Weekend coverage |
+| 7 days | Week retention | Weekly pattern analysis |
+| 30 days | Month retention | Monthly trend analysis |
+| 90 days | Quarter retention | Quarterly reporting |
+| Unlimited | No expiration | Critical data that must be preserved indefinitely |
+
+#### Warning for Unlimited TTL
+
+When setting TTL to unlimited, the system displays a prominent warning about potential Redis memory consumption. While convenient for retaining complete history, unlimited TTL should be used cautiously, especially in environments with:
+
+- Limited Redis memory allocation
+- High-frequency ping checks
+- Many monitored services
+- Long-term deployments
+
+#### Changing TTL Settings
+
+You can easily modify the TTL setting through:
+
+1. **User Interface**: In the Debug Ping History component, a selector allows you to choose from predefined TTL options
+2. **API Endpoint**: For programmatic control, use the `/api/ping-history/ttl` endpoint
+
+#### API for TTL Management
+
+The system provides dedicated API endpoints for TTL management:
+
+- **GET `/api/ping-history/ttl`**: Retrieves current TTL setting
+  ```json
+  {
+    "ttl": 86400,
+    "unlimited": false
+  }
+  ```
+
+- **PATCH `/api/ping-history/ttl`**: Updates TTL setting
+  ```json
+  {
+    "ttl": 604800  // Set to 7 days (in seconds)
+  }
+  ```
+  
+  Response:
+  ```json
+  {
+    "success": true,
+    "ttl": 604800,
+    "unlimited": false,
+    "message": "History TTL set to 604800 seconds"
+  }
+  ```
+
+Setting `ttl` to `0` enables unlimited retention:
+  ```json
+  {
+    "ttl": 0  // Unlimited retention, no expiration
+  }
+  ```
+
+### History Clearing
+
+In addition to automatic expiration through TTL, OpenUptimes provides tools to manually clear ping history data when needed.
+
+#### When to Clear History
+
+Manual history clearing is useful for:
+
+- Removing test data after setup
+- Clearing problematic entries
+- Freeing Redis memory immediately
+- Resetting monitoring after configuration changes
+- Starting fresh after resolving service issues
+
+#### Clearing Through the UI
+
+The Debug interface includes a "Clear History" button with a confirmation prompt to prevent accidental data loss. This provides a simple way to purge all ping history entries with a single action.
+
+#### API for History Clearing
+
+For programmatic control or automation, use the dedicated API endpoint:
+
+- **DELETE `/api/ping-history`**: Clears all ping history entries
+  ```json
+  {
+    "success": true,
+    "message": "Ping history cleared"
+  }
+  ```
+
+#### Security Considerations
+
+Both the UI and API endpoints for history management require full authentication. Only authenticated administrators can modify TTL settings or clear history data.
+
+### Implementation Details
+
+#### Redis Data Storage
+
+Ping history is stored in Redis using a list structure with the key `ping:history`. Each entry in the list contains:
+
+- Timestamp of the ping
+- Execution time
+- Number of services checked
+- Source information (GitHub Action, cron job, etc.)
+- Run ID for tracking
+
+#### Default Settings
+
+By default, OpenUptimes:
+- Sets a 24-hour TTL for ping history
+- Limits ping history to 1000 entries (independent of TTL)
+- Applies TTL to each service's history individually
+
+#### Technical Architecture
+
+The history management system uses:
+1. Redis TTL commands to expire keys automatically
+2. Redis EXPIRE command to update TTL values
+3. Redis DEL command to manually clear data
+4. Atomic operations to ensure data consistency
+
+### Best Practices
+
+For optimal history data management:
+
+1. **Match TTL to monitoring frequency**: Higher frequency checks benefit from shorter TTL
+2. **Consider Redis memory allocation**: Limited Redis instances may need shorter TTL
+3. **Align TTL with reporting needs**: Ensure TTL covers your reporting time frames
+4. **Use unlimited TTL sparingly**: Reserve for critical historical data only
+5. **Schedule regular maintenance**: For long-running instances, periodically review and adjust TTL
+6. **Monitor Redis memory usage**: Watch for unexpected growth and adjust TTL accordingly
 
 ## Troubleshooting
 
@@ -571,15 +966,15 @@ OpenUptimes is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE
 
 OpenUptimes started as a small personal project, built to scratch an itch for simple, clean uptime pages. Over time, it felt right to share it more widely—especially since transparency around service uptime feels like something that should be easy and accessible for everyone.
 
-That’s why OpenUptimes is licensed under the PolyForm Noncommercial License. It’s free to use for:
+That's why OpenUptimes is licensed under the PolyForm Noncommercial License. It's free to use for:
  - 👨‍💻 Personal projects
  - 🏫 Educational work and research
  - 🏢 Internal or public use by organizations, startups, and small businesses
  - 🏥 Nonprofits, NGOs, and public institutions
 
-Basically: if you’re using it to show uptime for your own service, cool, that’s what it’s for!
+Basically: if you're using it to show uptime for your own service, cool, that's what it's for!
 
-What’s not okay: taking this project, tweaking it, and turning it into a commercial product or hosted service. That’s not the spirit of it.
+What's not okay: taking this project, tweaking it, and turning it into a commercial product or hosted service. That's not the spirit of it.
 
 ---
 

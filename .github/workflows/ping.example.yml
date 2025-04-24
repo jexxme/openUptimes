@@ -1,0 +1,69 @@
+name: OpenUptimes Ping Check
+
+on:
+  push:
+    branches:
+      - '**'  # Run on any branch
+  schedule:
+    # More frequent schedule to compensate for GitHub's scheduling delays
+    - cron: '*/5 * * * *'  # Every 3 minutes
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Service Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log start time
+        run: echo "Workflow started at $(date)"
+
+      - name: Log trigger event
+        run: 'echo "Triggered by: ${{ github.event_name }}"'
+        
+      - name: Check if App URL is provided
+        id: url_check
+        run: |
+          if [[ "${{ vars.APP_URL }}" == "http://localhost:3000" || "${{ vars.APP_URL }}" == "" ]]; then
+            echo "Using localhost - skipping ping as this is likely a local environment or not yet configured"
+            echo "configured=false" >> $GITHUB_OUTPUT
+          else
+            # Remove trailing slash if present
+            APP_URL="${{ vars.APP_URL }}"
+            APP_URL=${APP_URL%/}
+            echo "Using remote URL: $APP_URL"
+            echo "configured=true" >> $GITHUB_OUTPUT
+            echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Perform Ping
+        if: steps.url_check.outputs.configured == 'true'
+        env:
+          PING_API_KEY: ${{ secrets.PING_API_KEY }}
+          RUN_ID: ${{ github.run_id }}
+          APP_URL: ${{ steps.url_check.outputs.app_url }}
+        run: |
+          echo "Running ping check (ID: $RUN_ID)"
+          
+          # Construct the API URL
+          PING_URL="${APP_URL}/api/ping?runId=${RUN_ID}"
+          
+          # Make the request with curl (with redirect following)
+          HTTP_STATUS=$(curl -L -s -o response.txt -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: GitHub-Actions-Ping-Scheduler" \
+            -H "X-API-Key: $PING_API_KEY" \
+            "$PING_URL")
+          
+          # Check if successful
+          if [ $HTTP_STATUS -ne 200 ]; then
+            echo "Error: Received HTTP status $HTTP_STATUS"
+            cat response.txt
+            exit 1
+          fi
+          
+          echo "Ping successful"
+          cat response.txt
+          
+      - name: Log completion time
+        run: echo "Workflow completed at $(date)" 

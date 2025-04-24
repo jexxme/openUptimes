@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ExternalLink, Bug, Github } from "lucide-react";
+import { ExternalLink, Bug, Github, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DebugSettings() {
@@ -47,6 +47,29 @@ export function DebugSettings() {
             <Link href="/debug/ping/github" target="_blank" passHref>
               <Button variant="outline" className="flex items-center gap-2">
                 Configure
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="border rounded-lg shadow-sm dark:border-gray-800 dark:bg-card">
+        <div className="p-6">
+          <div className="flex flex-col space-y-1.5 mb-4">
+            <div className="flex items-center">
+              <Clock className="h-5 w-5 mr-2 text-primary" />
+              <h3 className="text-lg font-medium">Cron Jobs Management</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Create and manage scheduled jobs for monitoring and automation. Configure timing, view execution history, and monitor performance.
+            </p>
+          </div>
+          
+          <div className="flex justify-end">
+            <Link href="/debug/ping/cron" target="_blank" passHref>
+              <Button variant="outline" className="flex items-center gap-2">
+                Manage Jobs
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </Link>

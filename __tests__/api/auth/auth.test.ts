@@ -144,7 +144,7 @@ describe('Auth API Endpoints', () => {
       
       expect(response.status).toBe(200);
       expect(response.data.success).toBe(true);
-      expect(authenticate).toHaveBeenCalledWith({ password: 'correct-password' }, 'password');
+      expect(authenticate).toHaveBeenCalledWith({ password: 'correct-password' });
       expect(storeSession).toHaveBeenCalledWith('test-session-token');
       
       // Check cookie was set

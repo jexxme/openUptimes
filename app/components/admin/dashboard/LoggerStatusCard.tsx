@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Activity, ExternalLink, AlertTriangle, RotateCw, Clock, Server, Github, Calendar } from "lucide-react";
+import { Activity, ExternalLink, AlertTriangle, RotateCw, Clock, Server, Github, Calendar, Terminal } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +20,8 @@ interface LoggerStatusCardProps {
   handleNavigation?: (tab: string, section?: string) => void;
   className?: string;
   preloadedPingStats?: any;
+  cronJobs?: any[];
+  activeCronJobs?: number;
 }
 
 interface TooltipProps {
@@ -47,7 +49,13 @@ const Tooltip = ({ text, children }: TooltipProps) => (
   </div>
 );
 
-export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPingStats = null }: LoggerStatusCardProps) => {
+export const LoggerStatusCard = ({ 
+  handleNavigation, 
+  className = "", 
+  preloadedPingStats = null,
+  cronJobs = [],
+  activeCronJobs = 0
+}: LoggerStatusCardProps) => {
 
   const [pingStats, setPingStats] = useState<any>(preloadedPingStats);
   const [isLoading, setIsLoading] = useState(!preloadedPingStats);
@@ -60,6 +68,78 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
   const isFirstRender = useRef(true);
   // Track if we've finished initial setup
   const initialSetupComplete = useRef(false);
+
+  // Detect which system is active
+  const isCronActive = activeCronJobs > 0;
+  const isGithubActive = !!(pingStats?.githubAction?.enabled);
+  
+  // Get active ping system name
+  const getActiveSystem = () => {
+    if (isCronActive) return { name: 'Cron Job', color: 'bg-indigo-500' };
+    if (isGithubActive) return { name: 'GitHub Actions', color: 'bg-green-500' };
+    return { name: 'None', color: 'bg-slate-500' };
+  };
+  
+  const activeSystem = getActiveSystem();
+
+  // Find the active cron job with the shortest interval
+  const getActiveCronInterval = () => {
+    if (cronJobs.length === 0 || activeCronJobs === 0) return null;
+    
+    const runningJobs = cronJobs.filter((job: any) => job.status === 'running');
+    if (runningJobs.length === 0) return null;
+    
+    // Get expected intervals from cron expressions
+    const intervals = runningJobs.map((job: any) => {
+      const exp = job.cronExpression;
+      // Simple parsing for */n format (minutes)
+      if (exp.match(/^\*\/(\d+) \* \* \* \*$/)) {
+        const match = exp.match(/^\*\/(\d+) \* \* \* \*$/);
+        const minutes = match ? parseInt(match[1]) : 5;
+        return { job, seconds: minutes * 60 };
+      }
+      // Default to 5 minutes for other formats
+      return { job, seconds: 300 };
+    });
+    
+    // Find the job with the shortest interval
+    return intervals.sort((a, b) => a.seconds - b.seconds)[0];
+  };
+  
+  // Get active cron job info
+  const activeCronInterval = getActiveCronInterval();
+  const activeCronJob = activeCronInterval?.job;
+  
+  // Get the expected interval based on active system
+  const getSystemInterval = () => {
+    if (isCronActive && activeCronInterval) {
+      return activeCronInterval.seconds;
+    }
+    
+    if (isGithubActive && pingStats?.githubAction?.schedule) {
+      // Parse GitHub schedule
+      const cronSchedule = pingStats.githubAction.schedule;
+      if (cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/)) {
+        const match = cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/);
+        if (match) {
+          const minutes = parseInt(match[1]);
+          // Enforce minimum 5 minutes for GitHub Actions
+          return Math.max(5, minutes) * 60;
+        }
+      }
+      return 300; // Default GitHub interval is 5 minutes
+    }
+    
+    // When no active system is detected, use fallback interval
+    if (pingStats?.intervalSeconds) {
+      return pingStats.intervalSeconds;
+    }
+    
+    // Fall back to default interval
+    return 300; // 5 minutes default
+  };
+  
+  const systemInterval = getSystemInterval();
 
   // Define calculateIntervalStats function before using it
   const calculateIntervalStats = (data: any = pingStats) => {
@@ -104,17 +184,8 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     const minInterval = Math.min(...intervals);
     const maxInterval = Math.max(...intervals);
     
-    // Calculate expected interval from cron (simplistic)
-    const cronSchedule = data.githubAction?.schedule || '*/5 * * * *';
-    let expectedInterval = 300; // Default 5 minutes (GitHub Actions minimum)
-    if (cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/)) {
-      const match = cronSchedule.match(/^\*\/(\d+) \* \* \* \*$/);
-      if (match) {
-        const minutes = parseInt(match[1]);
-        // Enforce minimum 5 minutes for GitHub Actions
-        expectedInterval = Math.max(5, minutes) * 60;
-      }
-    }
+    // Use the expected interval from the active system
+    const expectedInterval = systemInterval;
     
     const avgDrift = intervals.map(i => Math.abs(i - expectedInterval)).reduce((a, b) => a + b, 0) / intervals.length;
     const consistency = 100 - (avgDrift / expectedInterval * 100);
@@ -125,6 +196,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
       maxInterval,
       avgDrift: Math.round(avgDrift),
       consistency: Math.round(Math.max(0, Math.min(100, consistency))),
+      intervals,
       sampleSize: intervals.length,
       totalSamples: data.recentHistory.length,
       expectedInterval,
@@ -238,8 +310,28 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     return `${hours}h ${minutes % 60}m ago`;
   };
 
-  // Calculate time until next ping with better formatting
+  // Calculate time until next ping based on active system
   const timeUntilNextPing = () => {
+    // For cron jobs, use the nextRun time from the active job
+    if (isCronActive && activeCronJob?.nextRun) {
+      const secondsUntil = Math.max(0, Math.round((activeCronJob.nextRun - currentTime) / 1000));
+      
+      if (secondsUntil <= 0) return 'Imminent';
+      
+      if (secondsUntil < 60) {
+        return `${secondsUntil}s`;
+      }
+      
+      const minutes = Math.floor(secondsUntil / 60);
+      if (minutes < 60) {
+        return `${minutes}m ${secondsUntil % 60}s`;
+      }
+      
+      const hours = Math.floor(minutes / 60);
+      return `${hours}h ${minutes % 60}m`;
+    }
+    
+    // For GitHub Actions or when no active system is detected
     if (!pingStats?.timeUntilNextRun) return 'N/A';
     
     const secondsUntil = Math.floor(pingStats.timeUntilNextRun / 1000) - Math.floor((currentTime - lastUpdated) / 1000);
@@ -259,8 +351,29 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     return `${hours}h ${minutes % 60}m`;
   };
 
-  // Format estimated next run time with better human readability
+  // Format estimated next run time
   const formatEstimatedRunTime = () => {
+    // For cron jobs, show next run from cron system
+    if (isCronActive && activeCronJob?.nextRun) {
+      const secondsUntil = Math.max(0, Math.round((activeCronJob.nextRun - currentTime) / 1000));
+      
+      if (secondsUntil <= 30) {
+        return 'Imminent';
+      }
+      
+      if (secondsUntil < 60) {
+        return `in ${secondsUntil}s`;
+      } else if (secondsUntil < 3600) {
+        const minutes = Math.floor(secondsUntil / 60);
+        return `in ${minutes}m ${secondsUntil % 60}s`;
+      } else {
+        const hours = Math.floor(secondsUntil / 3600);
+        const minutes = Math.floor((secondsUntil % 3600) / 60);
+        return `in ${hours}h ${minutes}m`;
+      }
+    }
+    
+    // For GitHub Actions or when no active system is detected
     if (!pingStats?.nextEstimatedRun) return 'Unknown';
     
     const estimatedTime = typeof pingStats.nextEstimatedRun === 'number' ? 
@@ -287,45 +400,24 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     }
   };
 
-  // Format GitHub Action cron schedule
-  const formatCronSchedule = (cronExpression: string) => {
-    if (!cronExpression) return 'Invalid schedule';
-    
-    // Simple human-readable conversion for common patterns
-    if (cronExpression === '* * * * *') return 'Every minute (GitHub: 5min min)';
-    if (cronExpression.match(/^\*\/(\d+) \* \* \* \*$/)) {
-      const match = cronExpression.match(/^\*\/(\d+) \* \* \* \*$/);
-      const mins = match ? match[1] : '';
-      const interval = parseInt(mins);
-      
-      if (interval < 5) {
-        return `Every ${mins}m (GitHub: 5min min)`;
-      }
-      
-      return `Every ${mins}m`;
-    }
-    
-    return cronExpression;
-  };
-
-  // Get last GitHub Actions ping time
-  const getLastGitHubActionsPing = () => {
+  // Get last ping time by source
+  const getLastPingBySource = (source: string) => {
     if (!pingStats?.recentHistory || pingStats.recentHistory.length === 0) {
       return 'Never';
     }
     
-    // Find the most recent GitHub Actions ping
-    const githubPing = pingStats.recentHistory.find((entry: any) => 
-      entry.source === 'github-action'
+    // Find the most recent ping of the specified source
+    const ping = pingStats.recentHistory.find((entry: any) => 
+      entry.source === source
     );
     
-    if (!githubPing) {
+    if (!ping) {
       return 'Not found';
     }
     
     // Calculate time since this ping occurred
-    const pingTime = typeof githubPing.timestamp === 'number' ? 
-      githubPing.timestamp : new Date(githubPing.timestamp).getTime();
+    const pingTime = typeof ping.timestamp === 'number' ? 
+      ping.timestamp : new Date(ping.timestamp).getTime();
     
     const seconds = Math.floor((currentTime - pingTime) / 1000);
     
@@ -345,6 +437,73 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     
     const days = Math.floor(hours / 24);
     return `${days}d ${hours % 24}h ago`;
+  };
+
+  // Get last GitHub Actions ping time
+  const getLastGitHubActionsPing = () => getLastPingBySource('github-action');
+  
+  // Get last Cron Job ping time
+  const getLastCronPing = () => getLastPingBySource('cron-job');
+  
+  // Get last ping time from any source
+  const getLastAnyPing = () => {
+    if (!pingStats?.lastPing) return 'Never';
+    
+    const seconds = Math.floor((currentTime - pingStats.lastPing) / 1000);
+    
+    if (seconds < 60) {
+      return `${seconds}s ago`;
+    }
+    
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) {
+      return `${minutes}m ${seconds % 60}s ago`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+      return `${hours}h ${minutes % 60}m ago`;
+    }
+    
+    const days = Math.floor(hours / 24);
+    return `${days}d ${hours % 24}h ago`;
+  };
+  
+  // Format a cron expression
+  const formatCronSchedule = (cronExpression: string) => {
+    if (!cronExpression) return 'Invalid schedule';
+    
+    // Simple human-readable conversion for common patterns
+    if (cronExpression === '* * * * *') return 'Every minute';
+    if (cronExpression.match(/^\*\/(\d+) \* \* \* \*$/)) {
+      const match = cronExpression.match(/^\*\/(\d+) \* \* \* \*$/);
+      const mins = match ? match[1] : '';
+      
+      return `Every ${mins}m`;
+    }
+    
+    return cronExpression;
+  };
+  
+  // Format GitHub Action cron schedule
+  const formatGitHubSchedule = (cronExpression: string) => {
+    if (!cronExpression) return 'Invalid schedule';
+    
+    // Simple human-readable conversion for common patterns
+    if (cronExpression === '* * * * *') return 'Every minute (GitHub: 5min min)';
+    if (cronExpression.match(/^\*\/(\d+) \* \* \* \*$/)) {
+      const match = cronExpression.match(/^\*\/(\d+) \* \* \* \*$/);
+      const mins = match ? match[1] : '';
+      const interval = parseInt(mins);
+      
+      if (interval < 5) {
+        return `Every ${mins}m (GitHub: 5min min)`;
+      }
+      
+      return `Every ${mins}m`;
+    }
+    
+    return cronExpression;
   };
 
   // Get service count
@@ -367,7 +526,7 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
     if (!pingStats?.lastPing) return { status: 'Unknown', color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' };
     
     const seconds = Math.floor((currentTime - pingStats.lastPing) / 1000);
-    const interval = pingStats.intervalSeconds || 300;
+    const interval = systemInterval;
     
     if (seconds > 1.5 * interval) {
       return { status: 'Critical', color: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' };
@@ -380,14 +539,6 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
 
   const loggerStatus = getLoggerStatus();
   const secondsSinceLastPing = pingStats?.lastPing ? Math.floor((currentTime - pingStats.lastPing) / 1000) : 0;
-
-  // Add debug render message
-
-
-
-
-
-
 
   return (
     <Card className={`overflow-visible border ${className}`}>
@@ -450,77 +601,128 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
             
             {/* Skeleton for the stats grid */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Left Column: GitHub + Performance */}
+              {/* Left Column: Ping Systems */}
               <div className="space-y-3">
-                {/* GitHub Actions Status Skeleton */}
+                {/* GitHub Actions Status */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Skeleton className="h-2 w-2 rounded-full mr-1.5" />
-                    <Skeleton className="h-3 w-24" />
+                    <div className={`h-2 w-2 rounded-full mr-1.5 ${isGithubActive ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <h3 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                      <Github className="h-3 w-3 mr-1 text-slate-500 dark:text-slate-400" />
+                      GitHub Actions
+                    </h3>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-14" />
-                      <Skeleton className="h-3 w-12" />
+                      <Tooltip text="GitHub Actions workflow status">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Status:</span>
+                      </Tooltip>
+                      <span className="text-right">
+                        {pingStats?.githubAction?.enabled ? 
+                          <span className="text-green-600 dark:text-green-400">Enabled</span> : 
+                          <span className="text-slate-400 dark:text-slate-500">Disabled</span>}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-18" />
-                      <Skeleton className="h-3 w-10" />
+                      <Tooltip text="Last GitHub Actions ping">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Last run:</span>
+                      </Tooltip>
+                      <span className="text-right dark:text-slate-300">
+                        {getLastGitHubActionsPing()}
+                      </span>
                     </div>
                   </div>
                 </div>
                 
-                {/* Performance Skeleton */}
+                {/* Cron Job Status */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Skeleton className="h-3 w-24" />
+                    <div className={`h-2 w-2 rounded-full mr-1.5 ${isCronActive ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <h3 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                      <Terminal className="h-3 w-3 mr-1 text-slate-500 dark:text-slate-400" />
+                      Cron Job
+                    </h3>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-16" />
-                      <Skeleton className="h-3 w-14" />
+                      <Tooltip text="Cron Job system status">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Status:</span>
+                      </Tooltip>
+                      <span className="text-right">
+                        {isCronActive ? 
+                          <span className="text-indigo-600 dark:text-indigo-400">Active ({activeCronJobs})</span> : 
+                          <span className="text-slate-400 dark:text-slate-500">Inactive</span>}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-14" />
-                      <Skeleton className="h-3 w-16" />
+                      <Tooltip text="Last cron job ping">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Last run:</span>
+                      </Tooltip>
+                      <span className="text-right dark:text-slate-300">
+                        {getLastCronPing()}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
               
-              {/* Right Column: Timing */}
+              {/* Right Column: Timing and Stats */}
               <div className="space-y-3">
-                {/* Timing Skeleton */}
+                {/* Timing */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Skeleton className="h-3 w-16" />
+                    <Calendar className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
+                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Timing</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-18" />
-                      <Skeleton className="h-3 w-10" />
+                      <Tooltip text="Wait time until next service check">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Next check:</span>
+                      </Tooltip>
+                      <span className="font-medium">{timeUntilNextPing()}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-14" />
-                      <Skeleton className="h-3 w-12" />
+                      <Tooltip text={`Estimated time for the next ${
+                        isCronActive ? "Cron Job" : 
+                        isGithubActive ? "GitHub Action" : 
+                        "run"
+                      } run`}>
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Next run:</span>
+                      </Tooltip>
+                      <span>
+                        {formatEstimatedRunTime()}
+                      </span>
                     </div>
                   </div>
                 </div>
                 
-                {/* Stats Skeleton */}
+                {/* Performance & Stats */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Skeleton className="h-3 w-12" />
+                    <Activity className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
+                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Performance</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-16" />
-                      <Skeleton className="h-3 w-5" />
+                      <Tooltip text="Services being monitored">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Services:</span>
+                      </Tooltip>
+                      <span>{getServiceCount()}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-18" />
-                      <Skeleton className="h-3 w-10" />
-                    </div>
+                    {intervalStats && (
+                      <div className="flex justify-between items-center">
+                        <Tooltip text="Scheduling consistency">
+                          <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Consistency:</span>
+                        </Tooltip>
+                        <span className={
+                          intervalStats.consistency > 90 ? 'text-green-600 dark:text-green-400' : 
+                          intervalStats.consistency > 70 ? 'text-yellow-600 dark:text-yellow-400' : 
+                          'text-orange-600 dark:text-orange-400'
+                        }>
+                          {intervalStats.consistency}%
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -544,105 +746,129 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
             {/* Progress Bar and Status */}
             {pingStats?.lastPing && (
               <div>
+                {/* Active System Indicator */}
                 <div className="flex justify-between items-center mb-1 text-xs">
-                  <Tooltip text="Last time GitHub Actions triggered a ping">
-                    <span className="text-slate-600 dark:text-slate-400">Last GitHub ping:</span>
+                  <Tooltip text="Current system used for monitoring">
+                    <span className="text-slate-600 dark:text-slate-400">Active system:</span>
+                  </Tooltip>
+                  <div className="flex items-center">
+                    <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${activeSystem.color}`}></div>
+                    <span className="font-medium dark:text-slate-300">
+                      {activeSystem.name}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Last Ping Time based on active system */}
+                <div className="flex justify-between items-center mb-1 text-xs">
+                  <Tooltip text={`Last time ${activeSystem.name} triggered a ping`}>
+                    <span className="text-slate-600 dark:text-slate-400">Last ping:</span>
                   </Tooltip>
                   <span className={`font-medium ${
-                    secondsSinceLastPing > 1.5 * (pingStats.intervalSeconds || 300) ? 'text-red-600 dark:text-red-400' : 
-                    secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 'text-orange-600 dark:text-orange-400' : 
+                    secondsSinceLastPing > 1.5 * systemInterval ? 'text-red-600 dark:text-red-400' : 
+                    secondsSinceLastPing > systemInterval ? 'text-orange-600 dark:text-orange-400' : 
                     'text-green-600 dark:text-green-400'
                   }`}>
-                    {getLastGitHubActionsPing()}
+                    {isCronActive ? getLastCronPing() : 
+                     isGithubActive ? getLastGitHubActionsPing() :
+                     getLastAnyPing()}
                   </span>
                 </div>
+                
+                {/* Expected interval based on active system */}
                 <div className="flex justify-between items-center mb-1 text-xs">
-                  <Tooltip text="Expected interval based on GitHub Actions schedule">
+                  <Tooltip text={`Expected interval ${
+                    isCronActive ? "based on Cron Job schedule" : 
+                    isGithubActive ? "based on GitHub Actions schedule" :
+                    "based on default settings"
+                  }`}>
                     <span className="text-slate-600 dark:text-slate-400">Expected interval:</span>
                   </Tooltip>
                   <span className="font-medium dark:text-slate-300">
-                    {pingStats?.githubAction?.schedule ? 
-                      formatCronSchedule(pingStats.githubAction.schedule) : 
-                      'Not configured'}
+                    {isCronActive && activeCronJob ? 
+                      formatCronSchedule(activeCronJob.cronExpression) : 
+                     isGithubActive && pingStats?.githubAction?.schedule ? 
+                      formatGitHubSchedule(pingStats.githubAction.schedule) : 
+                      `Every ${Math.round(systemInterval / 60)}m`}
                   </span>
-                </div>
-
-                {/* Timeline Status Bar */}
-                <div className="mt-3 mb-2">
-                  {/* Current time indicator */}
-                  <div className="relative h-5 mb-1">
-                    <span 
-                      className={`absolute font-medium text-[10px] ${
-                        secondsSinceLastPing > 1.5 * (pingStats.intervalSeconds || 300) ? 'text-red-600 dark:text-red-400' : 
-                        secondsSinceLastPing > (pingStats.intervalSeconds || 300) ? 'text-orange-600 dark:text-orange-400' : 
-                        'text-green-600 dark:text-green-400'
-                      }`}
-                      style={{ 
-                        left: `${Math.min(100, (100 * secondsSinceLastPing) / (1.5 * (pingStats.intervalSeconds || 300)))}%`,
-                        bottom: '0',
-                        transform: 'translateX(-50%)'
-                      }}
-                    >
-                      {secondsSinceLastPing}s
-                    </span>
-                  </div>
-                
-                  {/* Timeline bar */}
-                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden">
-                    {/* Elapsed time section */}
-                    <div 
-                      className={`absolute h-full ${
-                        secondsSinceLastPing > pingStats.intervalSeconds ? 
-                          (secondsSinceLastPing > 1.5 * pingStats.intervalSeconds ? 'bg-red-500' : 'bg-yellow-500') : 
-                          'bg-green-500'
-                      }`}
-                      style={{ 
-                        width: `${Math.min(100, (100 * secondsSinceLastPing) / (1.5 * (pingStats.intervalSeconds || 300)))}%` 
-                      }}
-                    ></div>
-                    
-                    {/* Expected time marker */}
-                    <div 
-                      className="absolute h-full w-0.5 bg-slate-600 dark:bg-slate-400 z-10"
-                      style={{ 
-                        left: `${100 * 2/3}%` 
-                      }}
-                    ></div>
-                  </div>
-                  
-                  {/* Time labels */}
-                  <div className="flex text-[10px] mt-1 relative">
-                    {/* Start time */}
-                    <span className="absolute left-0 text-slate-500 dark:text-slate-400">0s</span>
-                    
-                    {/* Expected time - at 2/3 position */}
-                    <span 
-                      className="absolute text-slate-600 dark:text-slate-400 font-medium"
-                      style={{ left: `${100 * 2/3}%`, transform: 'translateX(-50%)' }}
-                    >
-                      {pingStats.intervalSeconds || 300}s
-                    </span>
-                    
-                    {/* Critical time - right end */}
-                    <span className="absolute right-0 text-red-600 dark:text-red-400 font-medium">
-                      {Math.round(1.5 * (pingStats.intervalSeconds || 300))}s
-                    </span>
-                  </div>
-                  
-                  {/* Add height to account for absolute positioning */}
-                  <div className="h-5"></div>
                 </div>
               </div>
             )}
             
+            {/* Timeline Status Bar */}
+            <div className="mt-3 mb-2">
+              {/* Current time indicator */}
+              <div className="relative h-5 mb-1">
+                <span 
+                  className={`absolute font-medium text-[10px] ${
+                    secondsSinceLastPing > 1.5 * systemInterval ? 'text-red-600 dark:text-red-400' : 
+                    secondsSinceLastPing > systemInterval ? 'text-orange-600 dark:text-orange-400' : 
+                    'text-green-600 dark:text-green-400'
+                  }`}
+                  style={{ 
+                    left: `${Math.min(100, (100 * secondsSinceLastPing) / (1.5 * systemInterval))}%`,
+                    bottom: '0',
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  {secondsSinceLastPing}s
+                </span>
+              </div>
+            
+              {/* Timeline bar */}
+              <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full relative overflow-hidden">
+                {/* Elapsed time section */}
+                <div 
+                  className={`absolute h-full ${
+                    secondsSinceLastPing > systemInterval ? 
+                      (secondsSinceLastPing > 1.5 * systemInterval ? 'bg-red-500' : 'bg-yellow-500') : 
+                      'bg-green-500'
+                  }`}
+                  style={{ 
+                    width: `${Math.min(100, (100 * secondsSinceLastPing) / (1.5 * systemInterval))}%` 
+                  }}
+                ></div>
+                
+                {/* Expected time marker */}
+                <div 
+                  className="absolute h-full w-0.5 bg-slate-600 dark:bg-slate-400 z-10"
+                  style={{ 
+                    left: `${100 * 2/3}%` 
+                  }}
+                ></div>
+              </div>
+              
+              {/* Time labels */}
+              <div className="flex text-[10px] mt-1 relative">
+                {/* Start time */}
+                <span className="absolute left-0 text-slate-500 dark:text-slate-400">0s</span>
+                
+                {/* Expected time - at 2/3 position */}
+                <span 
+                  className="absolute text-slate-600 dark:text-slate-400 font-medium"
+                  style={{ left: `${100 * 2/3}%`, transform: 'translateX(-50%)' }}
+                >
+                  {systemInterval}s
+                </span>
+                
+                {/* Critical time - right end */}
+                <span className="absolute right-0 text-red-600 dark:text-red-400 font-medium">
+                  {Math.round(1.5 * systemInterval)}s
+                </span>
+              </div>
+              
+              {/* Add height to account for absolute positioning */}
+              <div className="h-5"></div>
+            </div>
+            
             {/* Stats Grid - Combined Display */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Left Column: GitHub + Performance */}
+              {/* Left Column: Ping Systems */}
               <div className="space-y-3">
                 {/* GitHub Actions Status */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <div className={`h-2 w-2 rounded-full mr-1.5 ${pingStats?.githubAction?.enabled ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <div className={`h-2 w-2 rounded-full mr-1.5 ${isGithubActive ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
                     <h3 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
                       <Github className="h-3 w-3 mr-1 text-slate-500 dark:text-slate-400" />
                       GitHub Actions
@@ -660,61 +886,49 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <Tooltip text="Number of successful ping runs (limited to last 10 entries)">
-                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Success rate:</span>
+                      <Tooltip text="Last GitHub Actions ping">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Last run:</span>
                       </Tooltip>
                       <span className="text-right dark:text-slate-300">
-                        {pingStats?.recentHistory ? 
-                          (() => {
-                            const githubRuns = pingStats.recentHistory.filter((entry: any) => 
-                              entry.source === 'github-action');
-                            const count = githubRuns.length;
-                            // Show only the percentage
-                            return `${Math.round((count/10) * 100)}%`;
-                          })() : 
-                          '0%'}
+                        {getLastGitHubActionsPing()}
                       </span>
                     </div>
                   </div>
                 </div>
                 
-                {/* Performance */}
+                {/* Cron Job Status */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Activity className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
-                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Performance</h4>
+                    <div className={`h-2 w-2 rounded-full mr-1.5 ${isCronActive ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                    <h3 className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                      <Terminal className="h-3 w-3 mr-1 text-slate-500 dark:text-slate-400" />
+                      Cron Job
+                    </h3>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">
-                      <Tooltip text="Average execution time">
-                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Execution:</span>
+                      <Tooltip text="Cron Job system status">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Status:</span>
                       </Tooltip>
-                      <span className={pingStats?.recentHistory?.length > 0 && 
-                        Math.round(pingStats.recentHistory.reduce((sum: number, entry: any) => sum + entry.executionTime, 0) / pingStats.recentHistory.length) > 500 ? 
-                        'text-amber-600 dark:text-amber-400 font-medium' : 'dark:text-slate-300'}>
-                        {pingStats?.recentHistory?.length > 0 
-                          ? `${Math.round(pingStats.recentHistory.reduce((sum: number, entry: any) => sum + entry.executionTime, 0) / pingStats.recentHistory.length)}ms` 
-                          : 'N/A'}
+                      <span className="text-right">
+                        {isCronActive ? 
+                          <span className="text-indigo-600 dark:text-indigo-400">Active ({activeCronJobs})</span> : 
+                          <span className="text-slate-400 dark:text-slate-500">Inactive</span>}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <Tooltip text="Fastest/slowest execution time">
-                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Min/Max:</span>
+                      <Tooltip text="Last cron job ping">
+                        <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Last run:</span>
                       </Tooltip>
-                      <span>
-                        {pingStats?.recentHistory?.length > 0 
-                          ? <><span className="text-green-600 dark:text-green-400">{Math.min(...pingStats.recentHistory.map((e: any) => e.executionTime))}</span>/
-                             <span className={Math.max(...pingStats.recentHistory.map((e: any) => e.executionTime)) > 500 ? 'text-amber-600 dark:text-amber-400' : ''}>
-                               {Math.max(...pingStats.recentHistory.map((e: any) => e.executionTime))}
-                             </span>ms</>
-                          : 'N/A'}
+                      <span className="text-right dark:text-slate-300">
+                        {getLastCronPing()}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
               
-              {/* Right Column: Timing */}
+              {/* Right Column: Timing and Stats */}
               <div className="space-y-3">
                 {/* Timing */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
@@ -730,7 +944,11 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
                       <span className="font-medium">{timeUntilNextPing()}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <Tooltip text="Estimated time for the next GitHub Action run">
+                      <Tooltip text={`Estimated time for the next ${
+                        isCronActive ? "Cron Job" : 
+                        isGithubActive ? "GitHub Action" : 
+                        "run"
+                      } run`}>
                         <span className="text-slate-600 dark:text-slate-400 border-b border-dotted border-slate-300 dark:border-slate-700">Next run:</span>
                       </Tooltip>
                       <span>
@@ -740,11 +958,11 @@ export const LoggerStatusCard = ({ handleNavigation, className = "", preloadedPi
                   </div>
                 </div>
                 
-                {/* Stats */}
+                {/* Performance & Stats */}
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-2.5">
                   <div className="flex items-center mb-1.5">
-                    <Server className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
-                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Stats</h4>
+                    <Activity className="h-3 w-3 text-slate-500 dark:text-slate-400 mr-1" />
+                    <h4 className="text-xs font-medium text-slate-700 dark:text-slate-300">Performance</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-y-1 text-xs">
                     <div className="flex justify-between items-center">

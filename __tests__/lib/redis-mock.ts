@@ -139,4 +139,12 @@ export const getServiceHistory = jest.fn().mockImplementation(async (name: strin
   const key = `history:${name}`;
   const history = mockStorage[key] ? JSON.parse(mockStorage[key]) : [];
   return history.slice(0, limit);
+});
+
+/**
+ * Check if a session token exists and is valid
+ */
+export const isSessionValid = jest.fn().mockImplementation(async (token: string): Promise<boolean> => {
+  // For testing purposes, we'll consider 'valid-session' as a valid session token
+  return token === 'valid-session';
 }); 

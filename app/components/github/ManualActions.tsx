@@ -11,7 +11,7 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
     <div className="space-y-3">
       <button 
         onClick={triggerPing}
-        className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-green-300 flex items-center transition-all duration-200"
+        className="w-full bg-card hover:bg-accent rounded-md p-3 border border-border hover:border-green-300 dark:hover:border-green-700 flex items-center transition-all duration-200"
       >
         <div className="h-9 w-9 bg-green-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -20,8 +20,8 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
           </svg>
         </div>
         <div className="ml-3 text-left">
-          <h3 className="font-medium text-gray-900 text-sm">Trigger Manual Ping</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h3 className="font-medium text-foreground text-sm">Trigger Manual Ping</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Run an immediate check of all services and update their status
           </p>
         </div>
@@ -33,7 +33,7 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
             href={`https://github.com/${repository}/actions/workflows/${workflow}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-blue-300 flex items-center transition-all duration-200"
+            className="w-full bg-card hover:bg-accent rounded-md p-3 border border-border hover:border-blue-300 dark:hover:border-blue-700 flex items-center transition-all duration-200"
           >
             <div className="h-9 w-9 bg-blue-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,8 +41,8 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
               </svg>
             </div>
             <div className="ml-3 text-left">
-              <h3 className="font-medium text-gray-900 text-sm">View GitHub Workflow</h3>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <h3 className="font-medium text-foreground text-sm">View GitHub Workflow</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Check workflow runs for {workflow} in your repository
               </p>
             </div>
@@ -52,7 +52,7 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
             href={`https://github.com/${repository}/edit/main/.github/workflows/${workflow}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-amber-300 flex items-center transition-all duration-200"
+            className="w-full bg-card hover:bg-accent rounded-md p-3 border border-border hover:border-amber-300 dark:hover:border-amber-700 flex items-center transition-all duration-200"
           >
             <div className="h-9 w-9 bg-amber-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,8 +60,8 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
               </svg>
             </div>
             <div className="ml-3 text-left">
-              <h3 className="font-medium text-gray-900 text-sm">Edit Workflow File</h3>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <h3 className="font-medium text-foreground text-sm">Edit Workflow File</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Update GitHub Actions schedule with minimum 5 min interval
               </p>
             </div>
@@ -73,7 +73,7 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
         href={repository ? `https://github.com/${repository}/settings/secrets/actions` : "https://docs.github.com/en/actions/security-guides/encrypted-secrets"}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-full bg-white hover:bg-gray-50 rounded-md p-3 border border-gray-200 hover:border-purple-300 flex items-center transition-all duration-200"
+        className="w-full bg-card hover:bg-accent rounded-md p-3 border border-border hover:border-purple-300 dark:hover:border-purple-700 flex items-center transition-all duration-200"
       >
         <div className="h-9 w-9 bg-purple-500 rounded-full flex items-center justify-center text-white flex-shrink-0">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,8 +81,8 @@ export default function ManualActions({ triggerPing, repository, workflow }: Man
           </svg>
         </div>
         <div className="ml-3 text-left">
-          <h3 className="font-medium text-gray-900 text-sm">Manage Repository Secrets</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <h3 className="font-medium text-foreground text-sm">Manage Repository Secrets</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Add or update the API key in your repository secrets
           </p>
         </div>

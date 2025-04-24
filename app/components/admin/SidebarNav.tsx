@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug, Moon, Sun, Info, Github } from "lucide-react";
+import { Home, Settings, Server, LogOut, ChevronRight, History, Globe, ExternalLink, Activity, Bug, Moon, Sun, Info, Github, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
@@ -443,11 +443,11 @@ export function SidebarNav({ activeTab, setActiveTab, handleLogout, isLoggingOut
           
           <motion.div variants={itemVariants}>
             <NavButton 
-              icon={Github} 
-              label="GitHub Actions" 
-              isActive={activeTab === "github-actions"} 
-              onClick={() => handleNavigation("github-actions")}
-              tab="github-actions"
+              icon={Clock} 
+              label="Scheduler" 
+              isActive={activeTab === "scheduler"} 
+              onClick={() => handleNavigation("scheduler")}
+              tab="scheduler"
             />
           </motion.div>
           

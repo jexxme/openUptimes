@@ -45,3 +45,11 @@ next-env.d.ts
 
 # Redis Scripts
 *.ts.bak
+
+# GitHub Actions
+.github/workflows/ping.yml
+!.github/workflows/ping.example.yml
+
+# MkDocs
+/site/
+docs-env/
