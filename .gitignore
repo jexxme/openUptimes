@@ -49,3 +49,7 @@ next-env.d.ts
 # GitHub Actions
 .github/workflows/ping.yml
 !.github/workflows/ping.example.yml
+
+# MkDocs
+/site/
+docs-env/

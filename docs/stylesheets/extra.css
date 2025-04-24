@@ -1,0 +1,198 @@
+:root {
+  --md-primary-fg-color: #000000;
+  --md-primary-fg-color--light: #000000;
+  --md-primary-fg-color--dark: #000000;
+  --md-accent-fg-color: oklch(0.488 0.243 264.376);
+  --md-typeset-a-color: oklch(0.488 0.243 264.376);
+  
+  /* Use the same border radius as in our main app */
+  --md-radius: 0.625rem;
+  
+  /* Status colors from globals.css */
+  --color-up: #3ba55c;
+  --color-down: #ed4245;
+  --color-degraded: #faa61a;
+  --color-unknown: #6b7280;
+}
+
+/* Dark mode customizations */
+[data-md-color-scheme="slate"] {
+  --md-hue: 230;
+  --md-accent-fg-color: #FFFFFF;
+  --md-typeset-a-color: #FFFFFF;
+  
+  /* Background and text colors */
+  --md-default-bg-color: oklch(0.145 0 0);
+  --md-default-fg-color: oklch(0.985 0 0);
+  --md-default-fg-color--light: oklch(0.708 0 0);
+  
+  /* Card styles */
+  --md-code-bg-color: oklch(0.205 0 0);
+  --md-code-fg-color: oklch(0.985 0 0);
+  
+  /* Admonition styles */
+  --md-admonition-bg-color: oklch(0.205 0 0);
+  --md-admonition-fg-color: oklch(0.985 0 0);
+  
+  /* Header colors - white with black text */
+  --md-primary-fg-color: #FFFFFF;
+  --md-primary-fg-color--light: #FFFFFF;
+  --md-primary-fg-color--dark: #FFFFFF;
+  --md-primary-bg-color: #000000;
+}
+
+/* Light mode customizations */
+[data-md-color-scheme="default"] {
+  --md-hue: 0;
+  --md-accent-fg-color: oklch(0.205 0 0);
+  --md-typeset-a-color: oklch(0.205 0 0);
+  
+  /* Background and text colors */
+  --md-default-bg-color: oklch(1 0 0);
+  --md-default-fg-color: oklch(0.145 0 0);
+  --md-default-fg-color--light: oklch(0.556 0 0);
+  
+  /* Card styles */
+  --md-code-bg-color: oklch(0.97 0 0);
+  --md-code-fg-color: oklch(0.205 0 0);
+  
+  /* Admonition styles */
+  --md-admonition-bg-color: oklch(0.97 0 0);
+  --md-admonition-fg-color: oklch(0.205 0 0);
+}
+
+/* Logo adjustment for dark mode, same as in globals.css */
+/* Removing logo inversion in dark mode
+[data-md-color-scheme="slate"] .md-logo img {
+  filter: brightness(1.15) contrast(1.05) invert(0.8);
+  opacity: 0.98;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  padding: 1px;
+  background-color: rgba(255, 255, 255, 0.03);
+  transition: filter 180ms ease-out;
+}
+*/
+
+/* Admonition styling */
+.md-typeset .admonition {
+  border-radius: var(--md-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.md-typeset .admonition:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transform: translateY(-1px);
+}
+
+/* Button hover effects like in globals.css */
+.md-typeset .md-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Custom status indicator styles */
+.status-indicator {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.status-up {
+  background-color: var(--color-up);
+}
+
+.status-down {
+  background-color: var(--color-down);
+}
+
+.status-degraded {
+  background-color: var(--color-degraded);
+}
+
+.status-unknown {
+  background-color: var(--color-unknown);
+}
+
+/* Font adjustments to match the main app */
+body {
+  font-family: var(--font-geist-sans, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif);
+}
+
+code {
+  font-family: var(--font-geist-mono, SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace);
+}
+
+/* Smooth transitions for interactive elements */
+.md-nav__link, .md-typeset a, .md-header__button, .md-nav__title, .md-search__input {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Improve active tab visibility */
+.md-tabs__link--active,
+.md-nav__link--active {
+  font-weight: 600;
+  position: relative;
+  color: var(--md-typeset-a-color) !important;
+}
+
+.md-tabs__link--active:after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--md-typeset-a-color);
+  border-radius: 1px;
+}
+
+.md-nav__link--active {
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--md-typeset-a-color);
+}
+
+/* Card-like styling for content blocks */
+.md-typeset pre {
+  border-radius: var(--md-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+}
+
+/* Tabs styling */
+.md-typeset .tabbed-content {
+  border-radius: var(--md-radius);
+  overflow: hidden;
+}
+
+/* Animation effects */
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--md-primary-fg-color), 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(var(--md-primary-fg-color), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--md-primary-fg-color), 0);
+  }
+}
+
+.animate-highlight {
+  animation: highlight-pulse 2s ease-in-out;
+}
+
+/* Theme toggle enhancements */
+.md-header__button.md-icon[for="__palette"] {
+  transition: transform 0.2s ease;
+}
+
+.md-header__button.md-icon[for="__palette"]:hover {
+  transform: rotate(15deg);
+}
+
+[data-md-toggle="palette"]:checked ~ .md-header .md-header__button.md-icon[for="__palette"] {
+  transform: rotate(-15deg);
+} 
