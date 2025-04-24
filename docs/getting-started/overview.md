@@ -49,4 +49,4 @@ OpenUptimes is ideal for:
 Ready to get started? Follow our [Installation Guide](installation.md) for detailed instructions.
 
 !!! tip
-    You can deploy OpenUptimes in just a few minutes with Vercel's one-click deploy! 
+    You can deploy OpenUptimes in just a few minutes with Vercel's one-click deploy!
