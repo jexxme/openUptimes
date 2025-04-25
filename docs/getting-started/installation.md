@@ -49,7 +49,7 @@ For users who want more control over their deployment:
 1. Fork and clone the repository:
 
 ```bash
-git clone https://github.com/openuptimes/openuptimes.git
+git clone https://github.com/jexxme/openuptimes.git
 cd openuptimes
 ```
 

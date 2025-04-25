@@ -59,10 +59,15 @@ extra_css:
 
 nav:
   - Home: index.md
+  - About: about.md
   - Getting Started:
-    - Overview: getting-started/overview.md
     - Installation: getting-started/installation.md
     - Configuration: getting-started/configuration.md
+  - Monitoring:
+    - Overview: monitoring/index.md
+    - Internal Cron System: monitoring/cron-system.md
+    - GitHub Actions: monitoring/github-actions.md
+    - External Options: monitoring/external-monitoring.md
   - API Reference:
     - Endpoints: api/endpoints.md
   - Development:

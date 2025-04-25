@@ -1,74 +1,113 @@
-# OpenUptimes Documentation
+# OpenUptimes
 
 <p align="center">
   <img src="assets/logo.svg" alt="OpenUptimes Logo" width="120" />
 </p>
 
 <p align="center">
-A simple, elegant, and self-hosted status page to monitor and display the uptime of your services.
+  <strong>A simple, elegant, and self-hosted status page to monitor and display the uptime of your services.</strong>
 </p>
 
-## Introduction
+<div class="grid" markdown>
 
-OpenUptimes is a lightweight status page that helps you monitor and display service uptime. With a clean interface and GitHub Actions integration, tracking your infrastructure's health has never been easier.
+<div>
+<h2>Monitor Your Services</h2>
+<p>Track the status of your websites, APIs, and services with a beautiful, modern interface. Keep your users informed about service availability.</p>
 
-Simplicity is key: deployment takes minutes, configuration is minimal, and monitoring is automatic without complex setups. You only need a GitHub repository, a Redis instance, and a hosting provider like Vercel.
+<a href="getting-started/installation/" class="md-button md-button--primary">Get Started</a>
+<a href="about/" class="md-button">Learn More</a>
+</div>
+
+<div>
+<h2>Flexible Monitoring</h2>
+<p>Choose the monitoring approach that fits your needs:</p>
+
+<ul>
+  <li><strong>Internal Cron System</strong> - Precise control for self-hosted deployments</li>
+  <li><strong>GitHub Actions</strong> - Perfect for serverless platforms like Vercel</li>
+</ul>
+</div>
+
+</div>
 
 ## Key Features
 
-* 🚀 **One-click deploy** - Get started in seconds with Vercel
-* 🔌 **Zero configuration** - Everything works out of the box
-* 📊 **GitHub Actions integration** - First-class monitoring system without extra infrastructure 
-* 📝 **Historical data** - View uptime history and identify patterns
-* 🛑 **Minimal dependencies** - Uses only GitHub Actions, Redis, and your hosting provider
-* 🎨 **Beautiful, responsive UI** - Works on all devices
+<div class="grid cards" markdown>
 
-## Quick Start
+- 🚀 **One-Click Deploy**
+    
+    Deploy to Vercel in seconds with zero configuration
 
-The fastest way to get started with OpenUptimes is to click the "Deploy with Vercel" button in our [GitHub repository](https://github.com/openuptimes/openuptimes).
+- 📅 **Dual Monitoring**
+    
+    Choose between Internal Cron or GitHub Actions
+
+- 📊 **Historical Data**
+    
+    Track uptime patterns with rich visualizations
+
+- ⚙️ **Simple Admin**
+    
+    Easy-to-use dashboard for configuration
+
+</div>
+
+## Getting Started in 4 Steps
 
 <div class="grid" markdown>
 
-=== "Step 1: Deploy"
+=== "1. Deploy"
 
-    Click the "Deploy with Vercel" button and follow the prompts to set up your new project.
+    Click the "Deploy with Vercel" button and follow the prompts to set up your new project
+    
+    <a href="https://vercel.com/new/clone?repository-url=https://github.com/openuptimes/openuptimes">
+      <img src="https://vercel.com/button" alt="Deploy with Vercel" width="92" height="32" />
+    </a>
 
-=== "Step 2: Configure Redis"
+=== "2. Configure Redis"
 
-    Set up Redis in your Vercel project using their one-click integration.
+    Set up Redis in your Vercel project using their one-click integration
 
-=== "Step 3: Set up monitoring"
+=== "3. Set up Monitoring"
 
-    Configure GitHub Actions for monitoring using our automatic template.
+    Choose your monitoring method based on your deployment type
+    
+    * [GitHub Actions](monitoring/github-actions.md) (for Vercel)
+    * [Internal Cron](monitoring/cron-system.md) (for self-hosted)
 
-=== "Step 4: Add services"
+=== "4. Add Services"
 
-    Add your services through the admin dashboard at `/admin`.
-
-</div>
-
-## Status Indicators
-
-<div class="grid" markdown>
-
-<div markdown>
-<span class="status-indicator status-up"></span> **Up** - Service is responding normally
-</div>
-
-<div markdown>
-<span class="status-indicator status-degraded"></span> **Degraded** - Service is responding slowly
-</div>
-
-<div markdown>
-<span class="status-indicator status-down"></span> **Down** - Service is not responding
-</div>
-
-<div markdown>
-<span class="status-indicator status-unknown"></span> **Unknown** - Service status couldn't be determined
-</div>
+    Add your services through the admin dashboard at `/admin`
+    
+    ![Admin Dashboard](assets/admin-dashboard.png)
 
 </div>
 
-## License
+## Who Is It For?
 
-OpenUptimes is licensed under the [PolyForm Noncommercial License 1.0.0](https://github.com/openuptimes/openuptimes/blob/main/LICENSE).
+OpenUptimes is perfect for developers, teams, and businesses who need a simple but powerful status page without the complexity and cost of commercial solutions.
+
+<div class="grid cards" markdown>
+
+- 🏢 **Small to Medium Businesses**
+    
+    Build customer trust with transparent service status
+
+- 💻 **Development Teams**
+    
+    Communicate service status to users and stakeholders
+
+- 👩‍💻 **Independent Developers**
+    
+    Monitor personal projects with a professional interface
+
+- 🌐 **Open Source Projects**
+    
+    Show uptime transparency for community services
+
+</div>
+
+<p align="center" markdown>
+  <a href="about/" class="md-button md-button--primary">Learn More About OpenUptimes</a>
+  <a href="getting-started/installation/" class="md-button">Installation Guide</a>
+</p>

@@ -2,6 +2,20 @@
 
 This directory contains the documentation for OpenUptimes, built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
 
+## Documentation Structure
+
+The documentation is organized into the following sections:
+
+- **Home**: Landing page with key features and quick overview
+- **About**: Detailed explanation of OpenUptimes, its architecture and target users
+- **Getting Started**: Installation and configuration guides
+- **Monitoring**: Details on monitoring options
+  - Internal Cron System (for self-hosted deployments)
+  - GitHub Actions (for serverless/Vercel deployments)
+  - External Monitoring options
+- **API Reference**: API endpoints and authentication
+- **Development**: Contributing guidelines and deployment information
+
 ## Working with the Documentation
 
 ### Local Development
